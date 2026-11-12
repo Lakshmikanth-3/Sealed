@@ -1,0 +1,14 @@
+{
+  "name": "appeal-record",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Worker-owned, tamper-evident work record with NEAR anchors and a one-click verifier.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "demo": "node --env-file-if-exists=.env scripts/demo.js",
+    "test": "node scripts/demo.js --mock"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": { "near-api-js": "5.1.1" }
+}

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f6b5c">
+  <title>Appeal Record</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Appeal Record</h1>
+    <span id="net" class="badge">…</span>
+  </header>
+  <p class="muted">Your private work record. Entries stay on this phone; only a daily fingerprint (hash) is saved on NEAR, so nobody can claim you edited them later.</p>
+
+  <section class="card">
+    <h2>Log what just happened</h2>
+    <div class="types" id="types"></div>
+    <div class="grid">
+      <div id="f-amount"><label for="amount">Amount (₹)</label><input id="amount" type="number" inputmode="decimal" min="0" step="0.01"></div>
+      <div id="f-rating" class="hidden"><label for="rating">Rating</label><input id="rating" type="number" inputmode="decimal" min="0" max="5" step="0.1"></div>
+    </div>
+    <div style="margin-top:8px"><label for="text">Note or notification text</label><textarea id="text" rows="2" placeholder="e.g. paste the app notification"></textarea></div>
+    <div style="margin-top:8px"><label for="photo">Screenshot (optional)</label><input id="photo" type="file" accept="image/*"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="capture">Capture now</button>
+      <label class="row muted" style="margin:0"><input id="gps" type="checkbox" style="width:auto" checked> add location</label>
+    </div>
+    <p class="muted" style="margin-bottom:0">Time is taken from the moment you tap. Screenshots are hashed and kept on this phone.</p>
+  </section>
+
+  <section class="card">
+    <div class="day-head"><h2 style="margin:0">Your days</h2>
+      <button class="secondary" id="anchorAll">Save all days on NEAR</button></div>
+    <div id="days"><p class="muted">Nothing logged yet.</p></div>
+  </section>
+
+  <section class="card">
+    <h2>Build my case</h2>
+    <p class="muted">Pick the saved days to share. Only the entries you tick leave your phone.</p>
+    <div id="caseDays" class="muted">Save at least one day on NEAR first.</div>
+    <div class="row" style="margin-top:10px">
+      <input id="label" placeholder="Name shown to reviewer (optional)" style="flex:1;min-width:180px">
+      <label class="row muted" style="margin:0"><input id="incImg" type="checkbox" style="width:auto" checked> include screenshots</label>
+    </div>
+    <div class="row" style="margin-top:10px"><button id="build">Build my case</button></div>
+    <div id="caseOut" class="hidden" style="margin-top:12px">
+      <p><strong>Share this link with your lawyer or union:</strong></p>
+      <p class="mono" id="caseLink"></p>
+      <div class="row"><button id="share">Share</button><button class="secondary" id="copy">Copy</button><a id="open" class="badge" target="_blank">Open verifier</a></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Backup</h2>
+    <div class="row"><button class="secondary" id="export">Download my data</button>
+      <span class="muted">Worker ID: <code id="wid"></code></span></div>
+  </section>
+  <p class="muted">Evidence support, not legal advice. It proves when records were captured and that they were not changed afterwards; it does not prove each record is true.</p>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

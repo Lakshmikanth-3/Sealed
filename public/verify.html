@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify Evidence Pack</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header><h1>Verify an evidence pack</h1><span class="badge">no login needed</span></header>
+  <p class="muted">This page re-checks every entry against the fingerprint saved on NEAR at the time, and recomputes the case summary itself. Nothing is taken on trust from the worker or from us.</p>
+
+  <section class="card" id="loader">
+    <label for="file">Or check a pack file</label>
+    <input id="file" type="file" accept="application/json,.json">
+  </section>
+
+  <div id="verdict" class="verdict hidden"></div>
+  <section class="card hidden" id="checksCard"><h2>Checks</h2><ul class="checks" id="checks"></ul><p class="muted" id="att"></p></section>
+  <section class="card hidden" id="sumCard"><h2>Case summary</h2><p id="narr"></p><p class="muted" id="who"></p></section>
+  <section class="card hidden" id="daysCard"><h2>Days and records</h2><div id="daysOut"></div></section>
+  <section class="card hidden" id="dlCard"><button class="secondary" id="dl">Download this pack (JSON)</button>
+    <p class="muted">Tamper test: download, change any amount, then load the file above. It will fail.</p></section>
+  <p class="muted">Proves when records were captured and that they were not edited after anchoring. It does not prove each record is true. Not legal advice.</p>
+</main>
+<script type="module" src="/verify.js"></script>
+</body>
+</html>
