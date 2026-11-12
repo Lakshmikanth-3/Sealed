@@ -1,117 +1,76 @@
-# PRD: Appeal Record
+# Appeal: product requirements
 
-NEAR Hackathon grand-prize candidate. Deadline: 14 Nov 2026, 23:59 UTC (15 Nov, 05:29 IST).
-Honest target score if fully built with real users: about 73/100. Not guaranteed to win; execution, real users and a first-try demo decide.
+Working description: a gig worker keeps private work records, commits their fingerprints on NEAR, and selectively shares independently checkable evidence when preparing an appeal.
 
-## 1. One-line pitch
-A gig worker's phone keeps a private, tamper-proof record of their work, so when an algorithm bans them, a lawyer or union can verify the evidence in one click.
+Goal: deliver a real application and an evidence-backed grand-prize submission. Judging determines the winner; no score or probability is assumed.
 
-## 2. Problem
-- Delivery and ride-hailing workers in India are deactivated by algorithms with little explanation.
-- Karnataka litigation is testing algorithmic deactivation; a 2026 essay called for an "algorithmic appeal record".
-- Workers have screenshots, but nobody trusts them: they could be edited.
+## Problem to validate
 
-## 3. Users
-- **Primary:** food-delivery riders and ride-hailing drivers.
-- **Secondary:** unions, labour lawyers, legal-aid clinics.
-- **Hackathon pilot:** riders from a delivery WhatsApp group or union; fallback: 10 part-time workers you know.
+Workers may need a usable history of trips, earnings, ratings, penalties and deactivation notices when asking a platform to review a decision. Appeal Record aims to make disclosed records easier to inspect for later changes. Actual worker needs and reviewer usefulness require interviews and a consented pilot. Market size, litigation claims and competitor comparisons are not verified in this project and must not be presented as established research.
 
-## 4. Goals and success metrics
-| Metric | Target by 14 Nov |
-|---|---|
-| Real workers logging | 20+ (minimum 10) |
-| Verified work days recorded | 50+ |
-| Evidence packs generated and verified | at least 3 |
-| Lawyer or union reviewer on camera | 1 |
+## Intended users
 
-## 5. Solution overview
-- **Logger agent (on phone):** captures trips, pay, ratings, penalties and app notifications as they arrive, with GPS and timestamps. Raw data stays on the phone.
-- **Daily anchor:** each day's log is hashed and stored in the worker's own NEAR account.
-- **Case-builder agent:** on deactivation, runs in NEAR AI Cloud, summarises the history (earnings, ratings trend, penalties) and produces an attested evidence pack.
-- **Verifier page:** a lawyer or union opens a link and checks hashes and attestation without logging in.
-- **Support fund:** unions or supporters send help through Intents.
+- Workers on a selected delivery platform and in a city to be confirmed by the builder.
+- A union representative or lawyer reviewing a worker-authorized evidence pack.
 
-## 6. Why NEAR (load-bearing)
-| NEAR feature | Role |
-|---|---|
-| Worker-owned account | Record belongs to the worker; platform cannot delete it |
-| On-chain daily anchors | Proves records were not edited later |
-| NEAR AI Cloud attestation | Proves the summary was produced by stated code, unaltered |
-| FastAuth | Workers sign in with passkey, no crypto knowledge |
-| Intents | Union support payouts in any token |
+Participant availability, device access, platform support and reviewer participation are unknown. No partnership is claimed.
 
-## 7. User flow
-1. Worker installs and signs in with a passkey.
-2. Logger captures work automatically each shift.
-3. Daily anchor saved on NEAR.
-4. Worker is deactivated and taps "Build my case".
-5. Evidence pack produced; link shared with lawyer or union.
-6. Reviewer verifies; support payout can follow.
+## Product flow and implementation status
 
-## 8. Functional requirements (MVP)
-- Android capture of notifications and pay screens for one platform type (food delivery).
-- Live-capture badge ("captured live, not uploaded later").
-- Daily hash anchoring to the worker's NEAR account.
-- Attested case summary from NEAR AI Cloud.
-- Public verifier page.
-- Intents support payout (small amounts).
+| Step | Intended behavior | Current evidence |
+|---|---|---|
+| Identity | Recoverable worker-owned account with passkey onboarding | V2 contract and signature validation tested locally; sign-in/recovery not integrated; phone ID remains self-reported |
+| Capture | Worker-controlled manual capture plus permission-based Android notification capture | Manual PWA capture tested in Chrome; Android capture not implemented |
+| Local storage | Private records persist offline with backup and restore | IndexedDB/reload/offline capture implemented; validated empty-journal atomic restore added; physical-device recovery pending |
+| Anchoring | Worker-authorized daily roots, sponsored gas, successful NEAR contract execution | V2 Rust WASM built and host-tested; SDK/RPC checks tested locally; live integration and public deployment pending |
+| Disclosure | Worker reviews selected days, entries, attachments and location before publishing | Selection preservation, final record/location/attachment preview and explicit public-link consent implemented; hosted expiry/revocation pending |
+| Case building | Cited appeal brief from disclosed evidence; deterministic arithmetic | Deterministic summary and cited review brief with print/text export implemented; real AI inference and TEE execution unimplemented |
+| Verification | Independent anchor, membership, attachment, summary and attestation checks | Content verification and independent CLI implemented; TEE verification unimplemented |
+| Support | Optional authorized Intents payment to the worker | Not implemented; no payment result claimed |
 
-## 9. Non-goals
-- Proving that every captured item is true (it proves when it was captured and that it was not edited).
-- Covering all platforms in the hackathon.
+## Required evidence properties
 
-## 10. Security, privacy and legal
-- Raw screenshots and GPS stay on the phone; only hashes and summaries leave.
-- Explicit worker consent; worker-initiated capture only.
-- Disclaimer: evidence support, not legal advice.
+- A matching anchor establishes content commitment by the chain timestamp. The phone's capture timestamp is a claim, not independently authenticated time.
+- A Merkle proof establishes membership of disclosed content in a commitment. It does not establish truth, completeness of a worker's history, or independent platform provenance.
+- The v1 prototype does not authenticate a worker-owned NEAR identity. Production ownership must be cryptographically bound and independently verifiable.
+- Reject edited entries, roots, attachments and summaries; duplicate days or records; malformed fields; and mismatches with trusted chain/deployment configuration.
+- Live anchors must execute successfully and finally on the trusted contract. A failed call is not a successful application anchor.
+- A deterministic summary is recomputed independently. AI analysis must cite entry IDs and distinguish evidence from inference. An attestation label is insufficient: validate the report and its binding to the actual workload and output.
+- Show the distinction between mock, synthetic RPC tests and actual NEAR execution wherever a result is presented.
 
-## 11. Wow moment (demo)
-A rider is "deactivated". One tap builds the case. A labour lawyer opens the link on camera and verifies 90 days of untouched records. A union support payment lands.
+## Privacy, ownership and reliability
 
-## 12. Demo video script (2-3 minutes)
-1. **Hook (0:00-0:15):** "The algorithm fired him. His phone kept the receipts."
-2. **Problem (0:15-0:40):** Karnataka case, workers with no trusted proof.
-3. **Logging (0:40-1:10):** a real shift captured live; daily anchor on NEAR.
-4. **Ban and case (1:10-1:50):** deactivation, one tap, evidence pack.
-5. **Verify (1:50-2:20):** lawyer verifies; attestation shown.
-6. **Impact (2:20-2:40):** "23 riders, 61 verified days"; support payout.
+- Keep undisclosed records on the device. Do not send private records to a cloud model or reviewer without explicit worker consent.
+- Preserve original screenshot bytes; hashes bind those bytes. Shared screenshots and location may identify people and need a deliberate review step.
+- Minimize public metadata and explain which chain commitments cannot be deleted. Hosted packs need defined access, expiry, revocation and deletion behavior.
+- Implement authenticated relaying, worker-bound authorization, sponsorship limits, quotas and safe logs before public production exposure.
+- Provide recovery and tested backup/restore; local browser storage alone is not durable worker ownership.
+- Test on the actual intended Android device and platform before claiming support. A mobile viewport is not a physical-device test.
 
-## 13. Competitive comparison
-| Feature | Screenshots | FareShare / WeClock | Appeal Record |
-|---|---|---|---|
-| Tamper-proof | No | No | Yes (on-chain anchors) |
-| Worker owns the record | Yes | Partly | Yes |
-| Lawyer can verify in one click | No | No | Yes |
-| Attested AI summary | No | No | Yes |
+## Measurement policy
 
-## 14. Tracks
-Privacy & Private AI, Social Money, Real-World Money.
+| Measure | Current result | Target |
+|---|---|---|
+| Real pilot participants | Not measured | Agree after recruitment access is confirmed |
+| Real recorded work days | Not measured | Agree with participants |
+| Real evidence packs reviewed | Not measured | Agree with reviewer availability |
+| Reviewer usefulness feedback | Not collected | Define an interview/checklist with a reviewer |
+| Live anchor reliability/latency | Not measured | Measure deployed behavior first |
 
-## 15. Business model
-Free for workers; unions and legal-aid groups pay per seat for the reviewer dashboard; grants from labour-rights funders.
+Synthetic fixtures do not count toward these measures. No testimonial, rider total, earnings number or impact result may be invented. Obtain separate permission for public footage and quotes.
 
-## 16. Risks and mitigations
-| Risk | Mitigation |
-|---|---|
-| Can't reach real workers in time | Message rider WhatsApp groups and one union today; fallback 10 known part-timers |
-| Android capture blocked | Fallback: guided in-app screenshot capture with live timestamp |
-| Platform terms of service | Worker-initiated, on-device, consent first |
-| Scope too big | One platform type only |
+## Demonstration
 
-## 17. Build plan (about 41 hours from Thu 12:15 IST)
-| Hours | Work |
-|---|---|
-| 0-2 | Spike: Android notification capture; NEAR anchor transaction |
-| 2-12 | Logger app with live-capture badge; FastAuth |
-| 12-20 | Daily anchoring and verifier page |
-| 20-28 | Case-builder agent on NEAR AI Cloud; evidence pack |
-| 28-32 | Intents support payout |
-| 32-36 | Onboard real riders; collect logs |
-| 36-40 | Lawyer or union review on camera; demo; README; X post |
-| 40-41 | Submit; buffer |
+Show one complete flow: capture a record, get a successful anchor, choose disclosures, build a case, independently verify it, and reject a changed pack. Label synthetic records as synthetic. If real records or a real payment are shown, get consent and link actual evidence. Avoid fabricated history lengths or participant numbers.
 
-## 18. Screening checklist (Claude / Codex)
-- One command starts the server and verifier page.
-- Sample log produces anchors and an evidence pack.
-- Verifier page passes for an untouched pack and fails for an edited one.
-- README lists libraries and AI-generated code; no overclaims.
+## Event and delivery
+
+The owner confirmed NEAR HACKATHON at https://nearhackathon.com/. Verified deadline: 14 November 2026, 23:59 UTC (15 November, 05:29 IST). See [EVENT-REQUIREMENTS.md](EVENT-REQUIREMENTS.md) for sources and publication requirements. Technical implementation, design, impact, originality and sustainability are prior-event guidance; the supplied rules do not publish numerical weights. AI screening checks reproducibility/features and humans decide.
+
+Privacy & Private AI is the proposed primary track; final tracks depend on implemented behavior. Intents and other integrations are not mandatory merely because they appear in track hints. Payments still remain an intended optional product feature and require their own completion evidence and authorization.
+
+Follow [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the phase sequence and exit checks. Dates and scope depend on verified event constraints and real access; an invented hourly schedule is not a delivery commitment.
+
+Potential business model: a free worker app supported by unions/legal-aid organizations or grants. No customer willingness to pay, pricing or revenue is validated. The owner selected MIT for application source; third-party assets retain their own licenses.
+
+Evidence support, not legal advice. The application does not guarantee legal admissibility or a successful appeal.
