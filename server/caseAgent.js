@@ -5,13 +5,14 @@
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { validateDraft } from '../lib/schema.js';
 import { buildSummary } from '../lib/summary.js';
 import { sha256Hex, canonical, verifyProof } from '../lib/merkle.js';
 
 const generatorPath = fileURLToPath(new URL('../lib/summary.js', import.meta.url));
 
 export async function buildCase(draft) {
-  if (!draft?.worker?.id || !Array.isArray(draft.days) || !draft.days.length) throw new Error('pack needs worker and days');
+  validateDraft(draft);
   // Refuse to summarise anything that does not match its own day root.
   for (const d of draft.days) {
     for (const it of d.entries) {
@@ -21,7 +22,7 @@ export async function buildCase(draft) {
   const entries = draft.days.flatMap((d) => d.entries.map((x) => x.entry));
   const summary = buildSummary(entries);
   return {
-    version: 1,
+    version: draft.version ?? 1,
     createdAt: new Date().toISOString(),
     worker: { id: draft.worker.id, label: String(draft.worker.label || '').slice(0, 60) },
     days: draft.days,
@@ -34,6 +35,6 @@ export async function buildCase(draft) {
       generatorSha256: await sha256Hex(fs.readFileSync(generatorPath)),
       note: 'Not yet run in a NEAR AI Cloud TEE. Verifier recomputes the summary instead.',
     },
-    disclaimer: 'Evidence support only, not legal advice. Proves when records were captured and that they were not edited after anchoring; it does not prove each record is true.',
+    disclaimer: 'Evidence support only, not legal advice. Checks content committed by the anchor time. Account authorization must be verified against NEAR; personal names and capture timestamps are self-reported. This does not establish truth or completeness.',
   };
 }

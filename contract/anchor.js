@@ -1,6 +1,8 @@
-// Optional NEAR contract (near-sdk-js). Without it, anchors still work: the relayer's
-// transaction args are recorded on-chain even though the call fails at execution.
-// Deploying it makes anchors succeed cleanly and queryable by view call.
+// LEGACY V1 PROTOTYPE: do not deploy as the worker-owned v2 contract.
+// See src/lib.rs and README.md for the maintained implementation.
+// Prototype NEAR anchor contract. Live anchors require deployment and successful
+// execution. Worker authentication and storage/relayer controls remain unfinished.
+// Do not treat this prototype as the completed ownership protocol.
 //
 // Build/deploy (needs: npm i -D near-sdk-js, near-cli-rs):
 //   npx near-sdk-js build contract/anchor.js build/anchor.wasm

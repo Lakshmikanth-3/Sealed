@@ -2,13 +2,30 @@
   "name": "appeal-record",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Worker-owned, tamper-evident work record with NEAR anchors and a one-click verifier.",
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
+    "start:demo": "node scripts/start-demo.js",
     "demo": "node --env-file-if-exists=.env scripts/demo.js",
-    "test": "node scripts/demo.js --mock"
+    "test": "node --test tests/*.test.js && node scripts/demo.js --mock",
+    "test:browser": "playwright test",
+    "test:browser:portable": "node scripts/browser-tests.js",
+    "verify": "node scripts/verify-pack.js",
+    "relay:admin": "node --env-file-if-exists=.env scripts/relay-admin.js",
+    "economics": "node scripts/economics.js",
+    "contract:lock": "node scripts/contract.js lock",
+    "contract:build": "node scripts/contract.js build",
+    "contract:test": "node scripts/contract.js test"
   },
-  "engines": { "node": ">=22" },
-  "dependencies": { "near-api-js": "5.1.1" }
+  "engines": {
+    "node": ">=22.21.0"
+  },
+  "dependencies": {
+    "near-api-js": "7.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0"
+  }
 }

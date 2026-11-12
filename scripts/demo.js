@@ -1,6 +1,7 @@
 // End-to-end check (screening checklist): sample log -> daily anchors -> evidence pack ->
 // verifier passes untouched pack, fails edited entry, fails edited summary.
-// `npm test` forces the mock chain; `npm run demo` uses whatever .env says (e.g. testnet).
+// `npm test` forces the mock chain. Live demo execution stays disabled until the
+// worker-signed v2 browser, relay and verifier are integrated.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,6 +13,7 @@ import { verifyPack } from '../lib/verify.js';
 
 const forceMock = process.argv.includes('--mock');
 const env = forceMock ? { NEAR_NETWORK: 'mock' } : process.env;
+if (env.NEAR_NETWORK && env.NEAR_NETWORK !== 'mock') throw new Error('Live demo is pending worker-signed v2 integration. Use npm test for the labelled mock demo.');
 const dataDir = forceMock ? fs.mkdtempSync(path.join(os.tmpdir(), 'appeal-')) : path.resolve('data');
 const chain = createChain(env, dataDir);
 const worker = 'w-demo' + Math.random().toString(36).slice(2, 8);
@@ -39,7 +41,7 @@ for (const day of days) {
   const root = await merkleRoot(entries);
   const anchor = await chain.anchor({ worker, day, root, count: entries.length });
   console.log(`anchored ${day}  root ${root.slice(0, 12)}…  tx ${anchor.txHash}  (${anchor.network})`);
-  draftDays.push({ day, root, count: entries.length, anchor: { network: anchor.network, txHash: anchor.txHash, sender: anchor.sender },
+  draftDays.push({ day, root, count: entries.length, anchor: { network: anchor.network, txHash: anchor.txHash, sender: anchor.sender, ...(anchor.contract ? { contract: anchor.contract } : {}) },
     entries: await Promise.all(entries.map(async (entry, i) => ({ entry, proof: await merkleProof(entries, i) }))) });
 }
 
@@ -49,7 +51,7 @@ console.log('\nSummary:', pack.summary.narrative, '\n');
 const fetchAnchor = (ref) => chain.lookup(ref);
 const results = [];
 const check = async (name, p, expectOk) => {
-  const r = await verifyPack(p, fetchAnchor);
+  const r = await verifyPack(p, fetchAnchor, { deployments: { [chain.network]: { contract: chain.contract, relayer: chain.sender } } });
   const good = r.ok === expectOk;
   results.push(good);
   console.log(`${good ? 'PASS' : 'FAIL'}  ${name}: verifier says ${r.ok ? 'VERIFIED' : 'REJECTED'}`
@@ -70,8 +72,9 @@ const swappedRoot = structuredClone(pack);
 swappedRoot.days[0].root = swappedRoot.days[1].root;
 await check('root swapped between days', swappedRoot, false);
 
-fs.mkdirSync('data', { recursive: true });
-fs.writeFileSync('data/sample-pack.json', JSON.stringify(pack, null, 2));
-console.log('\nWrote data/sample-pack.json (upload it on /verify, edit it, upload again to see it fail).');
+fs.mkdirSync(dataDir, { recursive: true });
+const sampleFile = path.join(dataDir, 'sample-pack.json');
+fs.writeFileSync(sampleFile, JSON.stringify(pack, null, 2));
+console.log(`\nWrote synthetic demo pack: ${sampleFile} (not real rider data).`);
 if (results.includes(false)) { console.error('\nSome checks failed.'); process.exit(1); }
 console.log('All checks passed.');
