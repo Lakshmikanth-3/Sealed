@@ -1,66 +1,60 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f6b5c">
-  <title>Appeal Record</title>
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f6b5c"><meta name="description" content="Keep a private work journal and choose the evidence you share for review.">
+  <title>Appeal — Your work, on record</title>
+  <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<main>
-  <header>
-    <h1>Appeal Record</h1>
-    <span id="net" class="badge">…</span>
-  </header>
-  <p class="muted">Your private work record. Entries stay on this phone; only a daily fingerprint (hash) is saved on NEAR, so nobody can claim you edited them later.</p>
-
-  <section class="card">
-    <h2>Log what just happened</h2>
-    <div class="types" id="types"></div>
-    <div class="grid">
-      <div id="f-amount"><label for="amount">Amount (₹)</label><input id="amount" type="number" inputmode="decimal" min="0" step="0.01"></div>
-      <div id="f-rating" class="hidden"><label for="rating">Rating</label><input id="rating" type="number" inputmode="decimal" min="0" max="5" step="0.1"></div>
-    </div>
-    <div style="margin-top:8px"><label for="text">Note or notification text</label><textarea id="text" rows="2" placeholder="e.g. paste the app notification"></textarea></div>
-    <div style="margin-top:8px"><label for="photo">Screenshot (optional)</label><input id="photo" type="file" accept="image/*"></div>
-    <div class="row" style="margin-top:12px">
-      <button id="capture">Capture now</button>
-      <label class="row muted" style="margin:0"><input id="gps" type="checkbox" style="width:auto" checked> add location</label>
-    </div>
-    <p class="muted" style="margin-bottom:0">Time is taken from the moment you tap. Screenshots are hashed and kept on this phone.</p>
-  </section>
-
-  <section class="card">
-    <div class="day-head"><h2 style="margin:0">Your days</h2>
-      <button class="secondary" id="anchorAll">Save all days on NEAR</button></div>
-    <div id="days"><p class="muted">Nothing logged yet.</p></div>
-  </section>
-
-  <section class="card">
-    <h2>Build my case</h2>
-    <p class="muted">Pick the saved days to share. Only the entries you tick leave your phone.</p>
-    <div id="caseDays" class="muted">Save at least one day on NEAR first.</div>
-    <div class="row" style="margin-top:10px">
-      <input id="label" placeholder="Name shown to reviewer (optional)" style="flex:1;min-width:180px">
-      <label class="row muted" style="margin:0"><input id="incImg" type="checkbox" style="width:auto" checked> include screenshots</label>
-    </div>
-    <div class="row" style="margin-top:10px"><button id="build">Build my case</button></div>
-    <div id="caseOut" class="hidden" style="margin-top:12px">
-      <p><strong>Share this link with your lawyer or union:</strong></p>
-      <p class="mono" id="caseLink"></p>
-      <div class="row"><button id="share">Share</button><button class="secondary" id="copy">Copy</button><a id="open" class="badge" target="_blank">Open verifier</a></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Backup</h2>
-    <div class="row"><button class="secondary" id="export">Download my data</button>
-      <span class="muted">Worker ID: <code id="wid"></code></span></div>
-  </section>
-  <p class="muted">Evidence support, not legal advice. It proves when records were captured and that they were not changed afterwards; it does not prove each record is true.</p>
-</main>
+<body class="worker-app">
+<a class="skip-link" href="#workspace">Skip to workspace</a>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/"><img src="/icon.svg" width="36" height="36" alt=""><span>Appeal<span class="brand-sub">Your work, on record</span></span></a>
+    <nav class="workspace-nav" aria-label="Workspace">
+      <button data-view="capture" aria-current="page"><span class="nav-number">01</span> Record</button>
+      <button data-view="journal"><span class="nav-number">02</span> Journal</button>
+      <button data-view="case"><span class="nav-number">03</span> Prepare case</button>
+      <button data-view="backup"><span class="nav-number">04</span> Backup</button>
+    </nav>
+    <div class="sidebar-foot"><span class="eyebrow">On this device</span><p>Private until you choose to share.</p><a href="/verify">Open reviewer</a></div>
+  </aside>
+  <main id="workspace" tabindex="-1">
+    <header class="workspace-header"><span class="eyebrow">Worker workspace</span><span id="net" class="badge" role="status">Connecting…</span></header>
+    <div id="connection" class="connection hidden" role="status">Offline. You can keep recording on this device.</div>
+    <section id="view-capture" class="workspace-view" aria-labelledby="captureTitle">
+      <div class="page-title"><p class="eyebrow">Record</p><h1 id="captureTitle" tabindex="-1">Keep your side of the story.</h1><p>Save what happened. Choose what to share later.</p></div>
+      <section class="card capture-card">
+        <h2>What happened?</h2><div class="types" id="types" aria-label="Record type"></div>
+        <div class="grid"><div id="f-amount"><label for="amount">Amount (₹)</label><input id="amount" type="number" inputmode="decimal" min="0" step="0.01"></div><div id="f-rating" class="hidden"><label for="rating">Rating</label><input id="rating" type="number" inputmode="decimal" min="0" max="5" step="0.1"></div><div><label for="platform">Platform (optional)</label><input id="platform" maxlength="64" autocomplete="off" placeholder="Platform shown in your record"></div></div>
+        <label for="text">Note or notification text</label><textarea id="text" rows="3" maxlength="1000" placeholder="Record the words you saw. Avoid customer details."></textarea>
+        <label for="photo">Original screenshot (optional)</label><input id="photo" type="file" accept="image/png,image/jpeg,image/webp"><p class="field-note">PNG, JPEG or WebP · up to 8 MB · original bytes retained</p>
+        <label class="check-row"><input id="gps" type="checkbox"> Include location in this record</label>
+        <div class="capture-footer"><button id="capture">Capture now</button><span class="muted">Stored on this device</span></div>
+      </section>
+      <div class="quiet-note"><strong>A record, not a ruling.</strong><p>Manual entries and device times are self-reported. Anchors can show that content existed by an anchor time; they do not prove it is true.</p><p id="timezone" class="field-note"></p></div>
+    </section>
+    <section id="view-journal" class="workspace-view hidden" aria-labelledby="journalTitle">
+      <div class="page-title"><p class="eyebrow">Journal</p><h1 id="journalTitle" tabindex="-1">Your work history.</h1><p>Review your records before saving a commitment.</p></div>
+      <div class="journal-toolbar"><span id="journalCount" class="muted">Loading local records…</span><button class="secondary" id="anchorAll" disabled>Save all days on NEAR</button></div>
+      <div id="days"><p class="muted">Nothing logged yet.</p></div>
+    </section>
+    <section id="view-case" class="workspace-view hidden" aria-labelledby="caseTitle">
+      <div class="page-title"><p class="eyebrow">Prepare case</p><h1 id="caseTitle" tabindex="-1">Share only what matters.</h1><p>Choose records, check the preview, then create a reviewer link.</p></div>
+      <section class="card"><h2>Select saved records</h2><div id="caseDays" class="muted">Save at least one day on NEAR first.</div></section>
+      <section class="card"><label for="label">Name shown to reviewer (optional)</label><input id="label" maxlength="60" autocomplete="off"><label class="check-row"><input id="incImg" type="checkbox" checked> Include selected records’ screenshots</label><p class="field-note">Notes and locations are part of their original records. Review them before sharing.</p><button id="build" disabled>Review selected records</button></section>
+      <section id="caseOut" class="card hidden"><p class="eyebrow">Ready for review</p><h2>Your reviewer link</h2><p>Anyone with this link can read the disclosed pack.</p><p class="mono" id="caseLink"></p><div class="row"><button id="share">Share</button><button class="secondary" id="copy">Copy</button><a id="open" class="text-link" target="_blank" rel="noopener">Open verifier</a></div></section>
+    </section>
+    <section id="view-backup" class="workspace-view hidden" aria-labelledby="backupTitle">
+      <div class="page-title"><p class="eyebrow">Backup</p><h1 id="backupTitle" tabindex="-1">Keep a copy you control.</h1><p>Browser storage can be cleared. Save a private backup elsewhere.</p></div>
+      <section class="card"><h2>Download your journal</h2><p>Includes all records, original screenshots and saved anchor references. This file is not encrypted.</p><button class="secondary" id="export">Download my data</button><p class="field-note">Store it privately. Share a selected evidence pack with a reviewer instead.</p></section>
+      <section class="card"><h2>Restore on an empty device</h2><p>Restore checks record structure, screenshot fingerprints and saved roots before writing. It does not prove chain execution.</p><label for="restoreFile">Choose a journal backup</label><input id="restoreFile" type="file" accept="application/json,.json"><p id="restoreStatus" class="muted" role="status"></p><button id="restore" class="hidden">Restore reviewed backup</button><p class="field-note">Up to 50 MB. Existing records are never overwritten or merged.</p></section>
+      <div class="quiet-note"><span class="eyebrow">Local worker reference</span><p><code id="wid"></code></p><p>This v1 reference is self-reported. A recovered journal is not proof of account ownership.</p></div>
+    </section>
+    <footer class="app-footer"><span>Appeal</span><a href="/verify">Verify a pack</a><span>Evidence support, not legal advice.</span></footer>
+  </main>
+</div>
+<dialog id="disclosureDialog" aria-labelledby="disclosureTitle"><div class="dialog-content"><p class="eyebrow">Final sharing review</p><h2 id="disclosureTitle">Check what leaves this device.</h2><p id="disclosureSummary"></p><div id="disclosureRecords" class="disclosure-records"></div><p class="field-note">Original screenshots may contain customer details. Go back to exclude screenshots if needed. Hosted-link expiry and revocation are not available yet.</p><label class="check-row"><input id="disclosureConsent" type="checkbox"> I understand anyone with the link can read these records, including the notes and any included locations or screenshots.</label><p id="disclosureError" role="alert"></p><div class="row"><button id="publish">Create reviewer link</button><button id="cancelDisclosure" class="secondary">Go back</button></div></div></dialog>
 <script type="module" src="/app.js"></script>
 </body>
 </html>

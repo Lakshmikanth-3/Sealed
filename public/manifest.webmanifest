@@ -1,3 +1,3 @@
-{ "name": "Appeal Record", "short_name": "Appeal Record", "start_url": "/", "display": "standalone",
+{ "name": "Appeal", "short_name": "Appeal", "start_url": "/", "display": "standalone",
   "background_color": "#f6f5f1", "theme_color": "#0f6b5c",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
