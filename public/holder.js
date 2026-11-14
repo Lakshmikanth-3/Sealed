@@ -25,22 +25,23 @@ async function load() {
     return;
   }
   $('title').textContent = seal.label; $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} are 1 of ${seal.n} trusted people · ${seal.k} must say yes`;
-  $('until').textContent = `You can say yes from ${istText(seal.unlockAtMs)}`;
+  $('until').textContent = seal.unlockBy === 'merge' ? `No time limit. It opens when ${seal.k} of ${seal.n} parts are merged.` : `You can say yes from ${istText(seal.unlockAtMs)}`;
+  if (seal.unlockBy === 'merge') $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} hold part of the key · ${seal.k} of ${seal.n} parts must be merged`;
   $('account').textContent = secret.s ? '' : `Your NEAR account: ${secret.a}`;
   if (!secret.s) { $('walletBox').classList.remove('hidden'); $('ownAccount').textContent = secret.a; void refreshWallet(); }
-  if (!seal.chain?.releasedAccounts?.includes(secret.a)) { $('releaseBtn').textContent = 'Say yes'; $('releaseBtn').disabled = false; }
+  if (!seal.chain?.releasedAccounts?.includes(secret.a)) { $('releaseBtn').textContent = seal.unlockBy === 'merge' ? 'Merge my part' : 'Say yes'; $('releaseBtn').disabled = false; }
   render();
 }
 function render() {
   const released = seal.chain?.releasedAccounts || [];
-  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released.length ? ' on' : '') })), el('small', { text: ` ${released.length} of ${seal.k} have said yes` }));
-  if (released.includes(secret.a)) { $('releaseBtn').disabled = true; $('releaseBtn').textContent = 'You said yes ✓'; }
+  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released.length ? ' on' : '') })), el('small', { text: seal.unlockBy === 'merge' ? ` ${released.length} of ${seal.k} parts merged` : ` ${released.length} of ${seal.k} have said yes` }));
+  if (released.includes(secret.a)) { $('releaseBtn').disabled = true; $('releaseBtn').textContent = seal.unlockBy === 'merge' ? 'Your part is merged ✓' : 'You said yes ✓'; }
 }
 setInterval(() => {
   if (!seal || seal.cancelled) return;
   const left = seal.unlockAtMs - (Date.now() + skew);
-  $('count').textContent = countdown(left);
-  $('state').textContent = left > 0 ? 'Wait' : 'You can say yes now'; $('state').className = 'badge ' + (left > 0 ? 'warn' : 'ok');
+  $('count').textContent = seal.unlockBy === 'merge' ? `${seal.chain?.releasedAccounts?.length || 0} / ${seal.k}` : countdown(left);
+  $('state').textContent = left > 0 ? 'Wait' : seal.unlockBy === 'merge' ? 'You can merge your part now' : 'You can say yes now'; $('state').className = 'badge ' + (left > 0 ? 'warn' : 'ok');
 }, 250);
 setInterval(async () => { if (!seal || document.hidden) return; const r = await api(`/api/seals/${sealId}`); if (r.ok) { seal = r.body; render(); } }, 6000);
 
@@ -96,7 +97,7 @@ $('releaseBtn').onclick = async () => {
       await new Promise((r) => setTimeout(r, 1500));
     }
     if (!posted.ok) throw new Error(posted.body.error || 'Could not hand over the part');
-    show('open', el('h2', { text: 'Thank you. Your yes is recorded.' }), el('p', { text: `${posted.body.released} of ${posted.body.k} people have said yes. The file opens when ${posted.body.k} have.` }), tx);
+    show('open', el('h2', { text: seal.unlockBy === 'merge' ? 'Thank you. Your part is merged.' : 'Thank you. Your yes is recorded.' }), el('p', { text: seal.unlockBy === 'merge' ? `${posted.body.released} of ${posted.body.k} parts are merged.` : `${posted.body.released} of ${posted.body.k} people have said yes. The file opens when ${posted.body.k} have.` }), tx);
     $('status').textContent = ''; $('releaseBtn').textContent = 'You said yes ✓';
     const r = await api(`/api/seals/${sealId}`); if (r.ok) { seal = r.body; render(); }
   } catch (e) { $('status').textContent = ''; toast(e.message, 6000); $('releaseBtn').disabled = false; }
