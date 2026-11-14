@@ -4,22 +4,23 @@ Date: 15 November 2026. Scope: add a technical appendix to `README.md` for techn
 
 ## 1. Preservation of the original README
 
+The baseline is the README as committed in `70e1d34` (the last commit before the appendix). Git stores it with LF line endings; the Windows working copy has CRLF, so the two forms are compared separately.
+
 | Check | Result |
 |---|---|
-| Original size | 23,783 bytes |
-| Original SHA-256 (saved before editing) | `edbce4532a715c5f0b5383701adec79d80592f5712ffe4a4213b68767f346362` |
-| SHA-256 of the first 23,783 bytes of the new README | `edbce4532a715c5f0b5383701adec79d80592f5712ffe4a4213b68767f346362` |
-| Original content preserved byte-for-byte as the prefix | **Yes** |
+| Baseline in Git (`70e1d34`, LF) | 23,542 bytes, 241 lines, SHA-256 `2e4b293f53cd6dbfbfe223090c0d6109a4cc004f12e7ee036f0687084877c187` |
+| First 23,542 bytes of `README.md` in commit `d9f81b1` | Identical (`cmp` reports no difference) |
+| First 23,542 bytes of `README.md` on GitHub `master` (raw file) | Identical |
+| Working copy before editing (CRLF) | 23,783 bytes, SHA-256 `edbce453…`; prefix of the edited working copy identical |
 | Sections removed, rewritten or reordered | None |
-| New README size | 52,921 bytes |
 
-Method: a copy of the original was saved first; the appendix was then appended with `cat >>`, never edited in place; the prefix was compared byte for byte with Node.js `Buffer.compare`.
+Method: a copy of the original was saved first; the appendix was then appended with `cat >>`, never edited in place; the prefix was compared byte for byte in both line-ending forms.
 
 To reproduce:
 
 ```
-git show <commit-before>:README.md > original.md
-head -c 23783 README.md | sha256sum      # equals: sha256sum original.md
+git show 70e1d34:README.md > original.md
+git show d9f81b1:README.md | head -c 23542 | cmp - original.md   # no output = identical
 ```
 
 ## 2. Sections added (in order, after the original content)

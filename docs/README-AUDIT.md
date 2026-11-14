@@ -1,6 +1,6 @@
 # README Audit
 
-Audit of the claims in the original `README.md` (the 23,783 bytes before the technical appendix), checked against the source code, the deployed contracts and test runs on 15 November 2026. **The original README was not edited.** Issues are listed here so they can be fixed deliberately.
+Audit of the claims in the original `README.md` (as committed in `70e1d34`, before the technical appendix), checked against the source code, the deployed contracts and test runs on 15 November 2026. **The original README was not edited.** Issues are listed here so they can be fixed deliberately.
 
 Statuses: **Verified** (checked in code or on chain) · **Verified earlier** (live run on 14 November 2026, not repeated) · **Needs evidence** · **Inconsistent**.
 
