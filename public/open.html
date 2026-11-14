@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a0a"><meta name="robots" content="noindex">
+  <title>Sealed file</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head>
+<body class="landing seal-page">
+<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">time-locked on NEAR</span></a><span id="state" class="badge">Loading</span></header>
+<main class="open-main">
+  <p class="eyebrow center" id="kind">Sealed file</p>
+  <h1 class="center" id="title">Loading…</h1>
+  <div class="panel lock-panel">
+    <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
+    <p class="countdown big" id="count" aria-live="off">--:--:--</p>
+    <p class="center" id="until"></p>
+    <div class="progress center" id="progress"></div>
+    <p class="center muted" id="statusLine" role="status"></p>
+  </div>
+  <p class="notice" role="note"><b>Notice:</b> attempts to open this file are logged, including approximate location from your IP address, time, device and browser. A hash of each attempt is recorded on NEAR. Exact GPS location is shared only if you tick the box below.</p>
+  <div class="panel open-actions">
+    <label class="check-row"><input type="checkbox" id="shareGps"> Share my exact location with this attempt (optional)</label>
+    <div class="row"><button id="openBtn">Open file</button><a class="btn ghost" id="verifyLink" href="#">Verify on NEAR</a></div>
+    <details><summary>Have a downloaded .sealed file?</summary><label for="sealedDoc">Use the encrypted copy from a .sealed file</label><input id="sealedDoc" type="file" accept=".sealed,application/json"><p class="field-note" id="docNote">The file stays locked until the same on-chain release; it only replaces the download.</p></details>
+  </div>
+  <section id="result" class="result hidden" aria-live="polite"></section>
+  <section class="panel"><h2 class="panel-title">On-chain access log</h2><ol id="log" class="activity"><li class="muted">Loading…</li></ol></section>
+</main>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="/app">Seal your own file</a><span>NEAR testnet</span></footer>
+<script type="module" src="/open.js"></script>
+</body>
+</html>

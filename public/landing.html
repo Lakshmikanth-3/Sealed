@@ -3,59 +3,70 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a">
-  <meta name="description" content="Appeal: a private, worker-owned work record anchored on NEAR that any reviewer can verify.">
-  <title>Appeal — Your work, on record</title>
+  <meta name="description" content="Sealed Paper: files nobody can open before the chosen second. K-of-N key holders, contract-enforced unlock time and a public access log on NEAR.">
+  <title>Sealed Paper — Sealed until the second</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing">
 <header class="land-top">
-  <a class="brand" href="/"><span class="brand-mark">APPEAL</span><span class="brand-sub">v2 · worker evidence protocol</span></a>
-  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#live">Live network</a><a href="/verify">Verify a pack</a><a class="btn" href="/app">Launch workspace</a></nav>
+  <a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">time-locked files on NEAR</span></a>
+  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#why">Why</a><a href="#live">Live network</a><a href="/verify">Verify</a><a class="btn" href="/app">Seal a file</a></nav>
 </header>
 <main>
   <section class="hero">
     <div class="hero-copy">
-      <p class="eyebrow"><span class="dot live"></span> Deployed on NEAR <span id="heroNet">testnet</span></p>
-      <h1>Your work.<br><span class="accent">On record.</span><br>Verifiable by anyone.</h1>
-      <p class="lede">Gig and informal workers keep a private journal on their own phone. Appeal locks each day's records on NEAR, catches company statements that don't match, and shares only the records a reviewer needs.</p>
-      <div class="hero-cta"><a class="btn" href="/app">Launch workspace →</a><a class="btn ghost" href="/verify">Verify evidence</a></div>
+      <p class="eyebrow"><span class="dot live"></span> Live on NEAR testnet</p>
+      <h1>Nobody opens it early.<br><span class="accent">Not even the key holders.</span></h1>
+      <p class="lede">Seal any file (exam paper, tender, results, will or video) until the exact second you choose. Split the key across 2 to 20 holders. The NEAR contract refuses every early attempt, logs it publicly, and the owner gets an alert with time, device and approximate location.</p>
+      <div class="hero-cta"><a class="btn" href="/app#seal">Seal a file →</a><a class="btn ghost" href="/verify">Verify a seal</a></div>
     </div>
-    <div class="panel terminal" aria-label="Live chain feed">
-      <div class="panel-head"><span>NEAR LIVE FEED</span><span id="feedState" class="badge">connecting</span></div>
+    <div class="panel terminal" aria-label="Live contract feed">
+      <div class="panel-head"><span>CONTRACT FEED</span><span id="feedState" class="badge">connecting</span></div>
       <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
-      <pre id="feed" class="feed" role="log" aria-live="polite">&gt; opening read-only RPC session…</pre>
+      <pre id="feed" class="feed" role="log">&gt; reading sealed.kanth_s.testnet…</pre>
     </div>
   </section>
 
   <section id="live" class="stat-row" aria-label="Live contract statistics">
-    <div class="panel stat"><span class="stat-label">Latest final block</span><strong id="sBlock">—</strong><small id="sBlockTime">waiting for RPC</small></div>
-    <div class="panel stat"><span class="stat-label">Registered workers</span><strong id="sWorkers">—</strong><small id="sCap">contract capacity</small></div>
-    <div class="panel stat"><span class="stat-label">Anchor contract</span><strong id="sContract" class="mono-sm">—</strong><small id="sOwner">owner</small></div>
-    <div class="panel stat"><span class="stat-label">Contract storage</span><strong id="sStorage">—</strong><small id="sBalance">balance</small></div>
+    <div class="panel stat"><span class="stat-label">Seals on-chain</span><strong id="sSeals">—</strong><small>created on the contract</small></div>
+    <div class="panel stat"><span class="stat-label">Key parts</span><strong>2 – 20</strong><small>any K of N to unlock</small></div>
+    <div class="panel stat"><span class="stat-label">Contract</span><strong id="sContract" class="mono-sm">—</strong><small id="sOwner">owner</small></div>
+    <div class="panel stat"><span class="stat-label">Encryption</span><strong>AES-256</strong><small>GCM, in your browser</small></div>
   </section>
 
   <section id="how" class="steps">
     <h2 class="section-title">// How it works</h2>
     <ol class="step-grid">
-      <li class="panel"><span class="step-n">01</span><h3>Record</h3><p>Log trips, pay, ratings, penalties and deactivation notices with the original screenshot. Everything stays on the device.</p></li>
-      <li class="panel"><span class="step-n">02</span><h3>Lock on NEAR</h3><p>Each day becomes a salted Merkle root. The worker's own wallet signs it into the contract. No personal data goes on-chain.</p></li>
-      <li class="panel"><span class="step-n">03</span><h3>Check the company</h3><p>Load the company's statement. Appeal flags underpaid trips, missing work and unexplained charges, and records the result.</p></li>
-      <li class="panel"><span class="step-n">04</span><h3>Share &amp; verify</h3><p>Disclose only chosen records through an expiring link. Reviewers check signatures, receipts and proofs against public RPC.</p></li>
+      <li class="panel"><span class="step-n">01</span><h3>Encrypt</h3><p>The file is encrypted in your browser with a random key. The server only ever stores ciphertext.</p></li>
+      <li class="panel"><span class="step-n">02</span><h3>Split</h3><p>The key is split into N Shamir parts, K needed. Each holder's part is also wrapped, so holders cannot pool parts early.</p></li>
+      <li class="panel"><span class="step-n">03</span><h3>Lock on NEAR</h3><p>The contract stores the file hash, holders and unlock time. Every early release or open is refused and written to a public log.</p></li>
+      <li class="panel"><span class="step-n">04</span><h3>Release</h3><p>At the second, K holders release on-chain. Viewers' browsers rebuild the key, check the hash and open the file.</p></li>
     </ol>
   </section>
 
+  <section id="why" class="panel deploy">
+    <h2 class="section-title">// Leaks that really happened</h2>
+    <div class="leak-table" role="table" aria-label="Real leak events">
+      <div role="row" class="leak-row"><b role="cell">NEET-UG 2026, India</b><span role="cell">Exam for about 22.79 lakh students cancelled after a paper leak shared on WhatsApp and Telegram.</span><a role="cell" href="https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">UGC-NET 2024, India</b><span role="cell">Exam cancelled a day later after reports the paper was sold on Telegram. A CBI closure report later found no evidence of a leak.</span><a role="cell" href="https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">UK Budget report, 2025</b><span role="cell">The OBR analysis was reachable about 40 minutes early by editing a URL; accessed 24,000+ times before the speech.</span><a role="cell" href="https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">US Supreme Court draft, 2022</b><span role="cell">Draft opinion leaked; nearly 100 staff interviewed and the source was never identified.</span><a role="cell" href="https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing" target="_blank" rel="noopener">Source</a></div>
+    </div>
+    <p class="muted">The pattern: whoever holds the file can open it early, and afterwards nobody can prove who accessed what, and when.</p>
+  </section>
+
   <section class="split">
-    <div class="panel"><h2 class="section-title">// What a reviewer checks</h2>
-      <ul class="tick"><li>Trusted contract and network</li><li>Worker's NEAR account signed the anchor</li><li>Finalized, successful receipt</li><li>Merkle proof for every disclosed record</li><li>Original screenshot fingerprints</li><li>Totals recomputed, not trusted</li></ul></div>
-    <div class="panel"><h2 class="section-title">// What it does not claim</h2>
-      <ul class="cross"><li>That a record is true, only that it existed unchanged since it was anchored</li><li>A worker's legal identity</li><li>Automatic capture from company apps</li><li>Legal advice or a ruling</li></ul></div>
+    <div class="panel"><h2 class="section-title">// What NEAR enforces</h2>
+      <ul class="tick"><li>No release or open before the unlock time</li><li>Only listed holders can release, each once, with the committed part</li><li>K parts required in split mode</li><li>Every attempt, accepted or refused, in a public log</li><li>Alert hashes anchored; locations stay off-chain</li></ul></div>
+    <div class="panel"><h2 class="section-title">// Honest limits</h2>
+      <ul class="cross"><li>The release service plus K holders together could open early; neither alone can</li><li>Single mode trusts the release service with the key until the time</li><li>The person who seals already has the original file</li><li>Nothing stops a photo after the file opens</li><li>IP location is approximate; GPS only with consent</li></ul></div>
   </section>
 
   <section class="panel deploy"><h2 class="section-title">// Deployment evidence</h2>
-    <p>Contract deployed and the first worker registered on NEAR testnet, both verified at FINAL.</p>
+    <p>Contract and release-service operator deployed on NEAR testnet.</p>
     <div class="deploy-links" id="deployLinks"></div></section>
 </main>
-<footer class="app-footer land-foot"><span>APPEAL</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source on GitHub</a><span>Evidence support, not legal advice.</span></footer>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source on GitHub</a><span>Sealed until the second. Logged forever.</span></footer>
 <script type="module" src="/landing.js"></script>
 </body>
 </html>

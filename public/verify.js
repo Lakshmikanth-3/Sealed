@@ -1,155 +1,56 @@
-import { verifyPack } from '/lib/verify.js';
-import { lookupNearTx, explorerUrl } from '/lib/nearRpc.js';
-import { buildReviewBrief } from '/lib/brief.js';
-import { sha256Hex, canonical } from '/lib/merkle.js';
+import { $, config, el, toast, utcText, istText, short, EXPLORER } from '/common.js';
+import { sha256Hex } from '/assets/sealed.js';
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const RPC = { testnet: 'https://rpc.testnet.near.org', mainnet: 'https://rpc.mainnet.near.org' };
-
-// NEAR anchors are read straight from a public RPC node (not via our server).
-// Non-NEAR evidence is rejected.
-let currentPack;
-let verificationJob = 0;
-let deploymentEdited = false;
-const cards = ['checksCard', 'sumCard', 'daysCard', 'dlCard', 'briefCard', 'aiDraftCard'];
-function beginChecking() {
-  $('verdict').className = 'verdict'; $('verdict').textContent = 'Checking…';
-  for (const id of cards) $(id).classList.add('hidden');
-  $('identity').textContent = '';
-  $('dl').onclick = null;
-  $('downloadBrief').onclick = null; $('printBrief').onclick = null;
-  $('recheck').disabled = true;
-}
-function showError(error, job) {
-  if (job !== verificationJob) return;
-  for (const id of cards) $(id).classList.add('hidden');
-  $('verdict').className = 'verdict bad';
-  $('verdict').textContent = 'Could not read pack: ' + error.message;
-  $('recheck').disabled = !currentPack;
-}
-for (const id of ['verifyNetwork', 'verifyContract', 'verifyRelayer']) {
-  $(id).addEventListener('input', () => {
-    deploymentEdited = true;
-    if (!currentPack) return;
-    verificationJob++;
-    for (const card of cards) $(card).classList.add('hidden');
-    $('dl').onclick = null;
-    $('downloadBrief').onclick = null; $('printBrief').onclick = null;
-    $('verdict').className = 'verdict';
-    $('verdict').textContent = 'Deployment changed. Check again.';
-    $('recheck').disabled = false;
-  });
-}
-const configP = fetch('/api/config').then((r) => r.json()).then((config) => {
-  if (!deploymentEdited && RPC[config.network] && config.contract) {
-    $('verifyNetwork').value = config.network;
-    if (!$('verifyContract').value) $('verifyContract').value = config.contract;
-    if (!$('verifyRelayer').value) $('verifyRelayer').value = config.sender;
+const RPCS = ['https://test.rpc.fastnear.com', 'https://rpc.testnet.near.org'];
+async function view(contract, method, args) {
+  let last;
+  for (const url of RPCS) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({ jsonrpc: '2.0', id: 'verify', method: 'query', params: { request_type: 'call_function', finality: 'final', account_id: contract, method_name: method, args_base64: btoa(JSON.stringify(args)) } }) });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error.data || j.error.message);
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(j.result.result)));
+    } catch (e) { last = e; }
   }
-}).catch(() => {});
-
-async function fetchAnchor(ref, deployments, protocol) {
-  if (RPC[ref.network]) return lookupNearTx(RPC[ref.network], ref.txHash, ref.sender, { network: ref.network, ...deployments[ref.network], protocol, receiptId: ref.receiptId });
-  throw new Error('Only public NEAR transaction evidence is accepted');
+  throw last;
 }
+const row = (k, v) => el('p', {}, el('span', { text: k }), el('b', { text: v }));
 
-async function run(pack, job = ++verificationJob) {
-  if (job !== verificationJob) return;
-  currentPack = pack;
-  beginChecking();
-  await configP;
-  if (job !== verificationJob) return;
-  const deployments = { [$('verifyNetwork').value]: { contract: $('verifyContract').value.trim(), relayer: $('verifyRelayer').value.trim() } };
-  $('verdict').className = 'verdict'; $('verdict').textContent = 'Checking…';
-  const rep = await verifyPack(pack, (ref, context) => fetchAnchor(ref, deployments, context.protocol), { deployments });
-  if (job !== verificationJob) return;
-  $('recheck').disabled = false;
-
-  $('verdict').className = 'verdict ' + (rep.ok ? 'ok' : 'bad');
-  $('verdict').textContent = rep.ok ? (rep.workerAuthorizationVerified ? `Worker-authorized content verified: ${pack.days.length} day(s)`
-      : `Content verified: ${pack.days.length} day(s) match NEAR commitments`) : 'Not verified: this pack was changed or does not match its anchors';
-  $('checks').innerHTML = rep.checks.map((c) => `<li>${c.ok ? '?' : '?'} ${esc(c.msg)}</li>`).join('');
-  $('att').textContent = rep.attestation;
-  $('aiDraftCard').classList.add('hidden');
-  if (rep.ok && pack.aiBrief?.output && typeof pack.aiBrief.output === 'object') {
-    $('aiDraft').textContent = JSON.stringify(pack.aiBrief.output, null, 2);
-    $('aiDraftCard').classList.remove('hidden');
-  }
-  $('identity').textContent = rep.identity;
-  $('narr').textContent = rep.recomputedSummary?.narrative || '';
-  if (!rep.recomputedSummary) {
-    $('checksCard').classList.remove('hidden');
-    for (const id of ['sumCard', 'daysCard', 'dlCard']) $(id).classList.add('hidden');
-    $('daysOut').replaceChildren();
-    return;
-  }
-  $('who').textContent = `Worker ${pack.worker?.id}${pack.worker?.label ? ' · ' + pack.worker.label : ''} · pack created ${pack.createdAt}`;
-
-  const all = Object.fromEntries(pack.days.flatMap((d) => d.entries.map((x) => [x.entry.id, x.entry])));
-  $('daysOut').innerHTML = rep.days.map((d, i) => {
-    const pd = pack.days[i];
-    const link = explorerUrl(pd.anchor.network, pd.anchor.txHash);
-    const at = d.anchor ? new Date(d.anchor.timestamp).toLocaleString() : '—';
-    return `<div class="day-head" style="margin-top:12px"><strong>${esc(d.day)}</strong>
-      <span class="badge ${d.ok ? 'ok' : 'bad'}">${d.ok ? 'matches anchor' : 'FAILED'}</span></div>
-      <p class="muted">Anchored ${esc(at)} on ${esc(pd.anchor.network)} by ${esc(d.anchor?.signer || pd.anchor.sender)} ·
-      ${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">view transaction</a>` : `<code>${esc(pd.anchor.txHash.slice(0, 16))}…</code>`}
-      · ${pd.entries.length}/${pd.count} entries disclosed</p>
-      ${d.problems.length ? `<p class="badge bad">${esc(d.problems.join('; '))}</p>` : ''}
-      <div class="scroll"><table><tr><th>Captured</th><th>Type</th><th>Amount / rating</th><th>Note</th><th></th></tr>` +
-      d.entries.map((r) => {
-        const e = all[r.id], img = e.imageHash && pack.attachments?.[e.imageHash];
-        return `<tr><td>${esc(new Date(e.ts).toLocaleString())}</td><td>${esc(e.type)}</td>
-          <td>${e.amount != null ? '₹' + esc(e.amount) : ''}${e.rating != null ? '★ ' + esc(e.rating) : ''}</td>
-          <td>${esc(e.text || '')}${img ? `<br><a href="${esc(img)}" target="_blank" rel="noopener noreferrer"><img src="${esc(img)}" alt="screenshot" style="max-width:120px;border-radius:6px"></a>` : ''}</td>
-          <td>${r.ok ? '✅' : '❌ ' + esc(r.problems.join(', '))}</td></tr>`;
-      }).join('') + '</table></div>';
-  }).join('');
-
-  for (const id of ['checksCard', 'sumCard', 'daysCard', 'dlCard']) $(id).classList.remove('hidden');
-  if (rep.ok) {
-    const brief = buildReviewBrief(pack, rep);
-    const digest = await sha256Hex(canonical(pack));
-    if (job !== verificationJob) return;
-    $('packDigest').textContent = 'Pack SHA-256 (canonical JSON): ' + digest;
-    $('reviewBrief').textContent = brief;
-    $('briefCard').classList.remove('hidden');
-    $('printBrief').onclick = () => window.print();
-    $('downloadBrief').onclick = () => {
-      const url = URL.createObjectURL(new Blob([brief + '\n\nCanonical pack SHA-256: ' + digest], { type: 'text/plain;charset=utf-8' }));
-      const link = document.createElement('a'); link.href = url; link.download = 'appeal-evidence-review.txt'; link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    };
-  }
-  $('dl').onclick = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
-    a.download = 'evidence-pack.json'; a.click();
-  };
+async function check() {
+  const raw = $('sealId').value.trim();
+  const sealId = (raw.match(/\/s\/([A-Za-z0-9_-]{6,64})/) || raw.match(/^([A-Za-z0-9_-]{6,64})$/) || [])[1];
+  const doc = $('doc').files[0] ? JSON.parse(await $('doc').files[0].text()) : null;
+  const id = sealId || doc?.sealId;
+  if (!id) return toast('Enter a seal ID or link, or choose a .sealed file');
+  $('check').disabled = true;
+  try {
+    const { contract } = await config();
+    const [seal, unlocked] = await Promise.all([view(contract, 'get_seal', { seal_id: id }), view(contract, 'is_unlocked', { seal_id: id })]);
+    if (!seal) { $('verdict').className = 'verdict bad'; $('verdict').textContent = `No seal "${id}" on ${contract}`; return; }
+    const log = await view(contract, 'get_log', { seal_id: id, from: Math.max(0, seal.log_count - 100), limit: 100 });
+    let fileLine = 'not checked (no .sealed file chosen)', bad = false;
+    if (doc) {
+      if (doc.sealId !== id) throw new Error('The .sealed file is for a different seal');
+      const actual = await sha256Hex(Uint8Array.from(atob(doc.encrypted), (c) => c.charCodeAt(0)));
+      bad = actual !== seal.file_hash;
+      fileLine = bad ? `DOES NOT MATCH (this copy ${actual.slice(0, 16)}…)` : 'matches the on-chain hash';
+    }
+    const early = log.filter((e) => /early|not_holder/.test(e.kind)).length;
+    $('verdict').className = 'verdict ' + (bad ? 'bad' : 'ok');
+    $('verdict').textContent = bad ? 'FILE TAMPERED: this copy differs from what was sealed' : `Seal verified on NEAR · ${unlocked ? 'unlocked' : 'still locked'} · ${early} refused attempt${early === 1 ? '' : 's'} logged`;
+    $('fields').replaceChildren(row('Contract', contract), row('Seal ID', id), row('Mode', seal.mode === 'split' ? `split · ${seal.threshold_k} of ${seal.total_n}` : 'single'),
+      row('Unlock time', `${istText(Number(seal.unlock_at_ms))} · ${utcText(Number(seal.unlock_at_ms))}`), row('Sealed at', utcText(Number(seal.created_at_ms))),
+      row('File hash (SHA-256)', short(seal.file_hash, 12)), row('.sealed file', fileLine), row('Holders', String(seal.holders.length)),
+      row('Parts released', `${seal.released.length}${seal.mode === 'split' ? ' of ' + seal.threshold_k + ' needed' : ''}`), row('Unlocked now', unlocked ? 'yes' : 'no'),
+      row('Log entries', `${seal.log_count}${seal.dropped_logs ? ` (+${seal.dropped_logs} over cap)` : ''}`));
+    $('log').replaceChildren(...log.slice().reverse().map((e) => el('li', {}, el('time', { text: `${istText(Number(e.at_ms))} · ${utcText(Number(e.at_ms))}` }),
+      el('p', {}, el('span', { class: 'accent', text: e.kind.replace(':', ' · ').toUpperCase() }), ` · ${short(e.account, 8)}${e.detail ? ' · ' + short(e.detail, 6) : ''}`))));
+    $('record').classList.remove('hidden'); $('logBox').classList.remove('hidden');
+    $('fields').append(el('p', {}, el('a', { href: `${EXPLORER}/address/${contract}`, target: '_blank', rel: 'noopener' }, 'Contract on NearBlocks →')));
+  } catch (e) { toast('Verification failed: ' + e.message, 6000); }
+  finally { $('check').disabled = false; }
 }
-
-$('file').onchange = async () => {
-  const f = $('file').files[0];
-  if (!f) return;
-  const job = ++verificationJob;
-  currentPack = undefined;
-  beginChecking();
-  try { await run(JSON.parse(await f.text()), job); } catch (e) { showError(e, job); }
-};
-
-const id = new URLSearchParams(location.search).get('id');
-if (id) {
-  const job = ++verificationJob;
-  beginChecking();
-  fetch(`/api/pack/${encodeURIComponent(id)}`).then(async (r) => {
-    if (!r.ok) throw new Error((await r.json()).error);
-    return run(await r.json(), job);
-  }).catch((e) => showError(e, job));
-}
-
-$('recheck').onclick = () => {
-  if (!currentPack) return;
-  const job = ++verificationJob;
-  run(currentPack, job).catch((e) => showError(e, job));
-};
+$('check').onclick = check;
+const q = new URLSearchParams(location.search).get('id');
+if (q) { $('sealId').value = q; check(); }

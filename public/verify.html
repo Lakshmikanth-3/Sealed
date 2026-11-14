@@ -1,38 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Appeal — Review evidence</title>
-  <link rel="icon" href="/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Verify a seal · Sealed Paper</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<main class="reviewer-main">
-  <div class="reviewer-top"><a class="brand" href="/"><span class="brand-mark">APPEAL</span></a><span class="badge">Reviewer · no login</span></div>
-  <div class="page-title reviewer-intro"><p class="eyebrow">Independent review</p><h1>Check the record.<br>Then review the case.</h1><p>This page checks disclosed content against its commitments. V2 also checks NEAR account authorization. Personal names, capture times and the truth of a record remain unverified.</p></div>
-
-  <section class="card" id="loader">
-    <label for="file">Or check a pack file</label>
-    <input id="file" type="file" accept="application/json,.json">
-    <details style="margin-top:12px"><summary>Trusted NEAR deployment</summary>
-      <p class="muted">Confirm these accounts through a source you trust. They are never taken from an uploaded pack.</p>
-      <label for="verifyNetwork">Network</label><select id="verifyNetwork"><option value="testnet">Testnet</option><option value="mainnet">Mainnet</option></select>
-      <label for="verifyContract">Anchor contract</label><input id="verifyContract" autocomplete="off">
-      <label for="verifyRelayer">Sponsored relayer (optional for wallet transactions)</label><input id="verifyRelayer" autocomplete="off">
-      <button id="recheck" type="button" class="secondary">Check again</button>
-    </details>
+<body class="landing">
+<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">independent verification</span></a><nav class="land-nav"><a href="/app">Workspace</a></nav></header>
+<main class="open-main">
+  <div class="page-title"><p class="eyebrow">Verify</p><h1>Check a seal against NEAR.</h1><p>Reads the contract directly from public NEAR RPC in your browser. Nothing here depends on the Sealed Paper server's word.</p></div>
+  <section class="panel">
+    <label for="sealId">Seal ID or share link</label><input id="sealId" placeholder="https://…/s/abc… or abc…" autocomplete="off">
+    <label for="doc">Optional: a .sealed file to check against the on-chain hash</label><input id="doc" type="file" accept=".sealed,application/json">
+    <div class="row"><button id="check">Verify on NEAR</button></div>
   </section>
-
-  <div id="verdict" class="verdict hidden"></div>
-  <section class="card hidden" id="checksCard"><h2>Checks</h2><ul class="checks" id="checks"></ul><p class="muted" id="identity"></p><p class="muted" id="att"></p></section>
-  <section class="card hidden" id="sumCard"><h2>Case summary</h2><p id="narr"></p><p class="muted">Trip and payment amounts may overlap. Recorded totals are not a finding of money owed; review the cited entries.</p><p class="muted" id="who"></p></section>
-  <section class="card hidden" id="briefCard"><div class="day-head"><h2>Evidence review brief</h2><span class="badge">Cited · deterministic · unattested</span></div><p class="muted no-print">Prepared from disclosed records only. Every event has an entry reference. A reviewer must assess relevance and accuracy.</p><p class="mono" id="packDigest"></p><pre class="review-brief" id="reviewBrief"></pre><div class="row no-print"><button id="downloadBrief">Download brief</button><button id="printBrief" class="secondary">Print review</button></div></section>
-  <section class="card hidden" id="aiDraftCard"><h2>AI review draft</h2><p>The server reports verifying a NEAR AI provider TEE signature. This reviewer has not independently verified the AI attestation or draft. Read the cited original entries; AI statements may be wrong.</p><pre id="aiDraft" class="review-brief"></pre></section><section class="card hidden" id="daysCard"><h2>Days and records</h2><div id="daysOut"></div></section>
-  <section class="card hidden" id="dlCard"><button class="secondary" id="dl">Download this pack (JSON)</button>
-    <p class="muted">Tamper test: download, change any amount, then load the file above. It will fail.</p></section>
-  <footer class="app-footer"><span>Appeal</span><a href="/app">Worker workspace</a><span>Evidence support, not legal advice.</span></footer>
+  <div id="verdict" class="verdict hidden" role="status"></div>
+  <section class="panel hidden" id="record"><h2 class="panel-title">On-chain seal record</h2><div class="info-list" id="fields"></div></section>
+  <section class="panel hidden" id="logBox"><h2 class="panel-title">Access log (every attempt, including refusals)</h2><ol id="log" class="activity"></ol></section>
 </main>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="/">Home</a><span>NEAR testnet</span></footer>
 <script type="module" src="/verify.js"></script>
 </body>
 </html>
