@@ -76,14 +76,14 @@ $('releaseBtn').onclick = async () => {
     if (status === 'early' || status === 'not_holder') {
       await api(`/api/seals/${sealId}/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: status === 'early' ? 'early_release' : 'not_holder', account: secret.a, detail: `release_part returned ${status} in ${txHash}` }) });
       show('locked', el('h2', { text: status === 'early' ? 'Too early' : 'Not on the list' }),
-        el('p', { text: status === 'early' ? `Please wait until ${istText(seal.unlockAtMs)}, then tap the button again. This early try was recorded and the owner was told.` : 'This account is not one of the trusted people for this file.' }), tx);
+        el('p', { text: status === 'early' ? `Please wait until ${istText(seal.unlockAtMs)}, then tap the button again. This early attempt was recorded and the owner was told.` : 'This account is not one of the trusted people for this file.' }), tx);
       $('status').textContent = ''; $('releaseBtn').disabled = status !== 'early'; return;
     }
     if (status !== 'released' && status !== 'already_released') { show('tampered', el('h2', { text: 'Could not record your yes' }), el('p', { text: `Reason: ${status.replace(/_/g, ' ')}. Ask the owner for a new link.` }), tx); $('status').textContent = ''; return; }
     $('status').textContent = 'Recorded. Finishing up…';
     let posted;
     for (let i = 0; i < 6; i++) { // final state can lag the optimistic receipt by a block or two
-      posted = await api(`/api/seals/${sealId}/parts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account: secret.a, part: secret.w }) });
+      posted = await api(`/api/seals/${sealId}/parts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account: secret.a, part: secret.w, txHash }) });
       if (posted.status !== 409) break;
       await new Promise((r) => setTimeout(r, 1500));
     }

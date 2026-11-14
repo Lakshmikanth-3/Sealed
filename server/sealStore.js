@@ -55,6 +55,10 @@ export function openSealStore(dir) {
     async updateMeta(id, fn) { const m = readJson(file(id, 'json')); if (!m) return null; const next = fn(m) || m; writeJson(file(id, 'json'), next); return next; },
     async appendAlert(id, alert) { fs.appendFileSync(file(id, 'alerts'), JSON.stringify(alert) + '\n'); },
     async readAlerts(id) { return alerts(id); },
+    async recordActivity(entry) { fs.appendFileSync(path.join(root, 'activity.jsonl'), JSON.stringify(entry) + '\n'); },
+    async readActivity(limit = 100) {
+      try { return fs.readFileSync(path.join(root, 'activity.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).slice(-limit).reverse(); } catch { return []; }
+    },
     async updateAlert(id, alertId, patch) {
       const list = alerts(id).map((a) => (a.id === alertId ? { ...a, ...patch } : a));
       fs.writeFileSync(file(id, 'alerts'), list.map((a) => JSON.stringify(a)).join('\n') + '\n');
@@ -79,6 +83,8 @@ export function openCloudStore(kv, { fetcher = fetch } = {}) {
     async updateMeta(id, fn) { const m = await kv.get(`seal:${checkId(id)}`); if (!m) return null; const next = fn(m) || m; await kv.set(`seal:${id}`, next); return next; },
     async appendAlert(id, alert) { await kv.rpush(`alerts:${checkId(id)}`, alert); },
     async readAlerts(id) { return kv.lrange(`alerts:${checkId(id)}`); },
+    async recordActivity(entry) { await kv.rpush('activity', entry); },
+    async readActivity(limit = 100) { return (await kv.lrange('activity')).slice(-limit).reverse(); },
     async updateAlert(id, alertId, patch) {
       const list = await kv.lrange(`alerts:${checkId(id)}`);
       const i = list.findIndex((a) => a.id === alertId);

@@ -3,13 +3,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 export const ALERT_KINDS = {
-  early_open: 'Someone tried to open the file too early',
-  early_release: 'A trusted person tried to say yes too early',
-  not_holder: 'Someone who is not a trusted person tried to unlock it',
+  early_open: 'Someone attempted to open the file too early',
+  early_release: 'A trusted person attempted to say yes too early',
+  not_holder: 'Someone who is not a trusted person attempted to unlock it',
   wrong_key: 'A wrong key was used, so nothing was opened',
   file_tampered: 'The file was changed after it was locked',
-  repeated_failures: 'Many failed tries in a row from the same place',
-  not_allowed: 'Someone who is not allowed tried to open the file',
+  repeated_failures: 'Many failed attempts in a row from the same place',
+  not_allowed: 'Someone who is not allowed attempted to open the file',
 };
 
 // ---------- approximate location from IP ----------
@@ -108,7 +108,10 @@ export function createAlerts({ store, chain, geo, notify, kv = null, now = () =>
     // frozen once they respond, so there it is awaited.
     const background = (async () => {
       let chainState;
-      try { const r = await chain.recordAlert(sealId, hash, kind); chainState = { status: 'recorded', tx: r.txHash, index: r.value }; }
+      try {
+        const r = await chain.recordAlert(sealId, hash, kind); chainState = { status: 'recorded', tx: r.txHash, index: r.value };
+        await store.recordActivity?.({ at: new Date().toISOString(), sealId, kind: `alert:${kind}`, tx: r.txHash });
+      }
       catch (e) { chainState = { status: 'failed', error: e.message.slice(0, 200) }; }
       const where = location.city ? `${location.city}, ${location.region || ''} ${location.country || ''}`.trim() : location.source === 'gps-consented' ? `GPS ${location.lat}, ${location.lon}` : 'unknown';
       const text = [`${record.summary}.`, `Seal: ${meta.label} (${sealId})`, `Time: ${record.atIst} / ${record.at} UTC`,

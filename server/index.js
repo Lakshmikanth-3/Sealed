@@ -122,7 +122,7 @@ export async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname, ip = clientIp(req), ua = String(req.headers['user-agent'] || '').slice(0, 300);
   try {
-    if (p.startsWith('/api/') && await limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Try again in a minute.' });
+    if (p.startsWith('/api/') && await limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Please wait one minute.' });
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Cross-site writes refused' });
       const proto = process.env.TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
@@ -147,6 +147,11 @@ export async function handler(req, res) {
         },
         onUploadCompleted: async () => {} });
       return send(res, 200, result);
+    }
+    // Public list of the most recent real transactions (no file names or personal data).
+    if (p === '/api/activity' && req.method === 'GET') {
+      const deployment = (() => { try { return JSON.parse(fs.readFileSync(path.join(root, 'docs', 'SEALED-DEPLOYMENT.json'), 'utf8')); } catch { return null; } })();
+      return send(res, 200, { explorer: chain.config.explorer, contract: chain.config.contract, deployment, activity: await store.readActivity(150) });
     }
     if (p === '/api/chain') {
       try { return send(res, 200, { ok: true, config: await chain.getConfig(), at: new Date().toISOString() }); }
@@ -199,6 +204,8 @@ export async function handler(req, res) {
         ownerTokenHash: store.tokenHash(ownerToken), escrowedKey: meta.mode === 'single' ? sealBox(escrow, Buffer.from(raw.fileKey, 'base64url')) : null,
         escrowedWrapKey: meta.mode === 'split' ? sealBox(escrow, Buffer.from(raw.wrapKey, 'base64url')) : null,
         alertContacts: [meta.owner, ...meta.holders.map((h) => h.contact)].filter((c) => c.email || c.phone), parts: {} });
+      await store.recordActivity({ at: new Date().toISOString(), sealId, kind: 'create', mode: meta.mode, k: meta.k, n: meta.n, tx: created.txHash });
+      for (const tx of fundTxs) await store.recordActivity({ at: new Date().toISOString(), sealId, kind: 'fund', tx });
       return send(res, 201, { sealId, ownerToken, createTx: created.txHash, explorer: chain.explorerTx(created.txHash), fundTxs });
     }
 
@@ -224,6 +231,7 @@ export async function handler(req, res) {
         if (!store.checkToken(meta, body.token)) return send(res, 403, { error: 'Owner token required' });
         if (!/^[0-9a-f]{64}$/.test(body.reportHash || '') || !['exam_audit', 'leak_report'].includes(body.kind)) return send(res, 400, { error: 'reportHash (SHA-256 hex) and kind exam_audit or leak_report are required' });
         const r = await chain.recordAlert(sealId, body.reportHash, body.kind);
+        await store.recordActivity({ at: new Date().toISOString(), sealId, kind: `alert:${body.kind}`, tx: r.txHash });
         return send(res, 201, { tx: r.txHash, explorer: chain.explorerTx(r.txHash), index: r.value });
       }
       if (action === 'challenge' && req.method === 'GET') return send(res, 200, await challenges.issue(sealId, chain.config.contract));
@@ -245,6 +253,7 @@ export async function handler(req, res) {
         }
         const r = await chain.requestOpen(sealId);
         const status = r.value;
+        await store.recordActivity({ at: new Date().toISOString(), sealId, kind: `open:${status}`, tx: r.txHash });
         if (status === 'early') {
           const alert = await alerts.createAlert({ sealId, kind: 'early_open', ip, userAgent: ua, gps: body.gps, account: viewer });
           return send(res, 423, { status, unlockAtMs: meta.unlockAtMs, tx: r.txHash, alertId: alert.id, message: 'Locked. This attempt was refused by the contract and logged.' });
@@ -266,6 +275,9 @@ export async function handler(req, res) {
         // Only now, after the contract recorded this holder's release, is the part unwrapped.
         const plain = await unwrapPart(new Uint8Array(openBox(escrow, meta.escrowedWrapKey)), body.part, body.account);
         const next = await store.updateMeta(sealId, (x) => { x.parts = { ...(x.parts || {}), [body.account]: plain }; });
+        if (typeof body.txHash === 'string' && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(body.txHash) && !meta.parts?.[body.account]) {
+          await store.recordActivity({ at: new Date().toISOString(), sealId, kind: 'release:released', tx: body.txHash });
+        }
         return send(res, 200, { stored: true, released: Object.keys(next.parts).length, k: meta.k });
       }
 
@@ -295,6 +307,7 @@ export async function handler(req, res) {
     if (/^\/s\/[A-Za-z0-9_-]{6,64}$/.test(p)) return serveStatic(res, 'open.html');
     if (/^\/h\/[A-Za-z0-9_-]{6,64}$/.test(p)) return serveStatic(res, 'holder.html');
     if (p === '/verify') return serveStatic(res, 'verify.html');
+    if (p === '/proof') return serveStatic(res, 'proof.html');
     if (p === '/docs-deployment.json') {
       try { return send(res, 200, fs.readFileSync(path.join(root, 'docs', 'SEALED-DEPLOYMENT.json'))); } catch { return send(res, 404, { error: 'not found' }); }
     }
@@ -306,7 +319,7 @@ export async function handler(req, res) {
     return serveStatic(res, p);
   } catch (e) {
     if (/NotEnoughBalance|Not enough balance/i.test(`${e.name} ${e.message}`)) return send(res, 503, { error: 'The release service account is out of testnet NEAR. The operator needs to top it up before new seals can be created.' });
-    if (/responding slowly|timeout|fetch failed/i.test(e.message)) return send(res, 503, { error: 'NEAR testnet is responding slowly. Please try again in a moment.' });
+    if (/responding slowly|timeout|fetch failed/i.test(e.message)) return send(res, 503, { error: 'NEAR testnet is responding slowly. Please wait a moment and tap again.' });
     send(res, e.code === 413 ? 413 : 400, { error: e.message });
   }
 }
