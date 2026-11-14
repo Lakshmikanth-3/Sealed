@@ -6,8 +6,8 @@ Exam papers, results, tenders, wills, embargoed reports: pick a file and the exa
 
 | | |
 |---|---|
-| **Live app** | **https://sealed-paper.vercel.app** (pages, live contract reads, checking and proof work now; locking files on the hosted copy turns on when its record database is connected, see [status](#status)) |
-| **Proof page** (every real transaction, clickable) | https://sealed-paper.vercel.app/proof |
+| **Live app** | **https://sealedfiles.vercel.app** |
+| **Proof page** (every real transaction, clickable) | https://sealedfiles.vercel.app/proof |
 | **Smart contract** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) |
 | **Tracks** | Privacy & Private AI (main) · Open Innovation |
 | **Tests** | 26 unit · 10 contract · 3 offline browser · 3 live testnet suites: all passing |
@@ -29,6 +29,15 @@ Every row below is a real transaction. Click it to see it on the public explorer
 | 7 | Opened after 2 of 3 said yes | `"open"` | [`4qrZWQoQ…oB8iMK`](https://testnet.nearblocks.io/txns/4qrZWQoQvdudw8UdQrttPKXRnpHSaNvDSSdBYXoB8iMK) |
 | 8 | The stored file was altered: it was not opened, alert recorded | logged | [`DEQauyof…hXF3pj`](https://testnet.nearblocks.io/txns/DEQauyofi7hdNV59RH91fxbNmxAtW97V7X774jhXF3pj) |
 | 9 | A real account that was not on the allow-list tried to open another file | logged | [`5sVF43Ce…Ykene`](https://testnet.nearblocks.io/txns/5sVF43CenY4oxyR6yj5nSze6z5a77MuQBaPvZH9kYene) |
+
+**Also verified on the hosted app** (https://sealedfiles.vercel.app, a browser locking a text file on Vercel; encrypted file in Vercel Blob, records in Upstash Redis):
+
+| Step | Contract answered | Transaction |
+|---|---|---|
+| File locked (opens by time) | seal created | [`A9B9p8oi…wGvgKip`](https://testnet.nearblocks.io/txns/A9B9p8oidVd8AJqFotk5BiWHkaSm9NZib12K4wGvgKip) |
+| Opened too early | `"early"` (blocked) | [`AXdVKjTy…55w3aLMs`](https://testnet.nearblocks.io/txns/AXdVKjTyx7BWrDCp8Ekp7BwX3P6xNmkbsbef55w3aLMs) |
+| Owner alerted | logged | [`9nDT1PnC…9ZULazpS`](https://testnet.nearblocks.io/txns/9nDT1PnCYMidTuf5D7v7aRb8LzeL8vWS7FJX9ZULazpS) |
+| Opened automatically at the time | `"open"` | [`9VvCvHsV…dL8csUyd`](https://testnet.nearblocks.io/txns/9VvCvHsVHRfgtjALqX8GY5BVee51t5yaxnwYdL8csUyd) |
 
 Deployment: [contract deploy](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC) · [code upgrade](https://testnet.nearblocks.io/txns/8YRc1AFZD273JpJGWs4h8uNHfUSwoF2XBq8Ai99JqJXv) · [service account `sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet) · [deployment record](docs/SEALED-DEPLOYMENT.json). The app's **Proof** page (`/proof`) lists new transactions as they happen.
 
@@ -56,7 +65,7 @@ Sensitive files leak before their release time, because whoever holds the file c
 
 ## Use it (about 3 minutes)
 
-Open **https://sealed-paper.vercel.app**, or run it locally (below).
+Open **https://sealedfiles.vercel.app**, or run it locally (below).
 
 | Do this | You see |
 |---|---|
@@ -179,8 +188,8 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 
 ## Status
 
-- Contract, release service, live testnet suites: working and passing (evidence above).
-- Hosted app: deployed at https://sealed-paper.vercel.app with encrypted-file storage (Vercel Blob) connected. Its record database (Upstash Redis) is pending, so until then the hosted copy refuses to lock new files with a clear message. Locally (`npm run dev:all`) everything works.
+- Live: https://sealedfiles.vercel.app, with locking, sharing, early refusal, automatic opening and the Proof page verified on the hosted copy (transactions above).
+- Contract and all live testnet suites passing.
 - Not built: exam leak tracing from photos (OCR), AI features, mainnet, payments.
 
 ## AI assistance and licence
