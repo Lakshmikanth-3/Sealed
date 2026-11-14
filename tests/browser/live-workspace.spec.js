@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 test('unconfigured deployment never fabricates an account or an anchor', async ({ page, request }) => {
   const errors = []; page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/app#capture');
   await expect(page.locator('#setupStatus')).toContainText('Contract deployment required');
   await expect(page.locator('#net')).toContainText('NEAR testnet');
   await expect(page.locator('#connectWallet')).toBeEnabled();

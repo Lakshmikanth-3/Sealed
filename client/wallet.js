@@ -26,7 +26,7 @@ export async function signAnchors(network, contract, worker, anchors) {
   const session = await walletSession(network);
   const wallet = await session.wallet();
   if (await connectedAccount(network) !== worker) throw new Error('Connect the wallet that owns this journal');
-  return wallet.signAndSendTransactions({ callbackUrl: location.origin + '/',
+  return wallet.signAndSendTransactions({ callbackUrl: location.origin + '/app',
     transactions: anchors.map((args) => ({ signerId: worker, receiverId: contract,
       actions: [actionCreators.functionCall('anchor', args, 30000000000000n, 0n)] })),
   });

@@ -4,6 +4,7 @@ import { validateBackup, MAX_BACKUP_BYTES } from '/lib/backup.js';
 import { connectedAccount, connectWallet, signAnchors } from '/assets/wallet.js';
 import { lookupNearTx } from '/lib/nearRpc.js';
 import { reconcilePending } from '/lib/reconcile.js';
+import { serverConfig, chainSnapshot, utc, short } from '/live.js';
 import { statementFromCsv, compareRecords, mismatchSummary, MAX_STATEMENT_BYTES } from '/lib/compare.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,9 +17,11 @@ let restoreJob = 0;
 let liveConfig;
 const PUBLIC_RPC = { testnet: 'https://rpc.testnet.near.org', mainnet: 'https://rpc.mainnet.near.org' };
 
-const VIEWS = ['capture', 'journal', 'check', 'case', 'backup'];
+const VIEWS = ['overview', 'capture', 'journal', 'check', 'case', 'backup'];
+const VIEW_NAMES = { overview: 'COMMAND CENTER', capture: 'RECORD', journal: 'JOURNAL', check: 'CHECK COMPANY', case: 'PREPARE CASE', backup: 'BACKUP' };
 function showView(view, focus = false) {
-  if (!VIEWS.includes(view)) view = 'capture';
+  if (!VIEWS.includes(view)) view = 'overview';
+  $('crumb').textContent = VIEW_NAMES[view];
   for (const name of VIEWS) $('view-' + name).classList.toggle('hidden', name !== view);
   for (const button of document.querySelectorAll('[data-view]')) {
     if (button.dataset.view === view) button.setAttribute('aria-current', 'page');
@@ -84,7 +87,7 @@ async function refreshConfig() {
     $('connectWallet').disabled = false;
     $('connectWallet').textContent = account || 'Connect Meteor Wallet';
     $('setupStatus').textContent = cfg.contract ? `Contract: ${cfg.contract}. Your wallet approves each save and pays network fees.` : 'Contract deployment required for NEAR commitments. You can connect your wallet and keep a private journal now.';
-    $('net').textContent = `NEAR ${cfg.network}${anchoringAvailable ? ' · wallet connected' : ' · setup required'}`;
+    $('net').textContent = `NEAR ${cfg.network}${anchoringAvailable ? ' · wallet connected' : cfg.contract ? ' · connect wallet' : ' · setup required'}`;
     $('wid').textContent = worker || 'No wallet connected';
     $('net').className = 'badge warn';
     $('anchorAll').textContent = 'Save all days on NEAR';
@@ -171,6 +174,111 @@ $('capture').onclick = async () => {
     await render();
   } catch (e) { toast('Capture failed: ' + e.message); } finally { btn.disabled = false; }
 };
+
+// ---------- command center (live) ----------
+const EARN = new Set(['trip', 'pay']);
+function svgEl(tag, attrs) { const n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; }
+function li(className, text) { const n = document.createElement('li'); if (className) n.className = className; n.textContent = text; return n; }
+function renderOverview(days) {
+  const keys = Object.keys(days).sort();
+  const rows = keys.flatMap((k) => days[k].rows.map((r) => r.entry));
+  const isSaved = (k) => { const a = days[k].anchors.at(-1); return Boolean(a && !a.restored && a.count === days[k].rows.length); };
+  $('oRecords').textContent = rows.length; $('oDays').textContent = keys.length; $('oSaved').textContent = keys.filter(isSaved).length;
+
+  const dayItems = [...keys].reverse().slice(0, 5).map((k) => {
+    const item = document.createElement('li'), a = days[k].anchors.at(-1);
+    const st = isSaved(k) ? 'ok' : a ? 'warn' : 'idle';
+    const dot = document.createElement('span'); dot.className = 'dot ' + st;
+    const body = document.createElement('span'), b = document.createElement('b'), small = document.createElement('small');
+    b.textContent = k;
+    small.textContent = `${days[k].rows.length} record(s) · ${st === 'ok' ? 'saved on NEAR' : st === 'warn' ? 'changed since save' : 'not saved'}`;
+    body.append(b, small); item.append(dot, body); return item;
+  });
+  $('oDayList').replaceChildren(...(dayItems.length ? dayItems : [li('muted', 'No records yet. Start in Record.')]));
+
+  const recent = [...rows].sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 12).map((e) => {
+    const item = document.createElement('li'), time = document.createElement('time'), p = document.createElement('p'), tag = document.createElement('span');
+    time.textContent = e.ts.replace('T', ' ').slice(0, 16) + ' UTC';
+    tag.className = 'accent'; tag.textContent = e.type.toUpperCase();
+    const detail = [e.amount !== undefined ? '₹' + e.amount : '', e.rating !== undefined ? '★' + e.rating : '', (e.text || '').slice(0, 80)].filter(Boolean).join(' · ') || 'recorded';
+    p.append(tag, ' ' + detail); item.append(time, p); return item;
+  });
+  $('oActivity').replaceChildren(...(recent.length ? recent : [li('muted', 'Nothing logged yet.')]));
+
+  // Daily chart over the last 14 days: trips + pay (solid) and penalties (dashed).
+  const series = keys.slice(-14).map((k) => ({ day: k, pay: 0, pen: 0 }));
+  for (const s of series) for (const r of days[s.day].rows) {
+    const e = r.entry;
+    if (EARN.has(e.type)) s.pay += e.amount || 0;
+    if (e.type === 'penalty') s.pen += e.amount || 0;
+  }
+  if (series.some((s) => s.pay || s.pen)) {
+    const W = 640, H = 200, P = 34, max = Math.max(...series.flatMap((s) => [s.pay, s.pen]), 1);
+    const x = (i) => P + (series.length === 1 ? (W - 2 * P) / 2 : i * (W - 2 * P) / (series.length - 1));
+    const y = (v) => H - P + 6 - v / max * (H - 2 * P);
+    const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Daily earnings and penalties' });
+    for (let g = 0; g <= 4; g++) {
+      const gy = y(max * g / 4);
+      svg.append(svgEl('line', { x1: P, x2: W - P / 2, y1: gy, y2: gy, class: 'grid-line' }));
+      const lab = svgEl('text', { x: 2, y: gy + 4, class: 'axis' }); lab.textContent = Math.round(max * g / 4); svg.append(lab);
+    }
+    for (const [key, cls] of [['pay', 'line-main'], ['pen', 'line-alt']]) {
+      svg.append(svgEl('polyline', { points: series.map((s, i) => `${x(i)},${y(s[key])}`).join(' '), class: cls }));
+      series.forEach((s, i) => {
+        const c = svgEl('circle', { cx: x(i), cy: y(s[key]), r: 3, class: cls + '-dot' });
+        const tip = svgEl('title', {}); tip.textContent = `${s.day}: ₹${s[key]}`; c.append(tip); svg.append(c);
+      });
+    }
+    for (const i of [...new Set([0, series.length - 1])]) {
+      const lab = svgEl('text', { x: x(i), y: H - 4, class: 'axis', 'text-anchor': i ? 'end' : 'start' }); lab.textContent = series[i].day; svg.append(lab);
+    }
+    $('oChart').replaceChildren(svg);
+  } else {
+    const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Record trips or payments to see daily totals.'; $('oChart').replaceChildren(p);
+  }
+
+  const count = (type) => rows.filter((e) => e.type === type).length;
+  const money = (type) => rows.filter((e) => e.type === type).reduce((n, e) => n + (e.amount || 0), 0);
+  const info = [['Recorded', 'head'], ['Trips', count('trip')], ['Payments ₹', money('pay')], ['Ratings', count('rating')],
+    ['Flagged', 'bad'], ['Penalties ₹', money('penalty')], ['Deactivations', count('deactivation')], ['Company checks', rows.filter((e) => e.capture === 'company-check').length]];
+  $('oInfo').replaceChildren(...info.map(([k, v]) => {
+    const p = document.createElement('p');
+    if (v === 'head' || v === 'bad') { p.className = 'info-head' + (v === 'bad' ? ' bad' : ''); const d = document.createElement('span'); d.className = 'dot'; p.append(d, ' ' + k); }
+    else { const s1 = document.createElement('span'), s2 = document.createElement('b'); s1.textContent = k; s2.textContent = v.toLocaleString('en-IN'); p.append(s1, s2); }
+    return p;
+  }));
+}
+
+const feed = [];
+function feedLog(text) { feed.push('> ' + text); while (feed.length > 8) feed.shift(); $('oFeed').textContent = feed.join('\n'); }
+let lastLiveBlock, liveBusy = false;
+async function liveTick() {
+  if (liveBusy || document.hidden) return; liveBusy = true;
+  try {
+    const cfg = liveConfig || await serverConfig();
+    $('sideContract').textContent = cfg.contract || 'not configured';
+    $('sideWorker').textContent = worker || 'not connected';
+    if (!cfg.contract) { $('chainState').textContent = 'CHAIN: NO CONTRACT'; $('chainDot').className = 'dot warn'; return; }
+    const s = await chainSnapshot(cfg.network, cfg.contract, worker);
+    $('lastSync').textContent = utc(s.at);
+    if (s.block) {
+      $('sideBlock').textContent = '#' + s.block.toLocaleString('en-US');
+      if (s.block !== lastLiveBlock) feedLog(`block #${s.block.toLocaleString('en-US')} final ${short(s.blockHash, 5)}`);
+      lastLiveBlock = s.block;
+    }
+    if (s.config && !feed.some((l) => l.includes('workers'))) feedLog(`${cfg.contract}: ${s.config.registered_workers}/${s.config.max_workers} workers`);
+    if (worker && s.registered !== null) {
+      const tag = s.registered ? 'registered' : 'NOT registered';
+      $('sideWorker').textContent = `${worker} (${tag})`;
+      if (!feed.some((l) => l.endsWith(tag))) feedLog(`${worker} ${tag}`);
+    }
+    const ok = !s.errors.length;
+    $('chainState').textContent = s.stale ? 'CHAIN: STALE' : ok ? 'CHAIN: ONLINE' : 'CHAIN: DEGRADED'; $('chainDot').className = 'dot ' + (ok ? 'ok' : 'warn');
+    if (s.stale) feedLog(`rpc busy · last reading ${utc(s.at)}`); else if (!ok) feedLog('rpc: ' + s.errors[0]);
+  } catch (e) { $('chainState').textContent = 'CHAIN: OFFLINE'; $('chainDot').className = 'dot bad'; feedLog('unreachable: ' + e.message); }
+  finally { liveBusy = false; }
+}
+setTimeout(liveTick, 800); setInterval(liveTick, 8000);
 
 // ---------- company record check ----------
 let lastCheck;
@@ -288,6 +396,7 @@ async function render() {
   const entryChoices = new Map([...document.querySelectorAll('.pick')].map((e) => [e.dataset.id, e.checked]));
   const checked = (choices, key) => (choices.has(key) ? choices.get(key) : choices.size === 0) ? 'checked' : '';
   const days = await state();
+  renderOverview(days);
   const keys = Object.keys(days).sort().reverse();
   const recordCount = Object.values(days).reduce((n, day) => n + day.rows.length, 0);
   $('journalCount').textContent = `${recordCount} local record${recordCount === 1 ? '' : 's'} · ${keys.length} day${keys.length === 1 ? '' : 's'}`;

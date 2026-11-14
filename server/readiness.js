@@ -1,12 +1,21 @@
-export async function contractReadiness(chain, worker) {
+import { rpcEndpoints } from './liveStatus.js';
+
+// Read-only pre-flight check before the wallet is asked to sign. It may use fallback RPCs;
+// post-signing receipt verification does not.
+export async function contractReadiness(chain, worker, { endpoints = rpcEndpoints(chain), fetcher = fetch } = {}) {
   if (!chain.contract) throw new Error('Deploy the Appeal contract and set ANCHOR_CONTRACT');
   const call = async (method, params) => {
-    const response = await fetch(chain.rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 'readiness', method, params }), signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error('NEAR RPC unavailable');
-    const body = await response.json();
-    if (body.error || !body.result) throw new Error('NEAR contract query failed');
-    return body.result;
+    let unavailable = true;
+    for (const url of endpoints) {
+      const response = await fetcher(url, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 'readiness', method, params }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+      if (!response?.ok) continue;
+      unavailable = false;
+      const body = await response.json();
+      if (body.error || !body.result) throw new Error('NEAR contract query failed');
+      return body.result;
+    }
+    if (unavailable) throw new Error('NEAR RPC unavailable');
   };
   const status = await call('status', []);
   if (status.chain_id !== chain.network) throw new Error('RPC network mismatch');

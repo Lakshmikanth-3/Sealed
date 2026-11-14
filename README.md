@@ -19,13 +19,17 @@ npm test
 npm start
 ```
 
-Open http://localhost:8787. Without a deployed contract, the UI explicitly says **Contract deployment required**, and saving commitments is disabled. You can still connect an existing wallet and keep a private journal. It does not invent a worker identity. Existing journals from the prototype remain in their original browser database; the wallet-owned workspace uses a separate database and does not relabel old records as authenticated evidence.
+Open http://localhost:8787 for the landing page, which shows live testnet data (latest final block, registered workers, contract storage and balance, deployment transactions). **Launch workspace** opens the worker app at http://localhost:8787/app, which starts on the **Command center**: journal totals, an activity log, a daily earnings chart, record breakdown and a live NEAR feed. The reviewer is at http://localhost:8787/verify.
+
+Live chain data comes from `/api/chain`, a read-only server snapshot cached for 5 seconds so open tabs do not multiply RPC calls. If the configured RPC rate-limits (HTTP 429), it tries the FastNEAR public RPC (`NEAR_RPC_FALLBACK_URLS`, `none` to disable) and backs off; if every read fails, it shows the last good reading labelled **STALE** with its time, never invented values. The pre-signing contract readiness check uses the same fallback. Receipt verification after signing and the reviewer page use only `NEAR_RPC_URL` / the public NEAR RPC.
+
+Without a deployed contract, the UI explicitly says **Contract deployment required**, and saving commitments is disabled. You can still connect an existing wallet and keep a private journal. It does not invent a worker identity. Existing journals from the prototype remain in their original browser database; the wallet-owned workspace uses a separate database and does not relabel old records as authenticated evidence.
 
 Copy `.env.example` to `.env` and configure your actual deployment as described in [live setup](docs/LIVE-SETUP.md). Keys and service access tokens stay in the environment, never Git. The browser wallet handles the worker's signing keys.
 
 ## What to do and what to observe
 
-1. Configure a deployed Appeal v2 testnet contract and have its owner register your actual worker account.
+1. Open http://localhost:8787/app. Configure a deployed Appeal v2 testnet contract and have its owner register your actual worker account.
 2. Click **Connect NEAR wallet** and approve the connection in Meteor Wallet using an existing testnet account. The account ID becomes the journal's worker reference. Wallet recovery uses the wallet's recovery process.
 3. Record work events. Notes and original screenshot bytes remain in IndexedDB. Location is optional. Capture remains manual; automatic notification collection is not implemented.
 4. Open **Journal**, click **Save all days on NEAR**, inspect the transactions and approve them in the wallet. Wallet-funded gas is explicit; direct signing does not claim gas sponsorship.

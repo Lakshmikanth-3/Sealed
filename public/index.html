@@ -1,8 +1,8 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f6b5c"><meta name="description" content="Keep a private work journal and choose the evidence you share for review.">
+  <meta name="theme-color" content="#0a0a0a"><meta name="description" content="Keep a private work journal and choose the evidence you share for review.">
   <title>Appeal — Your work, on record</title>
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
@@ -10,22 +10,36 @@
 <a class="skip-link" href="#workspace">Skip to workspace</a>
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="/"><img src="/icon.svg" width="36" height="36" alt=""><span>Appeal<span class="brand-sub">Your work, on record</span></span></a>
+    <a class="brand" href="/"><span><span class="brand-mark">APPEAL</span><span class="brand-sub">v2 · worker evidence</span></span></a>
     <nav class="workspace-nav" aria-label="Workspace">
-      <button data-view="capture" aria-current="page"><span class="nav-number">01</span> Record</button>
+      <button data-view="overview" aria-current="page"><span class="nav-number">00</span> Command center</button>
+      <button data-view="capture"><span class="nav-number">01</span> Record</button>
       <button data-view="journal"><span class="nav-number">02</span> Journal</button>
       <button data-view="check"><span class="nav-number">03</span> Check company</button>
       <button data-view="case"><span class="nav-number">04</span> Prepare case</button>
       <button data-view="backup"><span class="nav-number">05</span> Backup</button>
     </nav>
-    <div class="sidebar-foot"><span class="eyebrow">On this device</span><p>Private until you choose to share.</p><a href="/verify">Open reviewer</a></div>
+    <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHAIN: CHECKING</span></p><p>BLOCK: <span id="sideBlock">—</span></p><p>CONTRACT: <span id="sideContract">—</span></p><p>WORKER: <span id="sideWorker">not connected</span></p><a href="/verify">Open reviewer →</a></div>
   </aside>
   <main id="workspace" tabindex="-1">
-    <header class="workspace-header"><span class="eyebrow">Worker workspace</span><span id="net" class="badge" role="status">Connecting…</span></header>
+    <header class="workspace-header"><span class="crumb">APPEAL / <b id="crumb">COMMAND CENTER</b></span><span class="header-right"><span class="last-sync">LAST SYNC: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
     <section class="card"><div class="row"><button id="connectWallet" disabled>Connect Meteor Wallet</button><span id="setupStatus" role="status">Checking deployment configuration?</span></div><p>Your journal stays on this device. Saving a commitment requires a separate approval in your wallet.</p></section>
     <section class="card hidden" id="pendingTransaction"><h2>Pending wallet transaction</h2><p>Final chain verification is required before these records are marked saved. Paste the transaction hashes from your wallet. Verified days are retained even if another transaction is still unresolved.</p><p id="pendingStatus" role="status"></p><label for="transactionHashes">Transaction hashes, separated by commas</label><input id="transactionHashes" autocomplete="off"><button id="recoverAnchors">Verify pending transactions</button></section>
     <div id="connection" class="connection hidden" role="status">Offline. You can keep recording on this device.</div>
-    <section id="view-capture" class="workspace-view" aria-labelledby="captureTitle">
+    <section id="view-overview" class="workspace-view" aria-labelledby="overviewTitle">
+      <h1 id="overviewTitle" class="sr-only" tabindex="-1">Command center</h1>
+      <div class="dash-grid">
+        <section class="panel"><h2 class="panel-title">Journal allocation</h2>
+          <div class="stat-trio"><div><strong id="oRecords">0</strong><span>Records</span></div><div><strong id="oDays">0</strong><span>Days</span></div><div><strong id="oSaved">0</strong><span>Saved on NEAR</span></div></div>
+          <ul id="oDayList" class="day-list"><li class="muted">No records yet. Start in Record.</li></ul></section>
+        <section class="panel"><h2 class="panel-title">Activity log</h2><ol id="oActivity" class="activity"><li class="muted">Nothing logged yet.</li></ol></section>
+        <section class="panel"><h2 class="panel-title">NEAR live feed</h2><div class="radar small" aria-hidden="true"><span class="sweep"></span></div><pre id="oFeed" class="feed" role="log">&gt; connecting…</pre></section>
+        <section class="panel span-2"><h2 class="panel-title">Earnings overview</h2><div id="oChart" class="chart"><p class="muted">Record trips or payments to see daily totals.</p></div>
+          <p class="chart-key"><span class="key solid"></span> Trips + pay <span class="key dashed"></span> Penalties</p></section>
+        <section class="panel"><h2 class="panel-title">Record information</h2><div id="oInfo" class="info-list"></div></section>
+      </div>
+    </section>
+    <section id="view-capture" class="workspace-view hidden" aria-labelledby="captureTitle">
       <div class="page-title"><p class="eyebrow">Record</p><h1 id="captureTitle" tabindex="-1">Keep your side of the story.</h1><p>Save what happened. Choose what to share later.</p></div>
       <section class="card capture-card">
         <h2>What happened?</h2><div class="types" id="types" aria-label="Record type"></div>

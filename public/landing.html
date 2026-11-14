@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="Appeal: a private, worker-owned work record anchored on NEAR that any reviewer can verify.">
+  <title>Appeal — Your work, on record</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head>
+<body class="landing">
+<header class="land-top">
+  <a class="brand" href="/"><span class="brand-mark">APPEAL</span><span class="brand-sub">v2 · worker evidence protocol</span></a>
+  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#live">Live network</a><a href="/verify">Verify a pack</a><a class="btn" href="/app">Launch workspace</a></nav>
+</header>
+<main>
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="dot live"></span> Deployed on NEAR <span id="heroNet">testnet</span></p>
+      <h1>Your work.<br><span class="accent">On record.</span><br>Verifiable by anyone.</h1>
+      <p class="lede">Gig and informal workers keep a private journal on their own phone. Appeal locks each day's records on NEAR, catches company statements that don't match, and shares only the records a reviewer needs.</p>
+      <div class="hero-cta"><a class="btn" href="/app">Launch workspace →</a><a class="btn ghost" href="/verify">Verify evidence</a></div>
+    </div>
+    <div class="panel terminal" aria-label="Live chain feed">
+      <div class="panel-head"><span>NEAR LIVE FEED</span><span id="feedState" class="badge">connecting</span></div>
+      <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
+      <pre id="feed" class="feed" role="log" aria-live="polite">&gt; opening read-only RPC session…</pre>
+    </div>
+  </section>
+
+  <section id="live" class="stat-row" aria-label="Live contract statistics">
+    <div class="panel stat"><span class="stat-label">Latest final block</span><strong id="sBlock">—</strong><small id="sBlockTime">waiting for RPC</small></div>
+    <div class="panel stat"><span class="stat-label">Registered workers</span><strong id="sWorkers">—</strong><small id="sCap">contract capacity</small></div>
+    <div class="panel stat"><span class="stat-label">Anchor contract</span><strong id="sContract" class="mono-sm">—</strong><small id="sOwner">owner</small></div>
+    <div class="panel stat"><span class="stat-label">Contract storage</span><strong id="sStorage">—</strong><small id="sBalance">balance</small></div>
+  </section>
+
+  <section id="how" class="steps">
+    <h2 class="section-title">// How it works</h2>
+    <ol class="step-grid">
+      <li class="panel"><span class="step-n">01</span><h3>Record</h3><p>Log trips, pay, ratings, penalties and deactivation notices with the original screenshot. Everything stays on the device.</p></li>
+      <li class="panel"><span class="step-n">02</span><h3>Lock on NEAR</h3><p>Each day becomes a salted Merkle root. The worker's own wallet signs it into the contract. No personal data goes on-chain.</p></li>
+      <li class="panel"><span class="step-n">03</span><h3>Check the company</h3><p>Load the company's statement. Appeal flags underpaid trips, missing work and unexplained charges, and records the result.</p></li>
+      <li class="panel"><span class="step-n">04</span><h3>Share &amp; verify</h3><p>Disclose only chosen records through an expiring link. Reviewers check signatures, receipts and proofs against public RPC.</p></li>
+    </ol>
+  </section>
+
+  <section class="split">
+    <div class="panel"><h2 class="section-title">// What a reviewer checks</h2>
+      <ul class="tick"><li>Trusted contract and network</li><li>Worker's NEAR account signed the anchor</li><li>Finalized, successful receipt</li><li>Merkle proof for every disclosed record</li><li>Original screenshot fingerprints</li><li>Totals recomputed, not trusted</li></ul></div>
+    <div class="panel"><h2 class="section-title">// What it does not claim</h2>
+      <ul class="cross"><li>That a record is true, only that it existed unchanged since it was anchored</li><li>A worker's legal identity</li><li>Automatic capture from company apps</li><li>Legal advice or a ruling</li></ul></div>
+  </section>
+
+  <section class="panel deploy"><h2 class="section-title">// Deployment evidence</h2>
+    <p>Contract deployed and the first worker registered on NEAR testnet, both verified at FINAL.</p>
+    <div class="deploy-links" id="deployLinks"></div></section>
+</main>
+<footer class="app-footer land-foot"><span>APPEAL</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source on GitHub</a><span>Evidence support, not legal advice.</span></footer>
+<script type="module" src="/landing.js"></script>
+</body>
+</html>

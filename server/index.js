@@ -11,12 +11,14 @@ import { openShares } from './shareStore.js';
 import { contractReadiness } from './readiness.js';
 import { privateBrief, aiReadiness } from './privateBrief.js';
 import { publishingOptions } from '../lib/publishing.js';
+import { createLiveStatus } from './liveStatus.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, 'data'));
 fs.mkdirSync(dataDir, { recursive: true });
 
 const chain = createChain(process.env, dataDir);
+const liveStatus = createLiveStatus(chain);
 const relay = await createRelayService(process.env, dataDir);
 const shares = openShares(dataDir);
 const PORT = Number(process.env.PORT || 8787);
@@ -67,6 +69,10 @@ const server = http.createServer(async (req, res) => {
       if (req.headers.origin && req.headers.origin !== (process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`)) return send(res, 403, { error: 'Unexpected request origin' });
     }
     if (p === '/api/config') return send(res, 200, { network: chain.network, sender: chain.sender, contract: chain.contract, anchoringAvailable: false, walletSigning: true, ai: aiReadiness(), relay: relay.readiness() });
+    if (p === '/api/chain' && req.method === 'GET') {
+      try { return send(res, 200, await liveStatus(url.searchParams.get('worker') || undefined)); }
+      catch (error) { return send(res, 400, { error: error.message }); }
+    }
     if (p === '/api/health' && req.method === 'GET') {
       try { return send(res, 200, await contractReadiness(chain, url.searchParams.get('worker'))); }
       catch (error) { return send(res, 503, { ready: false, error: error.message }); }
@@ -119,7 +125,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p.startsWith('/lib/')) return serveStatic(res, path.join(root, 'lib'), p.slice(5));
-    if (p === '/') return serveStatic(res, path.join(root, 'public'), 'index.html');
+    if (p === '/') return serveStatic(res, path.join(root, 'public'), 'landing.html');
+    if (p === '/app') return serveStatic(res, path.join(root, 'public'), 'index.html');
     if (p === '/verify') return serveStatic(res, path.join(root, 'public'), 'verify.html');
     return serveStatic(res, path.join(root, 'public'), p);
   } catch (e) {
