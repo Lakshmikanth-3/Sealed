@@ -2,6 +2,8 @@
 
 # <img src="public/logo.svg" alt="" width="40" align="top"> Sealed
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Lock a file so it cannot be opened before the time you choose, and every early attempt is recorded on NEAR.** NEAR enforces the time; the release service hands out the key only after the contract answers `open` (it is trusted, see [the limits](#what-is-guaranteed-and-the-limits)).
 
 Contracts, government orders, company results, tender bids, merger plans, court rulings, wills, exam papers: pick any document and the exact second it may open, or require that enough people merge their key parts. Before that, a NEAR smart contract **blocks every attempt, records it in public, and the owner gets an alert**. Two people can also chat privately, end-to-end encrypted, with messages sealed until a time or seen only once.
@@ -529,4 +531,4 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 
 ## AI assistance and licence
 
-Built during the NEAR hackathon window, on 14 November 2026. Earlier commits in this repository belong to an abandoned idea and are not part of this submission. Most code was written with an AI coding assistant (Claude Code) under the author's direction; the author chose the product, the trust model and every deployment. MIT licence. Not legal or exam-board advice.
+Built during the NEAR hackathon window, on 14 November 2026. Earlier commits in this repository belong to an abandoned idea and are not part of this submission. Most code was written with an AI coding assistant (Claude Code) under the author's direction; the author chose the product, the trust model and every deployment. Released under the [MIT License](LICENSE). Not legal or exam-board advice.
