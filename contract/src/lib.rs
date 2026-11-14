@@ -133,11 +133,15 @@ impl SealedPaper {
         let caller = env::predecessor_account_id();
         let seal = self.seals.get(&seal_id).expect("Unknown seal").clone();
         let now = env::block_timestamp_ms();
+        // Holder check comes first so a non-holder is always reported as such, even early.
+        let holder = seal.holders.iter().position(|h| *h == caller);
         let status = if seal.mode != "split" {
             "single_mode"
+        } else if holder.is_none() {
+            "not_holder"
         } else if now < seal.unlock_at_ms.0 {
             "early"
-        } else if let Some(i) = seal.holders.iter().position(|h| *h == caller) {
+        } else if let Some(i) = holder {
             if seal.released.contains(&caller) {
                 "already_released"
             } else if seal.commitments[i] != part_commitment {
@@ -146,7 +150,7 @@ impl SealedPaper {
                 "released"
             }
         } else {
-            "not_holder"
+            unreachable!()
         };
         if status == "released" {
             let mut updated = seal;
@@ -255,6 +259,8 @@ mod tests {
         let log = c.get_log("exam-paper-1".into(), 0, 10);
         assert_eq!(log.len(), 2); assert_eq!(log[1].kind, "release:early"); assert_eq!(log[1].account, acc("h0.testnet"));
         assert!(!c.is_unlocked("exam-paper-1".into()));
+        at("mallory.testnet", 9_999);
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(0)), "not_holder", "non-holders are flagged even before unlock");
     }
 
     #[test]

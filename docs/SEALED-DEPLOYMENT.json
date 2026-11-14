@@ -3,7 +3,7 @@
   "contract": "sealed.kanth_s.testnet",
   "owner": "kanth_s.testnet",
   "operator": "sealops.kanth_s.testnet",
-  "wasmSha256": "e1ba9f92cf96a275ccc0de2f0a69559fbee7c14314c6bba661a6a54fb209fcb6",
+  "wasmSha256": "8bf5371ad14bc2346de6f96f0ef37775d37e4ae5608e707d3718286180cd06c4",
   "createOperatorTx": "97mXHchdZtw23rZmvKNb9qwwsUh8Va8ZsDdTdfdXFJuA",
   "createContractTx": "D6pP7FXyuQUDngu5di4x6JMfDamCJ2LwhCvEDmYJeZWx",
   "deployTx": "Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC",
@@ -11,5 +11,12 @@
   "explorer": {
     "contract": "https://testnet.nearblocks.io/address/sealed.kanth_s.testnet",
     "deployTx": "https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC"
-  }
+  },
+  "upgrades": [
+    {
+      "tx": "8YRc1AFZD273JpJGWs4h8uNHfUSwoF2XBq8Ai99JqJXv",
+      "wasmSha256": "8bf5371ad14bc2346de6f96f0ef37775d37e4ae5608e707d3718286180cd06c4",
+      "at": "2026-11-14T05:23:12.639Z"
+    }
+  ]
 }
