@@ -117,9 +117,9 @@ function validateMeta(m) {
   if (new Set(holders.map((h) => h.account)).size !== n) fail('Holder accounts must be unique');
   for (const h of holders) if (!h.own && !/^[0-9a-f]{64}$/.test(h.account)) fail(`${h.account}: app-created holder accounts must be implicit`);
   if (m.viewOnce) fail('View once is only available when no trusted people are needed');
-  return { label, unlockAtMs, mode: 'split', k, n, holders, owner, viewers, viewOnce: false, kind: m.kind === 'message' ? 'message' : 'file' };
+  return { label, unlockAtMs, mode: 'split', k, n, holders, owner, viewers, viewOnce: false, kind: m.kind === 'message' ? 'message' : 'file', unlockBy: m.unlockBy === 'merge' ? 'merge' : 'time' };
 }
-const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs,
+const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, unlockBy: meta.unlockBy || 'time',
   fileHash: meta.fileHash, size: meta.size, createdAt: meta.createdAt, createTx: meta.createTx, contract: chain.config.contract,
   holders: meta.holders.map((h) => ({ label: h.label, account: h.account, own: Boolean(h.own) })), releasedParts: Object.keys(meta.parts || {}).length,
   restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0, cancelled: meta.cancelled || null,
@@ -274,7 +274,7 @@ export async function handler(req, res) {
       if (!blobUrl) await store.saveFile(sealId, bytes);
       await store.saveMeta(sealId, { sealId, blobUrl, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, fileHash: raw.fileHash,
         size: bytes.length, createdAt: new Date().toISOString(), createTx: created.txHash, fundTxs, holders: meta.holders, owner: meta.owner, viewers: meta.viewers,
-        viewOnce: meta.viewOnce, kind: meta.kind,
+        viewOnce: meta.viewOnce, kind: meta.kind, unlockBy: meta.unlockBy || 'time',
         ownerTokenHash: store.tokenHash(ownerToken), escrowedKey: meta.mode === 'single' ? sealBox(escrow, Buffer.from(raw.fileKey, 'base64url')) : null,
         escrowedWrapKey: meta.mode === 'split' ? sealBox(escrow, Buffer.from(raw.wrapKey, 'base64url')) : null,
         alertContacts: [meta.owner, ...meta.holders.map((h) => h.contact)].filter((c) => c.email || c.phone), parts: {} });
