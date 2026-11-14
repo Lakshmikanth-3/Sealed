@@ -433,6 +433,7 @@ await ctxA.close(); await ctxB.close();
 
 // ================= 4. Proof and plans =================
 await go('/proof');
+await page.waitForFunction(() => document.querySelectorAll('.proof-table tbody tr').length > 1, null, { timeout: 30000 }).catch(() => {});
 const proofRows = await page.locator('.proof-table tbody tr').count();
 ok(proofRows > 0, `proof page lists real transactions (${proofRows})`);
 await say('proof', 'Proof page', 'Every action is a real NEAR testnet transaction.', { hold: 0 });
