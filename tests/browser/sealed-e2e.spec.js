@@ -76,6 +76,6 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   expect(await alerts.locator('a[href*="nearblocks"]').count()).toBeGreaterThanOrEqual(2);
 
   await page.goto(`/verify?id=${split.sealId}`);
-  await expect(page.locator('#verdict')).toHaveText(/Seal verified on NEAR · unlocked/i, { timeout: 30_000 });
+  await expect(page.locator('#verdict')).toHaveText(/Real locked file · open now/i, { timeout: 30_000 });
   expect(errors).toEqual([]);
 });

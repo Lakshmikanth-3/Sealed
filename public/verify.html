@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a">
-  <title>Verify a seal · Sealed Paper</title>
+  <title>Check a locked file · Sealed Paper</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing">
-<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">independent verification</span></a><nav class="land-nav"><a href="/app">Workspace</a></nav></header>
+<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">check any file yourself</span></a><nav class="land-nav"><a href="/app">Lock a file</a></nav></header>
 <main class="open-main">
-  <div class="page-title"><p class="eyebrow">Verify</p><h1>Check a seal against NEAR.</h1><p>Reads the contract directly from public NEAR RPC in your browser. Nothing here depends on the Sealed Paper server's word.</p></div>
+  <div class="page-title"><p class="eyebrow">Check a locked file</p><h1>Is this file real, and who tried to open it?</h1><p>Paste the link you were sent. We read the public record directly, so you do not have to trust us.</p></div>
   <section class="panel">
-    <label for="sealId">Seal ID or share link</label><input id="sealId" placeholder="https://…/s/abc… or abc…" autocomplete="off">
-    <label for="doc">Optional: a .sealed file to check against the on-chain hash</label><input id="doc" type="file" accept=".sealed,application/json">
-    <div class="row"><button id="check">Verify on NEAR</button></div>
+    <label for="sealId">The link you were sent</label><input id="sealId" placeholder="Paste the link here" autocomplete="off">
+    <label for="doc">Optional: a locked copy you downloaded, to check it was not changed</label><input id="doc" type="file" accept=".sealed,application/json">
+    <div class="row"><button id="check" class="big-btn">Check</button></div>
   </section>
   <div id="verdict" class="verdict hidden" role="status"></div>
-  <section class="panel hidden" id="record"><h2 class="panel-title">On-chain seal record</h2><div class="info-list" id="fields"></div></section>
-  <section class="panel hidden" id="logBox"><h2 class="panel-title">Access log (every attempt, including refusals)</h2><ol id="log" class="activity"></ol></section>
+  <section class="panel hidden" id="record"><h2 class="panel-title">What the public record says</h2><div class="info-list" id="fields"></div></section>
+  <section class="panel hidden" id="logBox"><h2 class="panel-title">Every try to open it</h2><ol id="log" class="activity"></ol></section>
 </main>
-<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="/">Home</a><span>NEAR testnet</span></footer>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="/">Home</a><span>Test network</span></footer>
 <script type="module" src="/verify.js"></script>
 </body>
 </html>
