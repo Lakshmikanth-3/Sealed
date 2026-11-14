@@ -4,6 +4,9 @@ import { releasePart, sha256Hex, fromB64url } from '/assets/sealed.js';
 const sealId = location.pathname.split('/').pop();
 const EXPLORER = await explorer();
 let secret, seal, skew = 0, busy = false;
+// Each person's part is in the link after "#". Pasting another person's link into this tab
+// changes only that part, which does not reload the page, so reload to show the new person.
+addEventListener('hashchange', () => location.reload());
 $('openLink').href = `/s/${sealId}`;
 try {
   secret = JSON.parse(new TextDecoder().decode(fromB64url(location.hash.slice(1))));
