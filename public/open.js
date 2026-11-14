@@ -29,7 +29,7 @@ async function load() {
   $('openBtn').textContent = seal.kind === 'message' ? 'Open message' : 'Open file'; $('openBtn').disabled = false;
   document.title = `${seal.label} · Sealed`;
   $('title').textContent = seal.label;
-  $('kind').textContent = seal.kind === 'message' ? (seal.viewOnce ? 'Secret message · view once' : 'Secret message') : seal.mode === 'split' ? `Locked file · ${seal.k} of ${seal.n} trusted people must agree` : 'Locked file · opens by itself on time';
+  $('kind').textContent = seal.kind === 'message' ? (seal.viewOnce ? 'Secret message · view once' : 'Secret message') : seal.unlockBy === 'merge' ? `Locked file · opens when ${seal.k} of ${seal.n} parts are merged` : seal.mode === 'split' ? `Locked file · ${seal.k} of ${seal.n} trusted people must agree` : 'Locked file · opens by itself on time';
   $('until').textContent = `Opens on ${istText(seal.unlockAtMs)}`;
   if (seal.restricted) { $('accessBox').classList.remove('hidden'); $('viewerCount').textContent = seal.viewerCount; void refreshWallet(); }
   renderProgress(); renderLog();
@@ -58,7 +58,7 @@ async function accountProof() {
 function renderProgress() {
   if (seal.mode !== 'split') return $('progress').replaceChildren();
   const released = seal.chain?.released || 0;
-  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released ? ' on' : '') })), el('small', { text: ` ${released} of ${seal.k} people have said yes` }));
+  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released ? ' on' : '') })), el('small', { text: seal.unlockBy === 'merge' ? ` ${released} of ${seal.k} parts merged` : ` ${released} of ${seal.k} people have said yes` }));
 }
 async function renderLog() {
   const r = await api(`/api/seals/${sealId}/log`);
@@ -68,10 +68,16 @@ async function renderLog() {
 function tick() {
   if (!seal || seal.cancelled) return;
   const left = seal.unlockAtMs - (Date.now() + skew);
-  $('count').textContent = left > 0 ? countdown(left) : '00:00:00';
-  $('until').textContent = `${left > 0 ? 'Opens on' : 'Opening time was'} ${istText(seal.unlockAtMs)}`;
+  if (seal.unlockBy === 'merge') {
+    const got = seal.chain?.released || 0;
+    $('count').textContent = `${got} / ${seal.k}`;
+    $('until').textContent = `No time limit. Opens when ${seal.k} of ${seal.n} parts are merged.`;
+  } else {
+    $('count').textContent = left > 0 ? countdown(left) : '00:00:00';
+    $('until').textContent = `${left > 0 ? 'Opens on' : 'Opening time was'} ${istText(seal.unlockAtMs)}`;
+  }
   const locked = left > 0;
-  $('state').textContent = locked ? 'Locked' : seal.mode === 'split' && (seal.chain?.released || 0) < seal.k ? 'Waiting for people' : 'Ready';
+  $('state').textContent = locked ? 'Locked' : seal.mode === 'split' && (seal.chain?.released || 0) < seal.k ? (seal.unlockBy === 'merge' ? 'Waiting for parts' : 'Waiting for people') : 'Ready';
   $('state').className = 'badge ' + (locked ? 'warn' : 'ok');
   // Single mode opens automatically at its time; split mode waits for holders.
   if (!locked && !autoOpened && seal.mode === 'single') { autoOpened = true; void openFile(true); }
@@ -108,7 +114,7 @@ async function openFile(auto = false) {
       $('statusLine').textContent = ''; return renderLog();
     }
     if (r.status === 409) {
-      showResult('waiting', el('h2', { text: 'Almost ready' }), el('p', { text: `The time has come. Now ${r.body.k} trusted people must say yes. So far ${r.body.released} have. Please check again in a little while.` }));
+      showResult('waiting', el('h2', { text: 'Almost ready' }), el('p', { text: seal.unlockBy === 'merge' ? `${r.body.k} parts must be merged to open it. So far ${r.body.released} have been merged. Ask the other people to open their links and tap "Merge my part".` : `The time has come. Now ${r.body.k} trusted people must say yes. So far ${r.body.released} have. Please check again in a little while.` }));
       $('statusLine').textContent = ''; return renderLog();
     }
     if (!r.ok) throw new Error(r.body.error || 'Open failed');
