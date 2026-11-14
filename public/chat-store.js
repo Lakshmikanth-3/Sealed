@@ -18,6 +18,14 @@ export async function chatCrypto(key64) {
       const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
       return encB64(out);
     },
+    // Files: raw bytes in, iv || ciphertext out.
+    async sealBytes(u8) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, u8));
+      const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12);
+      return out;
+    },
+    async openBytes(u8) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u8.subarray(0, 12) }, key, u8.subarray(12))); },
     async open(s) {
       const u = b64u.dec(s);
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.subarray(0, 12) }, key, u.subarray(12));

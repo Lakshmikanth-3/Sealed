@@ -5,7 +5,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual, randomBytes as cryptoRandom } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createSealChain, sealChainConfig } from './sealChain.js';
 import { openSealStore, openCloudStore, escrowKey, sealBox, openBox } from './sealStore.js';
@@ -138,6 +138,23 @@ export async function handler(req, res) {
       if (p === '/api/chat' && req.method === 'POST') {
         if (await limited('chatnew|' + ip, 30, 3600_000)) return send(res, 429, { error: 'Too many new chats this hour' });
         return reply(await chat.create(await readJson(req)));
+      }
+      // Encrypted chat attachments on this server's disk (the hosted copy uses Blob storage instead).
+      const fm = p.match(/^\/api\/chat\/([A-Za-z0-9_-]{16})\/files(?:\/([A-Za-z0-9_-]{22}))?$/);
+      if (fm) {
+        if (!(await chat.isMember(fm[1], token))) return send(res, 403, { error: 'You are not part of this chat' });
+        const dir = path.join(dataDir, 'chat-files', fm[1]);
+        if (req.method === 'POST' && !fm[2]) {
+          if (CLOUD) return send(res, 404, { error: 'Files go to cloud storage on this server' });
+          const bytes = await readBody(req, 26 * 1048576);
+          const fid = cryptoRandom(16).toString('base64url');
+          fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, fid), bytes);
+          return send(res, 200, { url: `/api/chat/${fm[1]}/files/${fid}` });
+        }
+        if (req.method === 'GET' && fm[2]) {
+          try { return send(res, 200, fs.readFileSync(path.join(dir, fm[2])), 'application/octet-stream'); } catch { return send(res, 404, { error: 'File not found' }); }
+        }
+        return send(res, 405, { error: 'Method not allowed' });
       }
       const m = p.match(/^\/api\/chat\/([A-Za-z0-9_-]{16})\/(join|messages|state)$/);
       if (!m) return send(res, 404, { error: 'Not found' });

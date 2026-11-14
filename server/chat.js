@@ -27,6 +27,7 @@ export function createChat({ kv, now = Date.now }) {
   const checkName = (name) => typeof name === 'string' && name.length <= 400 && B64_RE.test(name);
 
   return {
+    async isMember(id, token) { const r = await member(id, token); return !r.error; },
     async create({ name }) {
       if (!checkName(name)) return { error: 'Bad name', code: 400 };
       const id = rid(12).slice(0, 16), token = rid(24), memberId = 'a';
@@ -47,7 +48,7 @@ export function createChat({ kv, now = Date.now }) {
     async post(id, token, { c, kind = 'text', openAtMs = 0, viewOnce = false }) {
       const r = await member(id, token); if (r.error) return r;
       if (typeof c !== 'string' || !c || c.length > MAX_CIPHER || !B64_RE.test(c)) return { error: 'Message is empty or too large', code: 400 };
-      if (!['text', 'photo'].includes(kind)) return { error: 'Bad message type', code: 400 };
+      if (!['text', 'photo', 'file', 'voice'].includes(kind)) return { error: 'Bad message type', code: 400 };
       const at = now(), open = Number(openAtMs) || 0;
       if (open && (open < at || open > at + 366 * 86400_000)) return { error: 'Choose a time in the future (within a year)', code: 400 };
       const msg = { id: rid(9), from: r.m.id, at, kind, c, openAtMs: open, viewOnce: Boolean(viewOnce), gone: false };

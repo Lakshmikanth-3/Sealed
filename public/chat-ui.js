@@ -106,17 +106,18 @@ async function render(m) {
     b.classList.add('gone');
     b.append(line(mine ? '👁' : '⊘', mine ? (m.viewOnce ? 'Opened' : 'Deleted') : 'Opened, view once'));
   } else if (mine && m.viewOnce) {
-    b.append(line('①', m.kind === 'photo' ? 'Photo, view once' : 'Message, view once'));
+    b.append(line('①', `${kindName(m.kind)}, view once`));
   } else {
     let body;
     try { body = await box.open(m.c); } catch { body = { t: '⚠ This message could not be decrypted' }; }
     if (!mine && m.viewOnce) {
       const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'wa-once';
-      btn.textContent = m.kind === 'photo' ? '① Photo, tap to view once' : '① Message, tap to view once';
+      btn.textContent = `① ${kindName(m.kind)}, tap to view once`;
       btn.onclick = () => { viewOnce(body); btn.replaceWith(line('⊘', 'Opened')); };
       b.append(btn);
     } else {
       if (body.img) { const img = new Image(); img.src = body.img; img.alt = 'Photo'; img.className = 'wa-img'; img.onclick = () => window.open(body.img); b.append(img); }
+      if (body.file) b.append(fileView(body.file));
       if (body.t) { const p = document.createElement('p'); p.textContent = body.t; b.append(p); }
       if (m.openAtMs && m.openAtMs <= Date.now()) b.prepend(line('🔓', `Sealed until ${hhmm(m.openAtMs)}, now open`, 'wa-unsealed'));
     }
@@ -127,6 +128,51 @@ async function render(m) {
   $('msgs').scrollTo({ top: $('msgs').scrollHeight, behavior: node ? 'auto' : 'smooth' });
 }
 const state = (m) => (m.locked ? 'locked' : m.gone ? 'gone' : 'open');
+const kindName = (k) => ({ photo: 'Photo', file: 'File', voice: 'Voice message' }[k] || 'Message');
+const sizeText = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+// ---------- encrypted attachments ----------
+async function uploadFile(bytes) {
+  const cfg = await (await fetch('/api/config')).json();
+  if (cfg.upload === 'blob') {
+    const { uploadToBlob } = await import('/assets/sealed.js');
+    const name = btoa(String.fromCharCode(...window.crypto.getRandomValues(new Uint8Array(18)))).replace(/\+/g, '-').replace(/\//g, '_');
+    return uploadToBlob(bytes, name);
+  }
+  const r = await fetch(`/api/chat/${chatId}/files`, { method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-chat-token': me.token }, body: bytes });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || 'Upload failed');
+  return body.url;
+}
+const fileCache = new Map();
+async function fileUrl(f) {
+  if (!fileCache.has(f.url)) fileCache.set(f.url, (async () => {
+    const r = await fetch(f.url, f.url.startsWith('/api/') ? { headers: { 'x-chat-token': me.token } } : {});
+    if (!r.ok) throw new Error('missing');
+    const plain = await box.openBytes(new Uint8Array(await r.arrayBuffer()));
+    return URL.createObjectURL(new Blob([plain], { type: f.type || 'application/octet-stream' }));
+  })());
+  return fileCache.get(f.url);
+}
+function fileView(f) {
+  const wrap = document.createElement('div'); wrap.className = 'wa-file';
+  const t = f.type || '';
+  const icon = t.startsWith('video/') ? '🎬' : t.startsWith('audio/') ? '🎵' : t.includes('pdf') ? '📕' : t.startsWith('image/') ? '🖼' : '📄';
+  wrap.textContent = `${icon} Decrypting ${f.voice ? 'voice message' : f.name}…`;
+  fileUrl(f).then((url) => {
+    wrap.replaceChildren();
+    if (t.startsWith('image/')) { const img = new Image(); img.src = url; img.alt = f.name; img.className = 'wa-img'; img.onclick = () => window.open(url); wrap.append(img); }
+    else if (t.startsWith('video/')) { const v = document.createElement('video'); v.src = url; v.controls = true; v.preload = 'metadata'; v.className = 'wa-video'; wrap.append(v); }
+    else if (t.startsWith('audio/')) { const a = document.createElement('audio'); a.src = url; a.controls = true; a.className = 'wa-audio'; wrap.append(a); }
+    if (!f.voice) {
+      const doc = document.createElement('a'); doc.className = 'wa-doc'; doc.href = url; doc.download = f.name;
+      const ic = document.createElement('span'); ic.className = 'wa-doc-ic'; ic.textContent = icon;
+      const tx = document.createElement('span'); const nb = document.createElement('b'); nb.textContent = f.name; const sm = document.createElement('small'); sm.textContent = `${sizeText(f.size)} · decrypted · tap to save`;
+      tx.append(nb, sm); doc.append(ic, tx); wrap.append(doc);
+    }
+  }).catch(() => { wrap.textContent = `⚠ ${f.name} could not be downloaded`; });
+  return wrap;
+}
 function line(icon, text, cls = 'wa-sys-line') { const p = document.createElement('p'); p.className = cls; p.textContent = `${icon} ${text}`; return p; }
 function countdown(at) {
   const s = document.createElement('small'); s.className = 'wa-count mono';
@@ -137,6 +183,7 @@ function countdown(at) {
 function viewOnce(body) {
   const v = $('viewerBody'); v.replaceChildren();
   if (body.img) { const img = new Image(); img.src = body.img; img.alt = 'Photo'; v.append(img); }
+  if (body.file) v.append(fileView(body.file));
   if (body.t) { const p = document.createElement('p'); p.textContent = body.t; v.append(p); }
   $('viewer').classList.remove('hidden');
 }
@@ -207,10 +254,45 @@ $('compose').onsubmit = async (e) => {
   const t = text.value.trim(); if (!t) return;
   if (await send({ t }, 'text')) { text.value = ''; text.style.height = 'auto'; text.focus(); }
 };
-$('photo').onchange = async () => {
-  const f = $('photo').files[0]; $('photo').value = ''; if (!f) return;
-  try { const img = await shrink(f); await send({ img, t: text.value.trim() }, 'photo'); text.value = ''; }
-  catch { toast('That photo could not be read'); }
+// Any file: photos are shrunk and sent inline; videos, audio and documents are encrypted and uploaded.
+const MAX_CHAT_FILE = 25 * 1048576;
+$('attach').onchange = async () => {
+  const f = $('attach').files[0]; $('attach').value = ''; if (!f) return;
+  if (f.type.startsWith('image/') && !f.type.includes('gif') && !f.type.includes('svg')) {
+    try { const img = await shrink(f); if (await send({ img, t: text.value.trim() }, 'photo')) text.value = ''; return; }
+    catch { /* not decodable as an image: send it as a file */ }
+  }
+  if (f.size > MAX_CHAT_FILE) { toast('Files in chat are limited to 25 MB. Use "Lock a file" for bigger files.', 7000); return; }
+  await sendFile(new Uint8Array(await f.arrayBuffer()), { name: f.name, type: f.type || 'application/octet-stream' }, 'file');
+};
+async function sendFile(bytes, info, kind) {
+  const note = $('pending'); note.classList.remove('hidden'); note.textContent = `🔒 Encrypting and sending ${info.name} (${sizeText(bytes.length)})…`;
+  try {
+    const url = await uploadFile(await box.sealBytes(bytes));
+    if (await send({ file: { url, size: bytes.length, ...info }, t: kind === 'file' ? text.value.trim() : '' }, kind) && kind === 'file') text.value = '';
+  } catch (err) { toast('Not sent: ' + err.message, 6000); }
+  finally { pendingNote(); }
+}
+
+// Voice notes: tap the mic to record, tap again to send.
+let rec = null, recStart = 0, recTimer = 0;
+$('mic').onclick = async () => {
+  if (rec) { rec.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = []; rec = new MediaRecorder(stream);
+    rec.ondataavailable = (e) => chunks.push(e.data);
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop()); clearInterval(recTimer);
+      $('mic').classList.remove('rec'); $('mic').textContent = '🎤'; rec = null;
+      const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+      if (Date.now() - recStart < 700) { pendingNote(); return; }
+      await sendFile(new Uint8Array(await blob.arrayBuffer()), { name: 'voice-message.webm', type: blob.type.split(';')[0], voice: true }, 'voice');
+    };
+    rec.start(); recStart = Date.now(); $('mic').classList.add('rec'); $('mic').textContent = '■';
+    const note = $('pending'); note.classList.remove('hidden');
+    recTimer = setInterval(() => { const s = Math.floor((Date.now() - recStart) / 1000); note.textContent = `🔴 Recording ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} · tap ■ to send`; if (s >= 300) rec?.stop(); }, 250);
+  } catch { toast('Microphone not available. Allow microphone access to send voice messages.', 6000); rec = null; }
 };
 async function shrink(file) {
   const bmp = await createImageBitmap(file);

@@ -36,6 +36,18 @@ await pb.press('#text', 'Enter');
 await pa.waitForSelector('.wa-msg.in >> text=Thanks', { timeout: 15000 });
 ok(true, 'reply arrives');
 
+// any file: encrypted, uploaded, downloaded and decrypted by the other person
+const docBytes = Buffer.from('%PDF-1.4 exam answer sheet ' + Date.now());
+await pa.setInputFiles('#attach', { name: 'answers.pdf', mimeType: 'application/pdf', buffer: docBytes });
+await pb.waitForSelector('.wa-msg.in .wa-doc b:text("answers.pdf")', { timeout: 30000 });
+const [dl] = await Promise.all([pb.waitForEvent('download'), pb.locator('.wa-msg.in .wa-doc').last().click()]);
+const { readFileSync } = await import('node:fs');
+const got = readFileSync(await dl.path(), 'utf8');
+ok(got === docBytes.toString(), 'document arrives and decrypts to the same bytes');
+await pa.setInputFiles('#attach', { name: 'clip.webm', mimeType: 'video/webm', buffer: Buffer.from('not really a video ' + Date.now()) });
+await pb.waitForSelector('.wa-msg.in video', { timeout: 30000 });
+ok(true, 'video shows as a player for the other person');
+
 // timed message: opens in 1 minute
 await pa.click('#toggleOpts'); await pa.click('[data-min="1"]'); await pa.fill('#text', 'Answer key: B'); await pa.press('#text', 'Enter');
 await pb.waitForSelector('.wa-msg.locked', { timeout: 15000 });

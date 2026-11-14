@@ -1,6 +1,7 @@
 import { $, api, config, el } from '/common.js';
 import { startHeroAnimation } from '/hero-anim.js';
 import { startChatAnimation } from '/chat-anim.js';
+import { startStory } from '/story.js';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -9,6 +10,7 @@ const fmt = (n) => Number(n).toLocaleString('en-US');
 startHeroAnimation($('heroCanvas'), { onStage: (s) => { $('stageLabel').textContent = s.label; } });
 startHeroAnimation($('ctaCanvas'));
 startChatAnimation($('chat'));
+startStory(document.querySelector('.story'));
 
 // Rotating word in the headline.
 const words = ['the exam', 'the result', 'the reveal', 'the deadline', 'the launch', 'the right time'];

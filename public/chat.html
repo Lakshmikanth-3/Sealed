@@ -37,8 +37,9 @@
     </div>
     <div class="wa-bar">
       <button type="button" class="wa-icon" id="toggleOpts" aria-label="Timer and view once" aria-expanded="false">⏱</button>
-      <label class="wa-icon" aria-label="Send a photo">📷<input type="file" id="photo" accept="image/*" hidden></label>
+      <label class="wa-icon" aria-label="Send a photo, video, audio or document" title="Photo, video, audio or document">📎<input type="file" id="attach" hidden></label>
       <textarea id="text" rows="1" maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
+      <button type="button" class="wa-icon" id="mic" aria-label="Record a voice message" title="Voice message">🎤</button>
       <button type="submit" class="wa-send" id="sendBtn" aria-label="Send">➤</button>
     </div>
     <p class="wa-pending mono hidden" id="pending"></p>

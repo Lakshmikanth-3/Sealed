@@ -12,7 +12,7 @@ Exam papers, results, tenders, wills, embargoed reports: pick a file and the exa
 | **Tracks** | Privacy & Private AI (main) · Real-World Money · Open Innovation |
 | **Tests** | 30 unit · 17 contract (10 + 7) · 3 offline browser · 3 live testnet suites (22 live checks): all passing |
 
-**What you can do:** lock any file until a time · require K of N trusted people · cancel or replace a locked file · **live private chat** between two people, like WhatsApp (end-to-end encrypted; ticks, typing and online status; photos; messages sealed until a time; view once) · send one-time **secret links** (open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
+**What you can do:** lock any photo, video, audio or document · send it to **one person** or **split it between N people** · unlock it **on a date and time** or **only when the parts are merged** · cancel or replace a locked file · **live private chat** between two people, like WhatsApp (end-to-end encrypted; ticks, typing and online status; photos, documents, audio, video and voice notes; messages sealed until a time; view once) · send one-time **secret links** (open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
 
 ---
 
@@ -167,6 +167,8 @@ Payment is `subscribe(months)` on [`plans.sealops.kanth_s.testnet`](https://test
 | After opening | Nothing stops a photo of the file. |
 | App-created accounts | That trusted person's link holds their key; people using their own NEAR account sign in their wallet instead. |
 | Network | NEAR testnet only; payments are in testnet NEAR. |
+| Merge only | NEAR needs a future time, so "only when merged" locks use the earliest allowed time (about 45 seconds after locking); after that only the merged parts matter. "One person + merge" is a 2-of-2 split: the sender keeps one part, the receiver gets the other. |
+| Chat files | Up to 25 MB, encrypted on the device before upload. View once deletes the message from the server; the encrypted file in storage stays but cannot be read without the chat key. |
 | Live chat | Two people per chat. The key is only in the invite link, so anyone given the link before the second person joins could join instead. Updates arrive by polling every 1.5 s (Vercel has no WebSockets). "Sealed until" and view-once in chat are enforced by our server, not by NEAR; chat messages are not written to NEAR. |
 | Secret links | One-way locked messages via a link. "In about 30 seconds" is the soonest, because NEAR needs a future time. |
 | Cancel | Destroys our copy of the key. Someone who already downloaded and opened the file before cancelling still has it. |

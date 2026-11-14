@@ -62,7 +62,10 @@ $('viewers').oninput = debounce(async () => {
 });
 
 // ---------- seal form ----------
-let mode = 'single';
+let mode = 'single', unlock = 'time';
+// One person + merge = 2 parts: the sender keeps one, the receiver gets the other.
+const pairMerge = () => mode === 'single' && unlock === 'merge';
+const realMode = () => (pairMerge() ? 'split' : mode);
 const pad = (n) => String(n).padStart(2, '0');
 function setUnlockIn(minutes) {
   const d = new Date(Date.now() + minutes * 60000); d.setMilliseconds(0);
@@ -87,9 +90,11 @@ $('unlockAt').oninput = previewUnlock; $('tz').onchange = previewUnlock;
 setUnlockIn(10);
 
 function renderHolders() {
-  const n = Math.min(Math.max(Number($('n').value) || 2, 2), 20);
-  const k = Math.min(Math.max(Number($('k').value) || 1, 1), n);
-  $('kHint').textContent = `${n} trusted people get one key piece each. After the time, ${k} of them must say yes to open it. Fewer than ${k} can never open it.`;
+  const n = pairMerge() ? 2 : Math.min(Math.max(Number($('n').value) || 2, 2), 20);
+  const k = pairMerge() ? 2 : Math.min(Math.max(Number($('k').value) || 1, 1), n);
+  $('kHint').textContent = pairMerge() ? 'You keep part 1 and they get part 2. It opens only when both parts are merged.'
+    : unlock === 'merge' ? `The key is split into ${n} parts, one per person. It opens as soon as ${k} of them merge their parts. Fewer than ${k} can never open it.`
+    : `${n} trusted people get one key piece each. After the time, ${k} of them must say yes to open it. Fewer than ${k} can never open it.`;
   const rows = [...$('holders').children];
   while (rows.length < n) {
     const i = rows.length;
@@ -108,10 +113,21 @@ function renderHolders() {
     $('holders').append(row); rows.push(row);
   }
   rows.forEach((r, i) => r.classList.toggle('hidden', i >= n));
+  if (pairMerge()) { const [r1, r2] = rows; r1.querySelector('legend').textContent = 'Part 1: you'; if (!r1.querySelector('.h-label').value) r1.querySelector('.h-label').value = 'Me'; r2.querySelector('legend').textContent = 'Part 2: the person you send it to'; }
+  else rows.forEach((r, i) => { r.querySelector('legend').textContent = `Person ${i + 1}`; });
+  $('mergeNote').textContent = unlock !== 'merge' ? '' : pairMerge() ? 'Opens only when you and the other person both merge your parts. No time limit.' : `Opens as soon as ${k} of the ${n} people merge their parts. No time limit.`;
 }
 for (const b of document.querySelectorAll('.preset')) b.onclick = () => { $('n').value = b.dataset.n; $('k').value = b.dataset.k; renderHolders(); };
 $('n').oninput = $('k').oninput = renderHolders; renderHolders();
-for (const r of document.querySelectorAll('input[name=mode]')) r.onchange = () => { mode = r.value; $('splitBox').classList.toggle('hidden', mode !== 'split'); };
+function syncFlow() {
+  $('splitBox').classList.toggle('hidden', realMode() !== 'split');
+  $('splitBox').classList.toggle('pair', pairMerge());
+  $('timeBox').classList.toggle('hidden', unlock === 'merge');
+  $('mergeNote').classList.toggle('hidden', unlock !== 'merge');
+  renderHolders();
+}
+for (const r of document.querySelectorAll('input[name=mode]')) r.onchange = () => { mode = r.value; syncFlow(); };
+for (const r of document.querySelectorAll('input[name=unlock]')) r.onchange = () => { unlock = r.value; syncFlow(); };
 $('file').onchange = () => {
   const f = $('file').files[0];
   $('fileInfo').textContent = f ? `${f.name} · ${f.type || 'unknown type'} · ${bytesText(f.size)}${f.size > MAX_FILE_BYTES ? ' · too large (100 MB max)' : ''}` : 'Nothing chosen.';
@@ -130,8 +146,10 @@ $('sealForm').onsubmit = async (e) => {
     if (cfg.storageReady === false) throw new Error('The service is still being set up. Please come back later.');
     const limitMb = cfg.maxFileMb || 100;
     if (f.size > Math.min(MAX_FILE_BYTES, limitMb * 1048576)) throw new Error(`File is too large: ${(f.size / 1048576).toFixed(1)} MB. The limit is ${limitMb} MB.`);
-    const unlockAtMs = unlockMs();
-    if (!Number.isFinite(unlockAtMs) || unlockAtMs < Date.now() + 30_000) throw new Error('Please pick a time at least 1 minute from now (step 2)');
+    // Merge-only: the earliest time NEAR accepts, so in practice only the merged parts matter.
+    const unlockAtMs = unlock === 'merge' ? Math.ceil((Date.now() + 45_000) / 1000) * 1000 : unlockMs();
+    if (!Number.isFinite(unlockAtMs) || unlockAtMs < Date.now() + 30_000) throw new Error('Please pick a time at least 1 minute from now (step 3)');
+    const mode = realMode();
     const label = $('label').value.trim() || f.name;
     status('Scrambling your file on this device…');
     const { sealed, key, hash } = await encryptFile(new Uint8Array(await f.arrayBuffer()), { name: f.name, type: f.type });
@@ -141,7 +159,7 @@ $('sealForm').onsubmit = async (e) => {
     let holderSecrets = [];
     if (mode === 'single') meta.fileKey = toB64url(key);
     else {
-      const n = Number($('n').value), k = Number($('k').value);
+      const n = pairMerge() ? 2 : Number($('n').value), k = pairMerge() ? 2 : Number($('k').value);
       if (!(n >= 2 && n <= 20 && k >= 1 && k <= n)) throw new Error('Choose between 2 and 20 people, and how many must agree');
       status(`Making ${n} key pieces…`);
       const parts = await splitKey(key, n, k), wrapKey = randomBytes(32);
@@ -175,7 +193,7 @@ $('sealForm').onsubmit = async (e) => {
       r = await api('/api/seals', { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ blobUrl }) });
     } else r = await api('/api/seals', { method: 'POST', headers, body: sealed });
     if (!r.ok) throw new Error(r.body.error || 'Sealing failed');
-    const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now(), viewers };
+    const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, unlock, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now(), viewers };
     saveMine([seal, ...mine()]);
     if (replacing) { const old = replacing; replacing = null; if (await cancelSeal(old, { quiet: true, replacedBy: seal.sealId })) toast(`New version locked. The old "${old.label}" is cancelled; send the new link.`, 7000); }
     showSealed(seal, holderSecrets);
@@ -191,8 +209,8 @@ function holderLink(seal, h) {
 function showSealed(seal, holders) {
   $('sealForm').classList.add('hidden'); $('sealed').classList.remove('hidden');
   $('sealedTitle').textContent = seal.label;
-  $('sealedSummary').replaceChildren(el('b', { text: `Opens at ${istText(seal.unlockAtMs)}. ` }),
-    seal.mode === 'split' ? `After that, ${seal.k} of your ${seal.n} trusted people must say yes. ` : 'It opens by itself at that time. ',
+  $('sealedSummary').replaceChildren(el('b', { text: seal.unlock === 'merge' ? `Opens only when ${seal.k} of ${seal.n} parts are merged. ` : `Opens at ${istText(seal.unlockAtMs)}. ` }),
+    seal.unlock === 'merge' ? 'There is no time limit. ' : seal.mode === 'split' ? `After that, ${seal.k} of your ${seal.n} trusted people must say yes. ` : 'It opens by itself at that time. ',
     seal.viewers?.length ? `Only ${seal.viewers.join(', ')} can open it. ` : 'Anyone you send the link to can open it then. ',
     el('a', { href: `${EXPLORER}/txns/${seal.createTx}`, target: '_blank', rel: 'noopener' }, 'See the public record →'));
   $('shareBox').replaceChildren(shareButtons(seal, { qr: qrSvg }));
@@ -218,7 +236,7 @@ async function renderSeals() {
     const card = el('section', { class: 'card seal-card', 'data-id': seal.sealId },
       el('div', { class: 'day-head' }, el('h2', { text: seal.label }), el('span', { class: 'badge', 'data-badge': '' }, '…')),
       el('p', { class: 'countdown-sm', 'data-count': '' }),
-      el('p', { class: 'muted', text: `Opens ${istText(seal.unlockAtMs)} · ${seal.mode === 'split' ? `${seal.k} of ${seal.n} people must agree` : 'opens by itself'} · ${seal.fileName || ''} (${bytesText(seal.size || 0)})` }),
+      el('p', { class: 'muted', text: `${seal.unlock === 'merge' ? `Opens when ${seal.k} of ${seal.n} parts are merged` : `Opens ${istText(seal.unlockAtMs)} · ${seal.mode === 'split' ? `${seal.k} of ${seal.n} people must agree` : 'opens by itself'}`} · ${seal.fileName || ''} (${bytesText(seal.size || 0)})` }),
       el('div', { class: 'progress', 'data-progress': '' }),
       shareButtons(seal, { qr: qrSvg }),
       el('div', { class: 'row' }, el('a', { class: 'btn', href: `/s/${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Open the share page'), el('a', { class: 'btn ghost', href: `/verify?id=${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Check it'),

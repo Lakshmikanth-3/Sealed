@@ -42,22 +42,17 @@
     </section>
 
     <section id="view-seal" class="workspace-view hidden" aria-labelledby="sealTitle">
-      <div class="page-title"><p class="eyebrow">Lock a file</p><h1 id="sealTitle" tabindex="-1">3 steps. About one minute.</h1><p>Any file up to 100 MB: PDF, photo, video, audio or text.</p></div>
+      <div class="page-title"><p class="eyebrow">Lock a file</p><h1 id="sealTitle" tabindex="-1">3 steps. About one minute.</h1><p>Photos, videos, audio, documents or anything else, up to 100 MB.</p></div>
       <form id="sealForm" class="card" novalidate>
         <h2><span class="step">1</span> Choose your file</h2>
-        <label for="file" class="drop"><span>Tap to choose a file</span><input id="file" type="file" required></label>
+        <label for="file" class="drop"><span>Tap to choose a photo, video, audio, document or any file</span><input id="file" type="file" required></label>
         <p class="field-note" id="fileInfo">No file chosen yet.</p>
         <label for="label">Name for this file (people will see it)</label><input id="label" maxlength="120" placeholder="For example: Maths exam, Class 10" autocomplete="off">
 
-        <h2><span class="step">2</span> When can it be opened?</h2>
-        <div class="preset-row big"><button type="button" class="secondary quick" data-min="2">In 2 minutes</button><button type="button" class="secondary quick" data-min="10">In 10 minutes</button><button type="button" class="secondary quick" data-min="60">In 1 hour</button><button type="button" class="secondary quick" data-min="1440">Tomorrow</button></div>
-        <div class="grid"><div><label for="unlockAt">Or pick an exact date and time</label><input id="unlockAt" type="datetime-local" step="1" required></div><div><label for="tz">Time zone</label><select id="tz"><option value="local">My time</option><option value="Asia/Kolkata">India time (IST)</option><option value="UTC">World time (UTC)</option></select></div></div>
-        <p class="when" id="unlockPreview"></p>
-
-        <h2><span class="step">3</span> Who must agree to open it?</h2>
-        <div class="mode-pick" role="radiogroup" aria-label="Who must agree">
-          <label class="mode"><input type="radio" name="mode" value="single" checked><span><b>Nobody. Just the time.</b><small>It opens by itself at the time you chose.</small></span></label>
-          <label class="mode"><input type="radio" name="mode" value="split"><span><b>Some trusted people</b><small>Each person gets one piece of the key. Enough of them must say yes, after the time.</small></span></label>
+        <h2><span class="step">2</span> Who is it for?</h2>
+        <div class="mode-pick" role="radiogroup" aria-label="Who is it for">
+          <label class="mode"><input type="radio" name="mode" value="single" checked><span><b>One person</b><small>Send it to one person with a private link.</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="split"><span><b>Split between several people</b><small>The key is split into parts, one for each person (2 to 20).</small></span></label>
         </div>
         <div id="splitBox" class="hidden">
           <p class="field-note">How many people, and how many must agree?</p>
@@ -66,6 +61,20 @@
           <p class="when" id="kHint"></p>
           <div id="holders" class="holders"></div>
         </div>
+
+
+        <h2><span class="step">3</span> How does it unlock?</h2>
+        <div class="mode-pick" role="radiogroup" aria-label="How does it unlock">
+          <label class="mode"><input type="radio" name="unlock" value="time" checked><span><b>On a date and time</b><small>Nobody can open it before the time you pick.</small></span></label>
+          <label class="mode"><input type="radio" name="unlock" value="merge"><span><b>Only when the parts are merged</b><small>No time. It opens only when enough people merge their parts.</small></span></label>
+        </div>
+        <div id="timeBox">
+        <div class="preset-row big"><button type="button" class="secondary quick" data-min="2">In 2 minutes</button><button type="button" class="secondary quick" data-min="10">In 10 minutes</button><button type="button" class="secondary quick" data-min="60">In 1 hour</button><button type="button" class="secondary quick" data-min="1440">Tomorrow</button></div>
+        <div class="grid"><div><label for="unlockAt">Or pick an exact date and time</label><input id="unlockAt" type="datetime-local" step="1" required></div><div><label for="tz">Time zone</label><select id="tz"><option value="local">My time</option><option value="Asia/Kolkata">India time (IST)</option><option value="UTC">World time (UTC)</option></select></div></div>
+        <p class="when" id="unlockPreview"></p>
+
+        </div>
+        <p class="when hidden" id="mergeNote"></p>
 
         <details class="more"><summary>More options (alerts, who can open)</summary>
           <h3>Send me alerts</h3>
