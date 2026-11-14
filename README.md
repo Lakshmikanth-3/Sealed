@@ -139,14 +139,14 @@ flowchart LR
 
 ### Plans (Free and Premium)
 
-| | Free | Premium (1 testnet NEAR / month) |
+| | Free | Premium (10 testnet NEAR / month) |
 |---|---|---|
 | Locked files | 5 per day | Unlimited |
 | File size | 10 MB | 100 MB |
 | Trusted people | up to 3 | up to 20 |
 | Secret messages, alerts, exam papers, proof | ✓ | ✓ |
 
-Payment is `subscribe(months)` on [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet). It requires exactly price × months, and renewals stack. The app proves the buyer's account once with a NEP-413 signature, checks `get_plan` on NEAR, and gives the browser a signed 24-hour pass. Limits are enforced by the server (`server/plans.js`) and configurable with `FREE_DAILY_LOCKS`, `FREE_MAX_FILE_MB` and `FREE_MAX_PEOPLE`. Paying with any token through NEAR Intents is mainnet-only and not built.
+Payment is `subscribe(months)` on [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet). It requires exactly price × months, and renewals stack. The price is stored on the contract and only the owner can change it (`npm run plans:price -- 10 --broadcast`); the app always shows the contract's current price. The app proves the buyer's account once with a NEP-413 signature, checks `get_plan` on NEAR, and gives the browser a signed 24-hour pass. Limits are enforced by the server (`server/plans.js`) and configurable with `FREE_DAILY_LOCKS`, `FREE_MAX_FILE_MB` and `FREE_MAX_PEOPLE`. Paying with any token through NEAR Intents is mainnet-only and not built.
 
 ## What is guaranteed, and the limits
 
