@@ -11,7 +11,7 @@ async function refresh() {
   const r = await api('/api/plan', { headers: { 'x-plan-pass': planPass() } });
   if (!r.ok) return;
   const { limits, pricePerMonthYocto, premium, premiumUntilMs, account, contract } = r.body;
-  $('freeList').replaceChildren(...[`${limits.free.dailyLocks} locked files per day`, `Files up to ${limits.free.maxFileMb} MB`, `Up to ${limits.free.maxPeople} trusted people`, 'Secret messages, alerts, proof page'].map((t) => el('li', { text: t })));
+  $('freeList').replaceChildren(...[`${limits.free.dailyLocks} locked files per day`, `Files up to ${limits.free.maxFileMb} MB`, `Up to ${limits.free.maxPeople} trusted people`, 'Live chat, secret links, alerts, proof page'].map((t) => el('li', { text: t })));
   $('premiumList').replaceChildren(...['Unlimited locked files', `Files up to ${limits.premium.maxFileMb} MB`, 'Up to 20 trusted people', 'Everything in Free'].map((t) => el('li', { text: t })));
   $('planPrice').textContent = `${near(pricePerMonthYocto)} NEAR / month`;
   $('planStatus').replaceChildren(premium ? el('b', { text: `Premium is active for ${account} until ${istText(premiumUntilMs)}.` }) : document.createTextNode(account ? `${account} is on the Free plan.` : 'You are on the Free plan.'));
