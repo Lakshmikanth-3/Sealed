@@ -1,6 +1,6 @@
 // Network-first service worker: app shell works offline so riders can capture without signal.
-const C = 'ar-live-v8';
-const SHELL = ['/', '/app', '/landing.js', '/live.js', '/app.js', '/assets/wallet.js', '/lib/nearRpc.js', '/lib/reconcile.js', '/style.css', '/lib/merkle.js', '/lib/schema.js', '/lib/backup.js', '/lib/compare.js', '/manifest.webmanifest', '/icon.svg',
+const C = 'ar-live-v9';
+const SHELL = ['/', '/app', '/landing.js', '/live.js', '/app.js', '/assets/wallet.js', '/lib/nearRpc.js', '/lib/reconcile.js', '/style.css', '/lib/merkle.js', '/lib/schema.js', '/lib/backup.js', '/lib/compare.js', '/lib/payrules.js', '/ratecards.json', '/manifest.webmanifest', '/icon.svg',
   '/fonts/fonts.css', '/fonts/bricolage-0.ttf', '/fonts/bricolage-1.ttf', '/fonts/bricolage-2.ttf', '/fonts/bricolage-3.ttf'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL))));
 self.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('ar-') && k !== C).map((k) => caches.delete(k))))));
