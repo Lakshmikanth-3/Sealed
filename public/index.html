@@ -10,11 +10,11 @@
 <a class="skip-link" href="#workspace">Skip to main content</a>
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="/"><span><span class="brand-mark">SEALED</span><span class="brand-sub">files that open on time</span></span></a>
+    <a class="brand" href="/"><span><span class="brand-mark">Sealed</span><span class="brand-sub">files that open on time</span></span></a>
     <nav class="workspace-nav" aria-label="Main menu">
       <button data-view="overview" aria-current="page"><span class="nav-number">⌂</span> Home</button>
       <button data-view="seal"><span class="nav-number">1</span> Lock a file</button>
-      <button data-view="seals"><span class="nav-number">2</span> My locked files</button>
+      <button data-view="seals"><span class="nav-number">2</span> My files</button>
       <button data-view="exam"><span class="nav-number">3</span> Exam papers</button>
       <button data-view="message"><span class="nav-number">4</span> Live chat</button>
       <button data-view="plans"><span class="nav-number">5</span> Plans</button>
@@ -27,8 +27,8 @@
     <header class="workspace-header"><span class="crumb">SEALED / <b id="crumb">HOME</b></span><span class="header-right"><span class="last-sync">Updated: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
 
     <section id="view-overview" class="workspace-view" aria-labelledby="overviewTitle">
-      <div class="page-title"><p class="eyebrow">Home</p><h1 id="overviewTitle" tabindex="-1">Lock a file. Nobody opens it early.</h1><p>Pick a file and a time. Before that time, every attempt to open it is blocked and recorded in public, and you get an alert.</p></div>
-      <div class="start-row"><a class="btn big-btn" href="#seal">＋ Lock a new file</a><a class="btn ghost big-btn" href="/verify">Check a locked file</a></div>
+      <div class="page-title"><p class="eyebrow">Home</p><h1 id="overviewTitle" tabindex="-1">Lock a file. Nobody opens it early.</h1><p>Lock any photo, video, audio or document. Send it to one person or split it between people, and choose: it opens on a date and time, or only when the parts are merged. Every attempt is recorded on NEAR.</p></div>
+      <div class="start-row"><a class="btn big-btn" href="#seal">＋ Lock a new file</a><a class="btn ghost big-btn" href="#message">Start a private chat</a><a class="btn ghost big-btn" href="/verify">Check a locked file</a></div>
       <div class="dash-grid">
         <section class="panel"><h2 class="panel-title">Your files</h2>
           <div class="stat-trio"><div><strong id="oTotal">0</strong><span>Total</span></div><div><strong id="oLocked">0</strong><span>Still locked</span></div><div><strong id="oOpen">0</strong><span>Time reached</span></div></div>
@@ -36,7 +36,7 @@
         <section class="panel"><h2 class="panel-title">Alerts</h2><ol id="oAlerts" class="activity"><li class="muted">No alerts yet.</li></ol></section>
         <section class="panel"><h2 class="panel-title">Next file to open</h2><div class="seal-anim small" aria-hidden="true"><svg viewBox="0 0 200 200" role="presentation"><rect class="frame" x="40" y="22" width="120" height="130"/><g class="pc pc1"><rect class="sheet" x="40" y="22" width="40" height="130"/><g class="plain"><rect x="45" y="44" width="30" height="3" rx="1.5"/><rect x="45" y="58" width="24" height="3" rx="1.5"/><rect x="45" y="72" width="28" height="3" rx="1.5"/><rect x="45" y="86" width="18" height="3" rx="1.5"/><rect x="45" y="100" width="30" height="3" rx="1.5"/><rect x="45" y="114" width="22" height="3" rx="1.5"/><rect x="45" y="128" width="26" height="3" rx="1.5"/></g><g class="cipher"><line x1="45" y1="45.5" x2="75" y2="45.5" stroke-dasharray="2 3"/><line x1="45" y1="59.5" x2="75" y2="59.5" stroke-dasharray="3 5"/><line x1="45" y1="73.5" x2="75" y2="73.5" stroke-dasharray="4 3"/><line x1="45" y1="87.5" x2="75" y2="87.5" stroke-dasharray="2 5"/><line x1="45" y1="101.5" x2="75" y2="101.5" stroke-dasharray="3 3"/><line x1="45" y1="115.5" x2="75" y2="115.5" stroke-dasharray="4 5"/><line x1="45" y1="129.5" x2="75" y2="129.5" stroke-dasharray="2 3"/></g><text class="pn" x="60" y="168">1</text></g><g class="pc pc2"><rect class="sheet" x="80" y="22" width="40" height="130"/><g class="plain"><rect x="85" y="44" width="30" height="3" rx="1.5"/><rect x="85" y="58" width="24" height="3" rx="1.5"/><rect x="85" y="72" width="28" height="3" rx="1.5"/><rect x="85" y="86" width="18" height="3" rx="1.5"/><rect x="85" y="100" width="30" height="3" rx="1.5"/><rect x="85" y="114" width="22" height="3" rx="1.5"/><rect x="85" y="128" width="26" height="3" rx="1.5"/></g><g class="cipher"><line x1="85" y1="45.5" x2="115" y2="45.5" stroke-dasharray="2 3"/><line x1="85" y1="59.5" x2="115" y2="59.5" stroke-dasharray="3 5"/><line x1="85" y1="73.5" x2="115" y2="73.5" stroke-dasharray="4 3"/><line x1="85" y1="87.5" x2="115" y2="87.5" stroke-dasharray="2 5"/><line x1="85" y1="101.5" x2="115" y2="101.5" stroke-dasharray="3 3"/><line x1="85" y1="115.5" x2="115" y2="115.5" stroke-dasharray="4 5"/><line x1="85" y1="129.5" x2="115" y2="129.5" stroke-dasharray="2 3"/></g><text class="pn" x="100" y="168">2</text></g><g class="pc pc3"><rect class="sheet" x="120" y="22" width="40" height="130"/><g class="plain"><rect x="125" y="44" width="30" height="3" rx="1.5"/><rect x="125" y="58" width="24" height="3" rx="1.5"/><rect x="125" y="72" width="28" height="3" rx="1.5"/><rect x="125" y="86" width="18" height="3" rx="1.5"/><rect x="125" y="100" width="30" height="3" rx="1.5"/><rect x="125" y="114" width="22" height="3" rx="1.5"/><rect x="125" y="128" width="26" height="3" rx="1.5"/></g><g class="cipher"><line x1="125" y1="45.5" x2="155" y2="45.5" stroke-dasharray="2 3"/><line x1="125" y1="59.5" x2="155" y2="59.5" stroke-dasharray="3 5"/><line x1="125" y1="73.5" x2="155" y2="73.5" stroke-dasharray="4 3"/><line x1="125" y1="87.5" x2="155" y2="87.5" stroke-dasharray="2 5"/><line x1="125" y1="101.5" x2="155" y2="101.5" stroke-dasharray="3 3"/><line x1="125" y1="115.5" x2="155" y2="115.5" stroke-dasharray="4 5"/><line x1="125" y1="129.5" x2="155" y2="129.5" stroke-dasharray="2 3"/></g><text class="pn" x="140" y="168">3</text></g><g class="lock"><path class="shackle" d="M92 22v-8a8 8 0 0 1 16 0v8"/><rect x="86" y="20" width="28" height="22" rx="3"/><circle cx="100" cy="31" r="2.6"/></g><g class="caps"><text class="cap c1" x="100" y="192">sealed</text><text class="cap c2" x="100" y="192">encrypted</text><text class="cap c3" x="100" y="192">split into 3</text><text class="cap c4" x="100" y="192">opened on time</text></g></svg></div><p class="countdown" id="oNext">—</p><p class="muted center" id="oNextLabel">Nothing waiting</p></section>
         <section class="panel span-2"><h2 class="panel-title">How it works</h2>
-          <ol class="flow"><li><b>1. Pick a file</b><span>It is scrambled on your own device. We never see the real file.</span></li><li><b>2. Pick a time</b><span>Nobody can open it before then. Not even you or the people you trust.</span></li><li><b>3. Share the link</b><span>Send it by WhatsApp, email or QR code. Early attempts are blocked and recorded.</span></li><li><b>4. It opens on time</b><span>At the chosen time it opens for the people you shared it with.</span></li></ol></section>
+          <ol class="flow"><li><b>1. Choose any file</b><span>Photo, video, audio or document. It is encrypted on your own device. We never see the real file.</span></li><li><b>2. One person or split</b><span>Send it to one person, or split the key into parts for several people.</span></li><li><b>3. Time or merge</b><span>It opens on a date and time, or only when enough parts are merged.</span></li><li><b>4. Share and open</b><span>Send the link by WhatsApp, email or QR. Early attempts are refused and recorded on NEAR.</span></li></ol></section>
         <section class="panel"><h2 class="panel-title">Blocked so far</h2><div class="info-list" id="oInfo"></div></section>
       </div>
     </section>
@@ -99,7 +99,7 @@
 
     <section id="view-seals" class="workspace-view hidden" aria-labelledby="sealsTitle">
       <div class="page-title"><p class="eyebrow">My locked files</p><h1 id="sealsTitle" tabindex="-1">Your files and their countdowns.</h1><p>Files you locked on this device, with share buttons and alerts.</p></div>
-      <div id="sealCards"><p class="muted">You have not locked any files yet. <a href="#seal">Lock one now →</a></p></div>
+      <div id="sealCards"></div>
     </section>
 
     <section id="view-exam" class="workspace-view hidden" aria-labelledby="examTitle">
@@ -120,7 +120,7 @@
     </section>
 
     <section id="view-message" class="workspace-view hidden" aria-labelledby="msgTitle">
-      <div class="page-title"><p class="eyebrow">Live chat</p><h1 id="msgTitle" tabindex="-1">Chat privately with one person.</h1><p>Like WhatsApp, but end-to-end encrypted with a key only you two have. Send messages and photos, set a message to open later, or make it view once.</p></div>
+      <div class="page-title"><p class="eyebrow">Live chat</p><h1 id="msgTitle" tabindex="-1">Chat privately with one person.</h1><p>Like WhatsApp, but end-to-end encrypted with a key only you two have. Send messages, photos, videos, documents, audio and voice notes, set a message to open later, or make it view once.</p></div>
       <div class="msg-layout"><div class="msg-main">
       <form id="chatNewForm" class="card chat-new">
         <h2><span class="step">1</span> Start a new chat</h2>
@@ -157,7 +157,7 @@
     <section id="view-plans" class="workspace-view hidden" aria-labelledby="plansTitle">
       <div class="page-title"><p class="eyebrow">Plans</p><h1 id="plansTitle" tabindex="-1">Free to start. Premium when you need more.</h1><p>Premium is paid in NEAR (test network). Payment goes to a smart contract, and anyone can check it on the public record.</p></div>
       <div class="plan-grid">
-        <section class="panel plan"><h2>Free</h2><p class="price">0</p><ul class="tick" id="freeList"></ul></section>
+        <section class="panel plan"><h2>Free</h2><p class="price">0 NEAR</p><ul class="tick" id="freeList"></ul></section>
         <section class="panel plan premium"><h2>Premium</h2><p class="price" id="planPrice">— NEAR / month</p><ul class="tick" id="premiumList"></ul></section>
       </div>
       <section class="card"><h2>My plan</h2>
