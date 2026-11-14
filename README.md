@@ -53,6 +53,14 @@ Matching uses order IDs first (from an ID column, and `#4471` or `order 4472` in
 
 **Add this check to my journal** stores one record containing the statement's SHA-256 fingerprint, every mismatch and the net shortfall. After **Save all days on NEAR**, that record is committed on-chain with the day's other records and can be disclosed in a case. The statement itself never leaves the device. The check is only as reliable as the CSV: it proves what the statement said and when you checked it, not that either side is right. Direct API connectors, OCR of screenshots and scheduled monitoring are not implemented.
 
+## Pay check and demo simulator
+
+Statements that include `platform` and `gps_km`/`shown_km` columns are also checked against the platform's rate card: expected pay = base fare + GPS km × per-km rate + promised incentive − penalty with a stated reason. Trips short by more than ₹5 or 5% are flagged with a severity and an English and Tamil explanation. Distance gaps, missing incentives and penalties without a reason are flagged too. Explanations are rule-based templates, not AI. The demo rate cards in `public/ratecards.json` (DemoEats, DemoRide) are illustrative, not any real platform's rates.
+
+For a demo without real platform data, open **/simulator**. It generates a GPS-routed shift for a fictional delivery app and can underpay one trip. **Check in Appeal** loads it into the pay check.
+
+See [report.md](report.md) for spec coverage, test results and what is unfinished.
+
 ## Private AI
 
 The ordinary evidence summary is a deterministic calculation, not an AI fallback. An additional private AI draft is generated only when the user explicitly opts in and supplies an AI service access token.
