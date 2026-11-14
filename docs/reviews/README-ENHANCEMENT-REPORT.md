@@ -89,7 +89,7 @@ Live testnet suites (`test:access`, `test:e2e`, `test:chat`) spend testnet NEAR 
 
 ## 7. Unresolved inconsistencies
 
-Recorded in [`docs/README-AUDIT.md`](README-AUDIT.md) and deliberately not changed in the original README:
+Recorded in [`docs/reviews/README-AUDIT.md`](README-AUDIT.md) and deliberately not changed in the original README:
 
 - Premium is listed as 10 NEAR; the deployed contract charges 1 NEAR.
 - The plans-contract test count reads 7; it is now 8, and the 8th covers an undeployed change.
