@@ -2,213 +2,187 @@
 
 **Lock a file so nobody can open it before the time you choose. Not even you.**
 
-Pick a file (an exam paper, results, a tender, a will, a surprise video) and the exact date and time it may open. Before that time, every attempt to open it is **blocked, recorded in public and reported to you**. For extra safety you can name a few trusted people, and a set number of them must say yes before it opens.
+Exam papers, results, tenders, wills, embargoed reports: pick a file and the exact second it may open. Before that time, a NEAR smart contract **blocks every attempt, records it in public, and the owner gets an alert**. Optionally, K of N trusted people must also say yes. A leaked exam paper can be traced back to its exam centre.
 
-The rules are enforced by a small program on the NEAR blockchain (test network), not by us, so nobody can quietly change them.
-
-## Why
-
-Sensitive files keep leaking before their release time, because whoever holds the file can open it:
-
-| What happened | Source |
+| | |
 |---|---|
-| **NEET-UG 2026, India:** the exam for about 22.79 lakh students was cancelled after the paper leaked on WhatsApp and Telegram | [The South First](https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/) |
-| **UGC-NET 2024, India:** cancelled a day later after reports the paper was sold online; investigators later found no proof of a leak | [Deccan Herald](https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116) |
-| **UK Budget report, 2025:** opened about 40 minutes early by changing a web address, 24,000+ times | [Ross Martin](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs) |
-| **US Supreme Court draft, 2022:** leaked; nearly 100 staff questioned and the leaker never found | [ABA Journal](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing) |
-
-## Run it in 3 minutes
-
-Hosted version: not online yet (deployment pending). Run it on your computer:
-
-```sh
-npm ci
-cp .env.example .env     # fill SEAL_OPS_PRIVATE_KEY and SEAL_ESCROW_SECRET (or deploy your own contract, see below)
-npm run dev:all          # then open http://localhost:8787
-```
-
-| Do this | You will see |
-|---|---|
-| Open the site and tap **Lock a file now** | A 3-step page: choose file, choose time, choose who must agree |
-| Choose any PDF, tap **In 2 minutes**, choose **Some trusted people → 2 of 3 people**, tap **Lock my file** | "Done: your file is locked", share buttons (link, WhatsApp, email, calendar, QR code) and one private link per trusted person |
-| Open the share link and tap **Open file** right away | **Still locked**: the attempt is blocked, recorded in public, and you get an alert |
-| Open one trusted person's link and tap **Say yes** right away | **Too early**: also blocked and recorded |
-| Wait for the countdown, tap **Say yes** on 2 of the 3 links, then **Open file** | The file opens with "✓ Checked: this is the same file that was locked" |
-| Go to **My locked files** | Countdown, who said yes, every alert (time, device, rough location) and the public record of every attempt |
-| Open **Check a locked file** and paste the share link | The public record read straight from the blockchain, so you don't have to trust us |
-| Go to **Exam papers**, paste questions, choose 3 centres, tap **Make one paper per centre** | One different paper per centre, a fairness check, and **Find which centre** for a pasted leak |
-
-### Words used in the app
-
-| In the app | Meaning |
-|---|---|
-| Lock a file | Scramble it on your device and register the opening time on the blockchain |
-| Trusted people | People who each hold one piece of the key |
-| Say yes | A trusted person agrees to open it (only allowed after the time) |
-| Public record | The blockchain log of every attempt, which nobody can delete or edit |
-| Check a locked file | Read that record yourself |
-
-## Proof it is live (NEAR test network)
-
-- Program (smart contract): [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet), [deploy transaction](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC); details in [docs/SEALED-DEPLOYMENT.json](docs/SEALED-DEPLOYMENT.json)
-- Service account: [`sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet)
-- Hackathon tracks: **Privacy & Private AI** (main), Open Innovation
-
-## What is guaranteed, and the honest limits
-
-| Guaranteed | Honest limit |
-|---|---|
-| Nobody can open it before the chosen time | If our service **and** enough of your trusted people all work together, they could open it early |
-| Only your trusted people can help, once each | For "just the time" files, our service keeps the key until then |
-| Every attempt, even blocked ones, is in the public record | The person who locks the file already has the original |
-| A changed file will not open, and you are told | Once it opens, someone can still take a photo of it |
-| Your exact location is only shared if the visitor agrees | Rough location (when turned on) comes from the internet connection and can be wrong |
+| **Live app** | **https://sealed-paper.vercel.app** (pages, live contract reads, checking and proof work now; locking files on the hosted copy turns on when its record database is connected, see [status](#status)) |
+| **Proof page** (every real transaction, clickable) | https://sealed-paper.vercel.app/proof |
+| **Smart contract** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) |
+| **Tracks** | Privacy & Private AI (main) · Open Innovation |
+| **Tests** | 26 unit · 10 contract · 3 offline browser · 3 live testnet suites: all passing |
 
 ---
 
-# For developers
+## Evidence: real transactions on NEAR testnet
+
+Every row below is a real transaction. Click it to see it on the public explorer. They come from one file locked by the live end-to-end test (`Y0nLtFX2buSq23eb`, 2 of 3 trusted people) on 14 November 2026. The "contract answered" column was read back from NEAR itself.
+
+| Step | What happened | Contract answered | Transaction |
+|---|---|---|---|
+| 1 | File locked (hash, 3 trusted people, 2 needed, unlock time) | seal created | [`4tSyfouQ…CCi6d`](https://testnet.nearblocks.io/txns/4tSyfouQYNxzTefHm68LnRC15Z8XGmaQw2oYfkXCCi6d) |
+| 2 | A trusted person's account funded so they can say yes | transfer | [`5QiTDAPC…wfDW`](https://testnet.nearblocks.io/txns/5QiTDAPCTtLuGSxtcBkoczft5yf9n1DzEPKPaTXfwfDW) |
+| 3 | Someone tried to open it **too early** | `"early"` (blocked) | [`AazsNote…LapaSY`](https://testnet.nearblocks.io/txns/AazsNotehoFXTM6wxsoQxzUo1Ym6curTSUQdX2LapaSY) |
+| 4 | Alert about that attempt recorded (fingerprint only, no personal data) | logged | [`A63PdDvR…eSChgT`](https://testnet.nearblocks.io/txns/A63PdDvR5tAMgG6E9RjC7FsMhKRAGLzxs48Lu3eSChgT) |
+| 5 | Alert: a trusted person tried to say yes too early | logged | [`7QXN5DES…2dY`](https://testnet.nearblocks.io/txns/7QXN5DEssX55CjcPtx9KfBqaRuTjDAfpBr1GuTKXc2dY) |
+| 6 | After the time, a trusted person said yes, signed with their own key | `"released"` | [`CT6Gkrzn…w7kdG`](https://testnet.nearblocks.io/txns/CT6GkrznipTwz4xeWj1tBtX3PQRCstHteqa2nnVw7kdG) |
+| 7 | Opened after 2 of 3 said yes | `"open"` | [`4qrZWQoQ…oB8iMK`](https://testnet.nearblocks.io/txns/4qrZWQoQvdudw8UdQrttPKXRnpHSaNvDSSdBYXoB8iMK) |
+| 8 | The stored file was altered: it was not opened, alert recorded | logged | [`DEQauyof…hXF3pj`](https://testnet.nearblocks.io/txns/DEQauyofi7hdNV59RH91fxbNmxAtW97V7X774jhXF3pj) |
+| 9 | A real account that was not on the allow-list tried to open another file | logged | [`5sVF43Ce…Ykene`](https://testnet.nearblocks.io/txns/5sVF43CenY4oxyR6yj5nSze6z5a77MuQBaPvZH9kYene) |
+
+Deployment: [contract deploy](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC) · [code upgrade](https://testnet.nearblocks.io/txns/8YRc1AFZD273JpJGWs4h8uNHfUSwoF2XBq8Ai99JqJXv) · [service account `sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet) · [deployment record](docs/SEALED-DEPLOYMENT.json). The app's **Proof** page (`/proof`) lists new transactions as they happen.
+
+---
+
+## The problem
+
+Sensitive files leak before their release time, because whoever holds the file can open it.
+
+| Event | What went wrong |
+|---|---|
+| **NEET-UG 2026, India** | Exam for about 22.79 lakh students cancelled after the paper leaked on WhatsApp and Telegram ([source](https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/)) |
+| **UGC-NET 2024, India** | Cancelled after reports the paper was sold online; investigators later found no evidence of a leak ([source](https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116)) |
+| **UK Budget report, 2025** | Opened about 40 minutes early by editing a URL, 24,000+ times ([source](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs)) |
+| **US Supreme Court draft, 2022** | Leaked; nearly 100 staff questioned, leaker never found ([source](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing)) |
+
+## Why NEAR
+
+| NEAR feature | What it does here |
+|---|---|
+| Contract-enforced time | `release_part` and `request_open` check the block time; no admin can open early |
+| Accounts and keys | Each trusted person signs with their own account (app-created, or their own NEAR wallet) |
+| Permanent public log | Every attempt, **including refusals**, is stored on-chain; refusals return a status instead of failing, so they stay recorded |
+| NEP-413 signed messages | "Only these accounts can open it" is proven with a wallet signature checked against an on-chain full-access key |
+
+## Use it (about 3 minutes)
+
+Open **https://sealed-paper.vercel.app**, or run it locally (below).
+
+| Do this | You see |
+|---|---|
+| **Lock a file** → choose a PDF → **In 2 minutes** → **Some trusted people → 2 of 3 people** → **Lock my file** | "Done: your file is locked", a link to the transaction, share buttons (link, WhatsApp, email, calendar, QR, locked copy) and one private link per trusted person |
+| Open the share link → **Open file** at once | **Still locked**: blocked by the contract, recorded, owner alerted |
+| Open a trusted person's link → **Say yes** at once | **Too early**: blocked and recorded |
+| After the countdown, **Say yes** on 2 links, then **Open file** | The file opens: "✓ Checked: this is the same file that was locked" |
+| **My locked files** | Countdown, who said yes, alerts (time, device, rough location) and the public record of every attempt |
+| **Check a locked file** (`/verify`) → paste the link | The record read directly from NEAR in your browser |
+| **Proof** (`/proof`) | Every recent transaction with a link to the explorer |
+| **Exam papers** → paste questions → 3 centres → **Make one paper per centre** → paste a leaked copy → **Find which centre** | One distinct paper per centre, a fairness check, and "Centre N, NN% confidence"; the report can be saved on NEAR |
+
+Words in the app: **lock** = encrypt and register the time on NEAR; **trusted people** = holders of one key piece each; **say yes** = release a key piece (only after the time); **public record** = the contract's log.
+
+## Run locally
+
+Requires Node 22+.
+
+```sh
+npm ci
+cp .env.example .env     # set SEAL_OPS_PRIVATE_KEY and SEAL_ESCROW_SECRET, or deploy your own contract (below)
+npm run dev:all          # builds the browser bundles and serves http://localhost:8787
+```
+
+All network settings come from `.env`, with no built-in values: `NEAR_RPC_URLS`, `NEAR_EXPLORER_URL`, `SEAL_CONTRACT`, `SEAL_OPS_ACCOUNT`, `SEAL_HOLDER_FUNDING_NEAR`. Optional settings: `GEOIP_URL` (rough location for alerts), `RESEND_API_KEY` (email alerts), `TWILIO_*` (WhatsApp/SMS). If one isn't set, that feature is off and the app says so; nothing is faked.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  O[Owner browser] -->|AES-256-GCM encrypt, Shamir split, wrap parts| O
-  O -->|ciphertext + hashes| S[Release service]
-  S -->|create_seal: file hash, holders, part commitments, unlock time| N[NEAR contract]
-  O -->|private link: wrapped part + signing key| H[Key holders]
-  H -->|release_part, signed by holder; refused before unlock| N
-  H -->|wrapped part| S
-  S -->|checks release on NEAR, then unwraps| S
-  V[Viewer browser] -->|open: request_open logged; refused before unlock| S
-  S -->|K parts or escrowed key, only after the contract says open| V
-  V -->|hash check vs NEAR, rebuild key, decrypt| V
-  S -->|alert hash| N
+  O[Owner's browser] -->|encrypt AES-256-GCM, split key K-of-N, wrap pieces| O
+  O -->|ciphertext only| B[(Vercel Blob)]
+  O -->|hashes + settings| S[Release service on Vercel]
+  S -->|create_seal: file hash, people, time| N[NEAR contract]
+  P[Trusted person] -->|release_part signed by them; refused before the time| N
+  P -->|wrapped key piece| S
+  S -->|checks the release on NEAR, then unwraps| R[(Upstash Redis)]
+  V[Viewer's browser] -->|open → request_open, logged; refused before the time| S
+  S -->|key pieces only after NEAR says open| V
+  V -->|check hash against NEAR, rebuild key, decrypt| V
+  S -->|alert fingerprint| N
 ```
 
-1. **Encrypt.** The browser encrypts the file with a random 256-bit key: AES-256-GCM in 1 MB chunks, each bound to its index and the chunk count, so altered, reordered or truncated files fail. The server only receives ciphertext and its SHA-256.
-2. **Split.** In split mode the key is split into N Shamir parts with threshold K (the audited `shamir-secret-sharing` library). Each part is then **wrapped**: encrypted with a per-seal wrap key held by the release service and bound to that holder's account. Holders therefore cannot pool their parts offline before the time.
-3. **Lock.** The contract stores the file hash, unlock time, mode, holder accounts, the SHA-256 of each wrapped part, and K. Holders get app-created testnet accounts (funded with 0.05 testnet NEAR) whose keys travel in their private link.
-4. **Release.** Each holder signs `release_part` with their own key. The contract refuses it if the caller is not a holder, the time has not come, the part was already released, or the commitment differs. Every call, accepted or refused, is logged on-chain. The holder then hands the wrapped part to the release service, which unwraps it **only after confirming that release on NEAR**.
-5. **Open.** A viewer's open request becomes an on-chain `request_open`, refused and logged before the time. After the time (and K releases), the service returns the parts or, in single mode, the escrowed key. The viewer's browser checks the downloaded file against the on-chain hash, rebuilds the key and decrypts.
+1. **Encrypt.** The browser encrypts the file (AES-256-GCM, 1 MB chunks bound to their position). The server and Blob only ever hold ciphertext. Its SHA-256 goes on-chain.
+2. **Split.** In "trusted people" mode, the key is split into N Shamir pieces with threshold K using the audited `shamir-secret-sharing` library. Each piece is wrapped with a per-file key held by the release service and bound to that person's account, so people cannot pool pieces early.
+3. **Lock.** The contract stores the file hash, unlock time, people, piece commitments and K.
+4. **Say yes.** Each person signs `release_part` with their own key. The contract refuses it if the caller is not on the list, the time has not come, or the piece doesn't match. Every call is logged. Only after NEAR records a release does the service unwrap that piece.
+5. **Open.** Each attempt is a `request_open` transaction, refused and logged before the time. After the time (and K yeses), the viewer gets the pieces, checks the file against the on-chain hash, rebuilds the key and decrypts in the browser.
 
-### NEAR account access
+**Alerts** are raised for opening too early, saying yes too early, attempts by someone not on the list, wrong key, changed file, and 5 failures in 2 minutes. Each records the time (IST and UTC), device, rough location if `GEOIP_URL` is set, and GPS only if the visitor agrees. The record stays off-chain; its SHA-256 goes on-chain.
 
-- **Account lookup.** Typing a NEAR account (for example `kanth.testnet`) calls `/api/accounts/<id>`, which reads the account and its access keys from NEAR RPC. Sealing refuses accounts that do not exist.
-- **Own-account holders.** A holder can be any existing NEAR account. Their part is wrapped to that account, the contract lists that account as a holder, and only that account can call `release_part` for it, signed in Meteor Wallet. Holders without an account get an app-created testnet account instead.
-- **Who can open.** An optional allow-list of up to 50 accounts. Before releasing a key or parts, the server issues a one-time challenge (5 minutes, single use, bound to the seal). The viewer signs it in their wallet (NEP-413). The server checks the signature, and that the signing key is a full-access key of that account on-chain right now. Unlisted accounts are refused with a `not_allowed` alert whose hash is written on-chain. The allow-list is enforced by the release service, not the contract.
+**Exam papers** (`lib/exam.js`, runs in the browser, no AI service): one version per centre with a different question order, option order and meaning-preserving wording, but identical questions, choices and answers. A fairness check confirms equivalence. A pasted leak (partial or retyped) is matched to its centre. Measured in the unit tests on leaked copies (30–90% of a paper, retyped): 100 of 100 traced correctly for 3, 8 and 20 centres. Photographed pages (OCR) are not supported.
 
-### Exam mode
+## What is guaranteed, and the limits
 
-Three rule-based agents run in the browser (`lib/exam.js`):
-
-- **Setter.** Gives each centre a version with a different question order, option order and meaning-preserving wording (for example "What is" / "Find"). The questions, options and correct answers stay the same. It is deterministic per exam and centre, and makes sure every centre's version is distinct.
-- **Auditor.** Confirms every version has the same questions, option sets and correct answers, with stem length within 10% of the original.
-- **Investigator.** Finds question stems, options and wording choices in a pasted leak (partial or retyped). It scores each centre by how well its order and wording match, and reports "Centre N, NN% confidence".
-
-The owner can write the SHA-256 of a report on-chain against a seal (`record_alert` with kind `leak_report` or `exam_audit`).
-
-Measured in the unit tests on leaked copies (30–90% of a test paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
-
-### Alerts
-
-These events create an alert: an open attempt before the unlock time, an early release, a release by a non-holder, an open attempt by an account not on the allow-list, a wrong key (AES-GCM authentication failure), a file whose hash differs from NEAR, and 5 failures from one source within 2 minutes (escalation).
-
-Each alert records:
-- the event and the time in IST and UTC
-- the NEAR account, if any
-- device and browser
-- approximate location from the IP address, if `GEOIP_URL` is configured
-
-Exact GPS is included only when the visitor ticks "Share my exact location". Every open page shows the notice: "attempts to open this file are logged, including approximate location".
-
-The full record stays off-chain. Its SHA-256 is written on-chain with `record_alert`.
-
-Notifications go by email (Resend) and WhatsApp/SMS (Twilio) only when those are configured; otherwise nothing is sent and the alert is marked "not configured". Every alert also appears in the owner's in-app feed.
-
-## Trust model (what is enforced, what is trusted)
-
-| Claim | Enforced by |
+| Enforced | By |
 |---|---|
-| No holder release and no open request succeeds before the unlock time | NEAR contract (block time) |
-| Only listed holders can release, once each, with their committed part | NEAR contract |
-| Every attempt, including refusals, is public and permanent | NEAR contract log (up to 300 entries per seal; overflow is counted) |
-| A changed file is detected before decryption | SHA-256 on NEAR, checked in the viewer's browser; AES-GCM authentication |
-| Fewer than K parts reveal nothing about the key | Shamir secret sharing |
-| Holders cannot combine parts early on their own | Parts are wrapped with a key only the release service holds |
-| Only allow-listed accounts can open | Release service: NEP-413 signature plus an on-chain full-access-key check (not the contract) |
+| No release and no open before the time | NEAR contract (block time) |
+| Only listed people, once each, with their committed piece | NEAR contract |
+| Every attempt, including refusals, is public and permanent | NEAR contract log (300 entries per file; extra attempts are counted) |
+| A changed file is caught before decryption | SHA-256 on NEAR, checked in the viewer's browser, plus AES-GCM authentication |
+| Fewer than K pieces reveal nothing | Shamir secret sharing |
+| Only allow-listed accounts can open | Release service: NEP-413 signature plus an on-chain full-access-key check |
 
-**What you must trust:**
-- **Split mode:** the release service plus K holders, if they all collude, could open early. Neither side alone can. The service never sees a part before its holder releases it on-chain.
-- **Single mode:** the release service holds the file key (encrypted at rest) and is trusted to release it only after the contract says the seal is open. This is a server-held escrow, not a cryptographic time-lock. A trustless time-lock would need something like drand tlock, which is not used.
-- **The person who seals** already has the original file. The guarantee covers everyone who receives the sealed copy.
-- **After opening**, nothing stops someone photographing or copying the file.
-- **App-created holder accounts** carry their key inside the private holder link, so anyone with that link can act as that holder. Holders who enter their own NEAR account sign with their wallet, and their link alone cannot release anything. There is no passkey or FastAuth login.
-
-## Real vs not built
-
-| Real | Not built or needs configuration |
+| Limit | Detail |
 |---|---|
-| Contract on NEAR testnet; all seals, releases, refusals and alert hashes in this README are real testnet transactions | Email/WhatsApp/SMS send only when Resend/Twilio keys are configured; otherwise they print to the console |
-| Browser encryption, Shamir split, wrapped parts, hash checks | IP location only when `GEOIP_URL` points to a lookup service |
-| Holder signing with app-created accounts or the holder's own Meteor Wallet; NEP-413 viewer proofs | The Meteor Wallet popup itself is tested by hand; automated tests sign the same messages with near-api-js |
-| Share link, WhatsApp link, email (mailto) with .ics invite, Web Share, printable QR, downloadable `.sealed` file | |
-| Exam-mode Setter, Auditor and Investigator (rule-based, in the browser); report hashes on NEAR | Exam mode uses no AI: no NEAR AI agents, no OCR of photographed leaks, no attested reports |
-| | No mainnet, no payments, no hosted deployment yet |
+| Collusion | The release service plus K trusted people, all together, could open early. Neither alone can. |
+| Time-only files | The release service holds the key (encrypted at rest) until NEAR says open. This is escrow, not a cryptographic time-lock. |
+| The owner | The person who locks the file already has the original. |
+| After opening | Nothing stops a photo of the file. |
+| App-created accounts | That trusted person's link holds their key; people using their own NEAR account sign in their wallet instead. |
+| Network | NEAR testnet only; no mainnet, no payments. |
 
 ## Tests
 
-```sh
-npm test               # 26 unit tests (incl. exam mode: 20 leaked copies, at least 18 must be traced): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
-                       # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow,
-                       # NEP-413 proofs (forged key, function-call key, replay, expiry)
-npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap
-npm run test:browser   # 3 offline browser tests (no keys, no chain writes), incl. exam mode
-npm run test:chain     # live testnet: early refusal, non-holder refusal, 2-of-3 unlock
-npm run test:access    # live testnet, against a running server: account lookup, own-account holder,
-                       # allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts)
-npm run test:e2e       # live testnet browser E2E (~3 min): seal PDF 2-of-3 + single text, early release and open refused
-                       # with alerts, release after unlock, PDF matches original, single opens automatically,
-                       # tampered file → FILE TAMPERED, alerts and their public records, verify page
+| Suite | Command | Result | Covers |
+|---|---|---|---|
+| Unit | `npm test` | **26 passed** | Encryption round-trips (PDF, image, video, text); Shamir 2-of-2 / 3-of-5 / 5-of-7; K−1 pieces fail; tamper, reorder and truncate detection; wrapped pieces; alerts and escalation; escrow; NEP-413 (forged key, function-call key, replay, expiry); shared rate limits across instances; exam tracing (at least 18 of 20) |
+| Contract | `npm run contract:test` | **10 passed** | Early refusal, non-holder, commitments, K-of-N, time-only mode, operator rules, log cap |
+| Browser (offline) | `npm run test:browser` | **3 passed** | Pages and security headers, safe refusals, exam papers |
+| Live chain | `npm run test:chain` | **passed** | On testnet: early yes refused, non-holder refused, early open refused, 2-of-3 unlocks |
+| Live access | `npm run test:access` | **14 / 14 passed** | Account lookup, own-account holder, allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts) |
+| Live end to end | `npm run test:e2e` | **passed (2.2 min)** | Real browser on testnet: lock a PDF 2-of-3 and a time-only text, early attempts refused with alerts, yes after the time, PDF identical to the original, time-only opens automatically, changed file → FILE TAMPERED, verify page |
+
+The live suites spend a little test NEAR from the service account.
+
+## Repository structure
+
+```
+contract/src/lib.rs        NEAR smart contract (Rust, near-sdk 5.30) + 10 unit tests
+lib/sealcrypto.js          Encryption, Shamir split and combine, wrapped key pieces (browser + Node)
+lib/exam.js                Exam papers: per-centre versions, fairness check, leak tracing
+server/index.js            Release service: routes, security headers, rate limits
+server/sealChain.js        NEAR client (operator account, account lookups)
+server/sealStore.js        Storage: disk locally, Vercel Blob + Upstash Redis when hosted
+server/alerts.js           Alerts: record, fingerprint on-chain, email / WhatsApp
+server/nearAuth.js         NEP-413 proof that a viewer owns a NEAR account
+server/kv.js               Shared state for rate limits and one-time codes
+client/                    Browser bundles: crypto + QR (sealed.js), Meteor Wallet (wallet.js)
+public/                    Pages: landing, app, open, trusted person, check, proof
+api/index.js               Vercel entry (same handler as local)
+scripts/                   Contract build, deploy, upgrade; live testnet checks
+tests/                     Unit tests and Playwright browser suites
+docs/SEALED-DEPLOYMENT.json  Deployment and upgrade transactions
 ```
 
-Latest results: 26 unit, 10 contract and 3 offline browser tests pass. The live tests (`test:chain`, `test:access`, `test:e2e`) all passed earlier on 14 November. They are now waiting for the service account `sealops.kanth_s.testnet` to be topped up with test NEAR, because it spent its balance funding test files.
-
-### Deploy your own contract (test network)
+## Deploy your own
 
 ```sh
-npm run contract:test     # 10 Rust unit tests
-npm run contract:build
-CONTRACT_OWNER=<your>.testnet npm run contract:deploy              # prints the plan
-CONTRACT_OWNER=<your>.testnet npm run contract:deploy -- --broadcast
+npm run contract:test && npm run contract:build
+CONTRACT_OWNER=<you>.testnet npm run contract:deploy               # prints the plan
+CONTRACT_OWNER=<you>.testnet npm run contract:deploy -- --broadcast  # creates sealed.<you> and sealops.<you>
 ```
 
-This creates `sealops.<you>` (service account, 3 NEAR) and `sealed.<you>` (contract, 4 NEAR), signing with near CLI's keychain. New keys are written to `.env` and never printed. Set `NEAR_RPC_URLS`, `NEAR_EXPLORER_URL`, `SEAL_HOLDER_FUNDING_NEAR` and `SEAL_ESCROW_SECRET` as in `.env.example`.
+**Vercel.** `vercel.json` sends every route through one function, so the security headers apply everywhere. Connect a **Blob** store (the browser uploads ciphertext directly) and **Upstash Redis** (records, alerts, rate limits, one-time codes). Then add the `.env` values as environment variables. Until both are connected, the hosted site refuses to lock files instead of losing them.
 
-### Hosting on Vercel
+## Libraries
 
-`vercel.json` routes every page through one function, so the security headers apply everywhere. Connect **Vercel Blob** (encrypted files, uploaded straight from the browser) and **Upstash Redis** (records, alerts, rate limits, one-time codes) in the Vercel dashboard, and add the `.env` values as environment variables. Without Blob and Redis connected, the hosted site refuses to lock files instead of losing them.
+near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited by Cure53 and Zellic) · @near-wallet-selector/core and meteor-wallet 10.1.4 · @vercel/blob 2.9 · qrcode-generator 1.4.4 · buffer, process, util (browser shims) · esbuild and Playwright (development) · WebCrypto (built in).
 
-## Stack and libraries
+## Status
 
-Plain browser ES modules and a Node `http` server, deliberately reusing the earlier project's tested UI and server shell instead of Next.js/Fastify/Prisma. Storage is the local filesystem (`data/`).
+- Contract, release service, live testnet suites: working and passing (evidence above).
+- Hosted app: deployed at https://sealed-paper.vercel.app with encrypted-file storage (Vercel Blob) connected. Its record database (Upstash Redis) is pending, so until then the hosted copy refuses to lock new files with a clear message. Locally (`npm run dev:all`) everything works.
+- Not built: exam leak tracing from photos (OCR), AI features, mainnet, payments.
 
-| Library | Use |
-|---|---|
-| [near-sdk](https://crates.io/crates/near-sdk) 5.30 (Rust) | Contract |
-| [near-api-js](https://www.npmjs.com/package/near-api-js) 7.2 | Operator and holder transactions, RPC failover |
-| [shamir-secret-sharing](https://www.npmjs.com/package/shamir-secret-sharing) 0.0.4 | Key splitting (audited by Cure53 and Zellic) |
-| [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) 1.4.4 | QR codes, generated locally |
-| [@near-wallet-selector/core and meteor-wallet](https://github.com/near/wallet-selector) 10.1.4 | Own-account holders sign releases; viewers sign NEP-413 proofs |
-| buffer, process, util | Browser shims for near-api-js |
-| esbuild, Playwright | Build and browser tests (dev only) |
-| WebCrypto | AES-256-GCM, SHA-256 (built into browsers and Node) |
+## AI assistance and licence
 
-External services, all configured in `.env`: NEAR testnet RPC endpoints (`NEAR_RPC_URLS`), block explorer (`NEAR_EXPLORER_URL`), IP location (`GEOIP_URL`, optional), Resend and Twilio (optional), Vercel Blob and Upstash Redis (on Vercel).
-
-## Hackathon history and AI assistance
-
-Sealed Paper was written during the hackathon window, on 14 November 2026. Earlier commits in this repository belong to a different, abandoned idea and are not part of this submission.
-
-Most of the code was written with AI coding assistants (Claude Code; Codex on the earlier project) under the author's direction. The author chose the product and made the deployment and trust decisions.
-
-Licensed under [MIT](LICENSE). Evidence and exam-security support only; not legal advice.
+Built during the NEAR hackathon window, on 14 November 2026. Earlier commits in this repository belong to an abandoned idea and are not part of this submission. Most code was written with an AI coding assistant (Claude Code) under the author's direction; the author chose the product, the trust model and every deployment. MIT licence. Not legal or exam-board advice.
