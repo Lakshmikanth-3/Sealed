@@ -160,3 +160,11 @@ ul.checks li { padding: 8px 0; border-bottom: 1px solid var(--line); }
   #briefCard { break-before: page; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition: none !important; } }
+
+.check-issues { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 8px; }
+.check-issues li { padding: 10px 12px; border-radius: 10px; border-left: 4px solid #b4541a; background: rgba(180, 84, 26, .08); overflow-wrap: anywhere; }
+.check-issues li[data-kind="extra"] { border-left-color: #8a6d00; background: rgba(138, 109, 0, .08); }
+.check-issues li.ok { border-left-color: #0f6b5a; background: rgba(15, 107, 90, .08); }
+.check-totals { width: 100%; border-collapse: collapse; margin: 8px 0; font-variant-numeric: tabular-nums; }
+.check-totals th, .check-totals td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,.08); }
+#recordCheck { margin: 4px 0 10px; }

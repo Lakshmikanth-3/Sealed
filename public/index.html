@@ -14,8 +14,9 @@
     <nav class="workspace-nav" aria-label="Workspace">
       <button data-view="capture" aria-current="page"><span class="nav-number">01</span> Record</button>
       <button data-view="journal"><span class="nav-number">02</span> Journal</button>
-      <button data-view="case"><span class="nav-number">03</span> Prepare case</button>
-      <button data-view="backup"><span class="nav-number">04</span> Backup</button>
+      <button data-view="check"><span class="nav-number">03</span> Check company</button>
+      <button data-view="case"><span class="nav-number">04</span> Prepare case</button>
+      <button data-view="backup"><span class="nav-number">05</span> Backup</button>
     </nav>
     <div class="sidebar-foot"><span class="eyebrow">On this device</span><p>Private until you choose to share.</p><a href="/verify">Open reviewer</a></div>
   </aside>
@@ -40,6 +41,16 @@
       <div class="page-title"><p class="eyebrow">Journal</p><h1 id="journalTitle" tabindex="-1">Your work history.</h1><p>Review your records before saving a commitment.</p></div>
       <div class="journal-toolbar"><span id="journalCount" class="muted">Loading local records…</span><button class="secondary" id="anchorAll" disabled>Save all days on NEAR</button></div>
       <div id="days"><p class="muted">Nothing logged yet.</p></div>
+    </section>
+    <section id="view-check" class="workspace-view hidden" aria-labelledby="checkTitle">
+      <div class="page-title"><p class="eyebrow">Check company records</p><h1 id="checkTitle" tabindex="-1">Does their record match yours?</h1><p>Load the company's statement and compare it with your journal. Nothing leaves this device.</p></div>
+      <section class="card"><h2>Company statement</h2><p>A CSV export of trips, payouts or ratings from the company app or website. Needs a date column and an amount or rating column; order ID and type columns improve matching.</p>
+        <label for="statementFile">Choose a CSV statement</label><input id="statementFile" type="file" accept=".csv,text/csv,text/plain">
+        <p id="checkStatus" class="muted" role="status"></p>
+        <p class="field-note">Example header: <code>date,type,amount,rating,order_id</code>. Dates as 2026-11-10 or 10/11/2026.</p></section>
+      <section class="card hidden" id="checkResult"><h2 id="checkHeadline"></h2><div id="checkTotals"></div><ul id="checkIssues" class="check-issues"></ul>
+        <button id="recordCheck">Add this check to my journal</button>
+        <p class="field-note">Adds one record with the statement's fingerprint and every mismatch. Save the day on NEAR to make it tamper-evident, then share it in a case.</p></section>
     </section>
     <section id="view-case" class="workspace-view hidden" aria-labelledby="caseTitle">
       <div class="page-title"><p class="eyebrow">Prepare case</p><h1 id="caseTitle" tabindex="-1">Share only what matters.</h1><p>Choose records, check the preview, then create a reviewer link.</p></div>

@@ -4,6 +4,7 @@ import { validateBackup, MAX_BACKUP_BYTES } from '/lib/backup.js';
 import { connectedAccount, connectWallet, signAnchors } from '/assets/wallet.js';
 import { lookupNearTx } from '/lib/nearRpc.js';
 import { reconcilePending } from '/lib/reconcile.js';
+import { statementFromCsv, compareRecords, mismatchSummary, MAX_STATEMENT_BYTES } from '/lib/compare.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPES = ['trip', 'pay', 'rating', 'penalty', 'notification', 'deactivation'];
@@ -15,7 +16,7 @@ let restoreJob = 0;
 let liveConfig;
 const PUBLIC_RPC = { testnet: 'https://rpc.testnet.near.org', mainnet: 'https://rpc.mainnet.near.org' };
 
-const VIEWS = ['capture', 'journal', 'case', 'backup'];
+const VIEWS = ['capture', 'journal', 'check', 'case', 'backup'];
 function showView(view, focus = false) {
   if (!VIEWS.includes(view)) view = 'capture';
   for (const name of VIEWS) $('view-' + name).classList.toggle('hidden', name !== view);
@@ -169,6 +170,50 @@ $('capture').onclick = async () => {
     toast(`Recorded at ${timeOf(ts)}`);
     await render();
   } catch (e) { toast('Capture failed: ' + e.message); } finally { btn.disabled = false; }
+};
+
+// ---------- company record check ----------
+let lastCheck;
+function el(tag, text, attrs = {}) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; }
+const rupees = (n) => (n < 0 ? '−' : '') + '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+$('statementFile').onchange = async () => {
+  const f = $('statementFile').files[0]; lastCheck = undefined; $('checkResult').classList.add('hidden');
+  if (!f) return;
+  try {
+    if (f.size > MAX_STATEMENT_BYTES) throw new Error('Statement is larger than 2 MB');
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    const statement = statementFromCsv(new TextDecoder().decode(bytes));
+    const journal = (await all('entries')).map((r) => r.entry);
+    const report = compareRecords(journal, statement);
+    lastCheck = { report, fileHash: await sha256Hex(bytes), fileName: f.name };
+    $('checkStatus').textContent = `Read ${statement.length} company record${statement.length === 1 ? '' : 's'} from ${f.name}.`;
+    $('checkHeadline').textContent = report.ok ? `All ${report.matched.length} records match.` : `${report.issues.length} mismatch${report.issues.length === 1 ? '' : 'es'} found · ${report.matched.length} matched`;
+    const table = el('table', undefined, { class: 'check-totals' }), head = table.insertRow();
+    for (const h of ['Day', 'Your journal', 'Company', 'Difference']) head.appendChild(el('th', h));
+    for (const t of report.totals) { const r = table.insertRow(); for (const v of [t.day, rupees(t.journal), rupees(t.company), (t.difference > 0 ? '+' : '') + rupees(t.difference)]) r.insertCell().textContent = v; }
+    $('checkTotals').replaceChildren(table);
+    $('checkIssues').replaceChildren(...(report.ok ? [el('li', 'No differences for the days in this statement.', { class: 'ok' })]
+      : report.issues.map((i) => el('li', i.message, { 'data-kind': i.kind }))));
+    $('recordCheck').disabled = !worker;
+    $('checkResult').classList.remove('hidden');
+  } catch (e) { $('checkStatus').textContent = 'Statement refused: ' + e.message; }
+};
+$('recordCheck').onclick = async () => {
+  const btn = $('recordCheck'); btn.disabled = true;
+  try {
+    if (!worker) throw new Error('Connect your NEAR wallet before recording');
+    if (!lastCheck) throw new Error('Load a statement first');
+    const ts = new Date().toISOString();
+    const entry = { id: 'e' + Date.now().toString(36) + randomSalt().slice(0, 4), worker, day: today(), ts, type: 'notification',
+      capture: 'company-check', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, salt: randomSalt(),
+      text: mismatchSummary(lastCheck.report, lastCheck.fileHash, lastCheck.fileName) };
+    const shortfall = -lastCheck.report.totals.reduce((a, t) => a + Math.min(t.difference, 0), 0);
+    if (shortfall > 0) entry.amount = Math.round(shortfall * 100) / 100;
+    validateEntry(entry, worker, entry.day);
+    await put('entries', { id: entry.id, entry });
+    toast('Check added to today\'s journal. Save it on NEAR to lock it.');
+    lastCheck = undefined; await render();
+  } catch (e) { toast('Could not record check: ' + e.message); btn.disabled = false; }
 };
 
 // ---------- anchoring ----------

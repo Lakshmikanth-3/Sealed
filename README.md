@@ -36,6 +36,19 @@ Copy `.env.example` to `.env` and configure your actual deployment as described 
 
 Public deployment evidence must be obtained through these steps. Unit-test fixtures are development inputs, never on-chain evidence or user adoption.
 
+## Check company records
+
+Open **Check company** and choose a CSV statement exported from the company app or website (try [docs/samples/company-statement.csv](docs/samples/company-statement.csv)). Appeal compares it with your journal on this device, for the days the statement covers, and lists:
+
+- **Wrong values:** amount or rating differs from what you recorded (`₹42 in your journal, ₹30 in company record`).
+- **Missing from company:** work you recorded that the company doesn't show.
+- **Not in your journal:** charges or records only the company has, such as an unexplained penalty.
+- **Daily net totals:** trips and payouts minus penalties, with the difference.
+
+Matching uses order IDs first (from an ID column, and `#4471` or `order 4472` in your notes), then day, type and value. Headers such as `Order ID`, `Trip Date`, `Earnings` and Indian `DD/MM/YYYY` dates are recognised.
+
+**Add this check to my journal** stores one record containing the statement's SHA-256 fingerprint, every mismatch and the net shortfall. After **Save all days on NEAR**, that record is committed on-chain with the day's other records and can be disclosed in a case. The statement itself never leaves the device. The check is only as reliable as the CSV: it proves what the statement said and when you checked it, not that either side is right. Direct API connectors, OCR of screenshots and scheduled monitoring are not implemented.
+
 ## Private AI
 
 The ordinary evidence summary is a deterministic calculation, not an AI fallback. An additional private AI draft is generated only when the user explicitly opts in and supplies an AI service access token.
