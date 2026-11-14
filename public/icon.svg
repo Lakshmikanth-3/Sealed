@@ -1,1 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#0a0a0a"/><rect x="16" y="28" width="32" height="24" rx="4" fill="#ff6b1a"/><path d="M22 28v-6a10 10 0 0 1 20 0v6" stroke="#ff6b1a" stroke-width="5" fill="none"/><circle cx="32" cy="39" r="3.5" fill="#0a0a0a"/><rect x="30.5" y="40" width="3" height="7" rx="1.5" fill="#0a0a0a"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sealed logo">
+  <title>Sealed</title>
+  <!-- document with folded corner -->
+  <path d="M120 28h214l102 102v320a34 34 0 0 1-34 34H120a34 34 0 0 1-34-34V62a34 34 0 0 1 34-34z" fill="#f6f1ea" stroke="#111" stroke-width="22" stroke-linejoin="round"/>
+  <path d="M334 28v74a28 28 0 0 0 28 28h74" fill="#e8e1d6" stroke="#111" stroke-width="22" stroke-linejoin="round"/>
+  <!-- text lines -->
+  <g stroke="#111" stroke-width="20" stroke-linecap="round"><path d="M138 92h126M138 134h112M138 176h52"/></g>
+  <!-- orange band wrapping the document -->
+  <path d="M60 262c40-26 120-40 196-40s156 14 196 40v46c-40-26-120-40-196-40S100 282 60 308z" fill="#ff6b1a" stroke="#111" stroke-width="10" stroke-linejoin="round"/>
+  <!-- padlock: shackle and a clock-face body -->
+  <path d="M206 236v-46a50 50 0 0 1 100 0v46" fill="none" stroke="#111" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="256" cy="300" r="84" fill="#fff" stroke="#111" stroke-width="22"/>
+  <g stroke="#111" stroke-width="12" stroke-linecap="round">
+    <path d="M256 230v18M256 352v18M186 300h18M308 300h18"/>
+    <path d="M207 251l10 10M305 251l-10 10M207 349l10-10M305 349l-10-10" stroke-width="8"/>
+  </g>
+  <path d="M256 274a16 16 0 0 1 9 29l7 33h-32l7-33a16 16 0 0 1 9-29z" fill="#ff6b1a"/>
+  <!-- record bar: brackets, hash, dashes and linked blocks -->
+  <g fill="none" stroke="#ff6b1a" stroke-width="10" stroke-linecap="round">
+    <path d="M118 410v-18h20M118 452v18h20M394 410v-18h-20M394 452v18h-20"/>
+  </g>
+  <text x="138" y="446" font-family="ui-monospace, Consolas, monospace" font-size="38" font-weight="700" fill="#111">#</text>
+  <g stroke="#111" stroke-width="8" stroke-linecap="round"><path d="M170 432h12M192 432h12M214 432h12M236 432h12"/></g>
+  <g fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round">
+    <path d="M274 418l14-8 14 8v16l-14 8-14-8z"/><path d="M314 418l14-8 14 8v16l-14 8-14-8z"/><path d="M354 418l14-8 14 8v16l-14 8-14-8z"/>
+    <path d="M302 426h12M342 426h12"/>
+  </g>
+</svg>
