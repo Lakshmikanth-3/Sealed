@@ -14,7 +14,7 @@ IMPLEMENTATION-PLAN.md
 validation-data/
 contract-plans/target/
 contract-plans/build/
-demo/
+/demo/
 
 # reference screen recordings (large, not part of the app)
 Recording *.mp4
