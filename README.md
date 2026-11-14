@@ -42,6 +42,9 @@ npm run dev:all           # builds the browser bundle and starts http://localhos
 | `/verify?id=<id>` | Seal record and full access log read directly from NEAR RPC in your browser |
 | **Visual shares** | An image split into N noise images that reveal it only when all are combined |
 | Type `kanth.testnet` in a holder's **Own NEAR account** field | The account is looked up on NEAR (✓ balance, full-access keys; ✕ if it does not exist). That holder signs the release with their own Meteor Wallet instead of an app-created account |
+| **Exam mode** → **Load sample paper**, 3 centres, **Generate versions** | One version per centre (same questions, options and answers; different question order, option order and wording) and an Auditor verdict |
+| **Simulate a leak from a random centre** → **Trace the leak** | "Centre N, NN% confidence", ranking of centres, downloadable report; **Record on NEAR** writes the report's hash to one of your seals |
+| **Seal this version** on any centre's paper | That centre's paper is loaded into the Seal form, ready to time-lock |
 | List accounts in **Who can open**, e.g. `kanth.testnet, principal.testnet` | Only those accounts can open. On the open page the viewer connects Meteor Wallet and signs a one-time message (NEP-413, no transaction, no gas); anyone else gets "Not allowed" and the owner an alert |
 
 Without a deployed contract and operator key, pages load but sealing is refused with a clear error.
@@ -86,6 +89,18 @@ flowchart LR
 - **Own-account holders.** A holder can be any existing NEAR account. Their part is wrapped to that account, the contract lists that account as a holder, and only that account can call `release_part` for it, signed in Meteor Wallet. Holders without an account get an app-created testnet account instead.
 - **Who can open.** An optional allow-list of up to 50 accounts. Before releasing a key or parts, the server issues a one-time challenge (5 minutes, single use, bound to the seal). The viewer signs it in their wallet (NEP-413). The server checks the signature, and that the signing key is a full-access key of that account on-chain right now. Unlisted accounts are refused with a `not_allowed` alert whose hash is written on-chain. The allow-list is enforced by the release service, not the contract.
 
+### Exam mode
+
+Three rule-based agents run in the browser (`lib/exam.js`):
+
+- **Setter.** Gives each centre a version with a different question order, option order and meaning-preserving wording (for example "What is" / "Find"). The questions, options and correct answers stay the same. It is deterministic per exam and centre, and makes sure every centre's version is distinct.
+- **Auditor.** Confirms every version has the same questions, option sets and correct answers, with stem length within 10% of the original.
+- **Investigator.** Finds question stems, options and wording choices in a pasted leak (partial or retyped). It scores each centre by how well its order and wording match, and reports "Centre N, NN% confidence".
+
+The owner can write the SHA-256 of a report on-chain against a seal (`record_alert` with kind `leak_report` or `exam_audit`).
+
+Measured on simulated leaks (30–90% of a sample paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
+
 ### Alerts
 
 These events create an alert: an open attempt before the unlock time, an early release, a release by a non-holder, an open attempt by an account not on the allow-list, a wrong key (AES-GCM authentication failure), a file whose hash differs from NEAR, and 5 failures from one source within 2 minutes (escalation).
@@ -127,18 +142,19 @@ Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are conf
 |---|---|
 | Contract on NEAR testnet; all seals, releases, refusals and alert hashes in this README are real testnet transactions | Email/WhatsApp/SMS send only when Resend/Twilio keys are configured; otherwise they print to the console |
 | Browser encryption, Shamir split, wrapped parts, hash checks | IP location uses ipapi.co by default; tests use a fixed mock (Chennai) |
-| Holder signing from the browser with app-created testnet accounts | **Exam mode** (Setter, Auditor and Investigator AI agents, leak tracing) is **not built** |
+| Holder signing with app-created accounts or the holder's own Meteor Wallet; NEP-413 viewer proofs | The Meteor Wallet popup itself is tested by hand; automated tests sign the same messages with near-api-js |
 | Share link, WhatsApp link, email (mailto) with .ics invite, Web Share, printable QR, downloadable `.sealed` file | Visual shares are an XOR-based demonstration of splitting an image, not the mechanism that protects the key |
+| Exam-mode Setter, Auditor and Investigator (rule-based, in the browser); report hashes on NEAR | Exam mode uses no AI: no NEAR AI agents, no OCR of photographed leaks, no attested reports |
 | | No mainnet, no payments, no hosted deployment yet |
 
 ## Tests
 
 ```sh
-npm test               # 17 unit tests: crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
+npm test               # 21 unit tests (incl. exam mode: 20 simulated leaks, at least 18 must trace): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
                        # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow,
                        # NEP-413 proofs (forged key, function-call key, replay, expiry)
 npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap
-npm run test:browser   # 3 offline browser tests (no keys, no chain writes)
+npm run test:browser   # 4 offline browser tests (no keys, no chain writes), incl. exam mode
 npm run test:chain     # live testnet: early refusal, non-holder refusal, 2-of-3 unlock
 npm run test:access    # live testnet, against a running server: account lookup, own-account holder,
                        # allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts)
