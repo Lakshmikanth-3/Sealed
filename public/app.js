@@ -2,7 +2,7 @@ import { $, api, config, el, toast, utcText, istText, localText, countdown, byte
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, newHolderKey, qrSvg, MAX_FILE_BYTES } from '/assets/sealed.js';
 
 // ---------- navigation ----------
-const VIEWS = { overview: 'HOME', seal: 'LOCK A FILE', seals: 'MY LOCKED FILES', exam: 'EXAM PAPERS', message: 'SECRET MESSAGES' };
+const VIEWS = { overview: 'HOME', seal: 'LOCK A FILE', seals: 'MY LOCKED FILES', exam: 'EXAM PAPERS', message: 'SECRET MESSAGES', plans: 'PLANS' };
 const EXPLORER = (await config()).explorer;
 function showView(view, focus = false) {
   if (!VIEWS[view]) view = 'overview';
@@ -163,6 +163,7 @@ $('sealForm').onsubmit = async (e) => {
     key.fill(0);
     status('Locking your file… (takes about 10 seconds)');
     const headers = { 'content-type': 'application/octet-stream', 'x-seal-meta': toB64url(new TextEncoder().encode(JSON.stringify(meta))) };
+    try { const pass = localStorage.getItem('sealed:plan-pass'); if (pass) headers['x-plan-pass'] = pass; } catch { /* Free plan */ }
     if ($('createToken').value) headers['x-create-token'] = $('createToken').value;
     let r;
     if (cfg?.upload === 'blob') {

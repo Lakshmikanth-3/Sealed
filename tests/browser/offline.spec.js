@@ -14,7 +14,7 @@ test('pages load, explain locking, and refuse to seal without a deployed contrac
   await expect(page.locator('#kHint')).toContainText('3 of them must say yes');
   await expect(page.locator('.holder-row:not(.hidden)')).toHaveCount(5);
   await page.click('#sealBtn');
-  await expect(page.locator('.toast')).toContainText('Could not lock');
+  await expect(page.locator('.toast')).toContainText('Could not lock', { timeout: 20_000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

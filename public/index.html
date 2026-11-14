@@ -17,6 +17,7 @@
       <button data-view="seals"><span class="nav-number">2</span> My locked files</button>
       <button data-view="exam"><span class="nav-number">3</span> Exam papers</button>
       <button data-view="message"><span class="nav-number">4</span> Secret messages</button>
+      <button data-view="plans"><span class="nav-number">5</span> Plans</button>
     </nav>
     <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHECKING…</span></p><p>Files locked so far: <span id="sideSeals">—</span></p>
       <details class="tech"><summary>Technical details</summary><p>Contract: <span id="sideContract">—</span></p><p>Service account: <span id="sideOps">—</span></p></details>
@@ -134,11 +135,28 @@
       <section id="msgSent" class="card hidden" aria-live="polite"><p class="eyebrow">Sent</p><h2>Your secret message is ready</h2><p id="msgSummary"></p><div id="msgShare"></div><div class="row"><button type="button" id="msgAgain" class="secondary">Write another message</button></div></section>
     </section>
 
+    <section id="view-plans" class="workspace-view hidden" aria-labelledby="plansTitle">
+      <div class="page-title"><p class="eyebrow">Plans</p><h1 id="plansTitle" tabindex="-1">Free to start. Premium when you need more.</h1><p>Premium is paid in NEAR (test network). Payment goes to a smart contract, and anyone can check it on the public record.</p></div>
+      <div class="plan-grid">
+        <section class="panel plan"><h2>Free</h2><p class="price">0</p><ul class="tick" id="freeList"></ul></section>
+        <section class="panel plan premium"><h2>Premium</h2><p class="price" id="planPrice">— NEAR / month</p><ul class="tick" id="premiumList"></ul></section>
+      </div>
+      <section class="card"><h2>My plan</h2>
+        <p id="planStatus">You are on the Free plan.</p>
+        <div class="row"><button id="planConnect" class="secondary">Connect my NEAR wallet</button><span id="planWallet" class="muted"></span></div>
+        <div class="grid"><div><label for="planMonths">Months</label><select id="planMonths"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></div></div>
+        <div class="row"><button id="planBuy" class="big-btn">Upgrade with NEAR</button><button id="planProve" class="secondary">I already paid: activate Premium here</button></div>
+        <p class="field-note" id="planNote">Upgrading asks your NEAR wallet to send the payment to the plans contract. Then confirm once with your wallet so this browser knows it is you.</p>
+        <p id="planResult"></p>
+      </section>
+    </section>
+
     <footer class="app-footer"><span>Sealed</span><a href="/verify">Check a locked file</a><span>Test network · not legal advice</span></footer>
   </main>
 </div>
 <script type="module" src="/app.js"></script>
 <script type="module" src="/exam-ui.js"></script>
 <script type="module" src="/message-ui.js"></script>
+<script type="module" src="/plans-ui.js"></script>
 </body>
 </html>

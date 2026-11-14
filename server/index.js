@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createSealChain, sealChainConfig } from './sealChain.js';
 import { openSealStore, openCloudStore, escrowKey, sealBox, openBox } from './sealStore.js';
 import { createKv, limited as kvLimited } from './kv.js';
+import { createPlans, planLimits } from './plans.js';
 import { handleUpload } from '@vercel/blob/client';
 import { createAlerts, createGeo, createNotifier } from './alerts.js';
 import { unwrapPart } from '../lib/sealcrypto.js';
@@ -31,6 +32,8 @@ if (ON_VERCEL && !CLOUD) console.error('On Vercel, connect Blob and Upstash Redi
 const store = CLOUD ? openCloudStore(kv) : openSealStore(dataDir);
 const alerts = createAlerts({ store, chain, kv, geo: createGeo(), notify: createNotifier(), awaitBackground: ON_VERCEL });
 const challenges = createChallenges({ kv });
+const LIMITS = planLimits();
+const plans = createPlans({ chain, kv, secret: process.env.SEAL_ESCROW_SECRET, contract: process.env.SEAL_PLANS_CONTRACT || null });
 let escrow = null; try { escrow = escrowKey(); } catch { /* single mode disabled until configured */ }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json',
@@ -134,7 +137,27 @@ export async function handler(req, res) {
 
     if (p === '/api/config') return send(res, 200, { network: chain.config.network, contract: chain.config.contract, operator: chain.config.ops,
       rpcUrls: chain.config.rpcUrls, explorer: chain.config.explorer, singleModeAvailable: Boolean(escrow), createTokenRequired: Boolean(process.env.SEAL_CREATE_TOKEN),
-      upload: CLOUD ? 'blob' : 'direct', maxFileMb: MAX_UPLOAD / 1048576, storageReady: !ON_VERCEL || CLOUD });
+      upload: CLOUD ? 'blob' : 'direct', maxFileMb: MAX_UPLOAD / 1048576, storageReady: !ON_VERCEL || CLOUD,
+      plans: { contract: plans.contract, limits: LIMITS } });
+
+    // ---------- plans ----------
+    if (p === '/api/plan' && req.method === 'GET') {
+      const account = plans.readPass(req.headers['x-plan-pass']);
+      const info = account ? await plans.plan(account) : null;
+      let price = null;
+      if (plans.contract) { try { price = (await chain.viewOn(plans.contract, 'get_config')).price_per_month_yocto; } catch { /* shown as unknown */ } }
+      return send(res, 200, { contract: plans.contract, pricePerMonthYocto: price, limits: LIMITS, account, premium: Boolean(info?.active), premiumUntilMs: info?.premiumUntilMs || 0 });
+    }
+    if (p === '/api/plan/challenge' && req.method === 'GET') return send(res, 200, await challenges.issue('plan-pass', plans.contract || chain.config.contract));
+    if (p === '/api/plan/pass' && req.method === 'POST') {
+      // The buyer proves their NEAR account once; the server checks Premium on NEAR and issues a 24 h pass.
+      const body = await readJson(req);
+      const challenge = await challenges.take(String(body.proof?.nonce || ''), 'plan-pass');
+      const proof = challenge ? await verifyProof(body.proof, challenge, (a, k) => chain.viewAccessKey(a, k)) : { ok: false, reason: 'Missing or expired challenge' };
+      if (!proof.ok) return send(res, 401, { error: `Could not confirm your NEAR account (${proof.reason})` });
+      const info = await plans.plan(proof.accountId);
+      return send(res, 200, { account: proof.accountId, premium: info.active, premiumUntilMs: info.premiumUntilMs, pass: plans.issuePass(proof.accountId) });
+    }
 
     // Vercel Blob client upload: issues a one-time token so the browser uploads ciphertext
     // straight to Blob; file bytes never pass through this function.
@@ -179,6 +202,11 @@ export async function handler(req, res) {
       if (ON_VERCEL && !CLOUD) return send(res, 503, { error: 'Storage is not connected on this deployment yet' });
       let raw; try { raw = JSON.parse(Buffer.from(String(req.headers['x-seal-meta'] || ''), 'base64url').toString('utf8')); } catch { return send(res, 400, { error: 'Invalid x-seal-meta header' }); }
       const meta = validateMeta(raw);
+      // Plan limits: Premium (valid pass + active on NEAR) or Free (per visitor per day).
+      const passAccount = plans.readPass(req.headers['x-plan-pass']);
+      const premium = passAccount ? (await plans.plan(passAccount)).active : false;
+      const limits = premium ? LIMITS.premium : LIMITS.free;
+      if (meta.mode === 'split' && meta.n > limits.maxPeople) return send(res, 402, { error: `The Free plan allows up to ${limits.maxPeople} trusted people. Upgrade to Premium for up to 20.` });
       if (!escrow) return send(res, 503, { error: 'Key escrow is not configured on this server (SEAL_ESCROW_SECRET)' });
       let bytes, blobUrl = null;
       if (viaBlob) {
@@ -190,6 +218,8 @@ export async function handler(req, res) {
         bytes = Buffer.from(await r.arrayBuffer()); blobUrl = url;
       } else bytes = await readBody(req, MAX_FILE);
       if (bytes.length > MAX_UPLOAD + 2 * 1048576) return send(res, 413, { error: `Files are limited to ${MAX_UPLOAD / 1048576} MB` });
+      if (bytes.length > limits.maxFileMb * 1048576 + 2 * 1048576) return send(res, 402, { error: `The Free plan allows files up to ${limits.maxFileMb} MB. Upgrade to Premium for up to ${LIMITS.premium.maxFileMb} MB.` });
+      if (!premium && (await plans.useFreeLock(ip, limits.dailyLocks)) < 0) return send(res, 402, { error: `The Free plan allows ${limits.dailyLocks} locked files per day. Upgrade to Premium for unlimited files, or come back tomorrow.` });
       if (bytes.length < 16 || bytes.subarray(0, 8).toString() !== 'SEALPAP1') return send(res, 400, { error: 'Body must be a Sealed encrypted file' });
       if (sha256(bytes) !== raw.fileHash) return send(res, 400, { error: 'File hash does not match the uploaded bytes' });
       // Named accounts (holders and viewers) must exist on NEAR testnet.

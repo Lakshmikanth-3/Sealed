@@ -2,10 +2,11 @@
 // early release is refused and logged, a non-holder is refused, then release 2 parts
 // after unlock and confirm is_unlocked. Spends a little testnet NEAR from the operator.
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPair, KeyPairSigner } from 'near-api-js';
-import { createSealChain } from '../server/sealChain.js';
+import { createSealChain, sealChainConfig } from '../server/sealChain.js';
 import { splitKey, randomBytes, sha256Hex } from '../lib/sealcrypto.js';
 
-const chain = createSealChain();
+// Test scripts sign with their own operator key so they never collide with a running server's nonce.
+const chain = createSealChain({ ...sealChainConfig(), opsKey: process.env.SEAL_OPS_PRIVATE_KEY_TESTS || process.env.SEAL_OPS_PRIVATE_KEY });
 const provider = new FailoverRpcProvider(chain.config.rpcUrls.map((url) => new JsonRpcProvider({ url })));
 const implicit = (kp) => Buffer.from(kp.getPublicKey().data).toString('hex');
 const holders = [0, 1, 2].map(() => { const kp = KeyPair.fromRandom('ed25519'); return { kp, id: implicit(kp) }; });

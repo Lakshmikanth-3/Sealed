@@ -26,6 +26,11 @@ export function createSealChain(config = sealChainConfig()) {
     if (!config.contract) throw new Error('SEAL_CONTRACT is not configured');
     if (!account) throw new Error('SEAL_OPS_ACCOUNT and SEAL_OPS_PRIVATE_KEY are not configured');
   };
+  async function viewOn(contractId, methodName, args = {}) {
+    const res = await rawQuery({ request_type: 'call_function', account_id: contractId, method_name: methodName, args_base64: Buffer.from(JSON.stringify(args)).toString('base64'), finality: 'final' });
+    if (!res) throw new Error(`Contract ${contractId} not found`);
+    return JSON.parse(Buffer.from(res.result).toString('utf8'));
+  }
   async function view(methodName, args = {}) {
     if (!config.contract) throw new Error('SEAL_CONTRACT is not configured');
     const res = await rawQuery({ request_type: 'call_function', account_id: config.contract, method_name: methodName, args_base64: Buffer.from(JSON.stringify(args)).toString('base64'), finality: 'final' });
@@ -81,6 +86,7 @@ export function createSealChain(config = sealChainConfig()) {
       const k = await rawQuery({ request_type: 'view_access_key', account_id: accountId, public_key: publicKey, finality: 'final' });
       return k ? { permission: k.permission === 'FullAccess' ? 'FullAccess' : 'FunctionCall' } : null;
     },
+    viewOn,
     getConfig: () => view('get_config'),
     getSeal: (sealId) => view('get_seal', { seal_id: sealId }),
     getLog: (sealId, from = 0, limit = 100) => view('get_log', { seal_id: sealId, from, limit }),

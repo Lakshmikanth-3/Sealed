@@ -206,7 +206,7 @@ button.secondary:hover:not(:disabled), .btn.ghost:hover { border-color: var(--ac
   .app-shell { display: block; background: none; }
   .sidebar { position: static; height: auto; padding: 20px 16px 0; border: 0; display: block; }
   .brand-sub, .sidebar-foot { display: none; }
-  .workspace-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; background: #0f0f0f; border-top: 1px solid var(--line); padding: 8px 8px max(8px, env(safe-area-inset-bottom)); }
+  .workspace-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; background: #0f0f0f; border-top: 1px solid var(--line); padding: 8px 8px max(8px, env(safe-area-inset-bottom)); }
   .workspace-nav button { flex-direction: column; justify-content: center; gap: 2px; font-size: .56rem; letter-spacing: .02em; padding: 6px 2px; min-height: 48px; }
   .worker-app main { padding: 0 16px 96px; }
   .workspace-header { margin: 0 -16px 20px; padding: 14px 16px; position: static; }
@@ -263,3 +263,10 @@ button.danger { color: var(--bad); border-color: #4d1d19; }
 /* secret messages */
 .message-bubble { background: var(--panel-2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 16px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; line-height: 1.6; }
 .message-photo { max-width: 100%; border-radius: 6px; margin: 12px 0 14px; display: block; }
+
+/* plans */
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.plan .price { font-size: 1.8rem; font-weight: 800; margin: 4px 0 14px; }
+.plan.premium { border-color: var(--accent); }
+@media (max-width: 760px) { .plan-grid { grid-template-columns: 1fr; } }
+#planNote { margin-top: 12px; }

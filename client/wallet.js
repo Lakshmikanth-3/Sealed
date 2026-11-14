@@ -29,3 +29,10 @@ export async function proveAccount({ message, nonce, recipient }) {
   const signed = await wallet.signMessage({ message, nonce: Uint8Array.from(atob(nonce), (c) => c.charCodeAt(0)), recipient });
   return { accountId: signed.accountId, publicKey: signed.publicKey, signature: signed.signature };
 }
+/** Pay for Premium: subscribe(months) on the plans contract with exactly price × months attached. */
+export async function walletSubscribe(plansContract, months, totalYocto) {
+  const wallet = await (await session()).wallet();
+  const outcome = await wallet.signAndSendTransaction({ receiverId: plansContract,
+    actions: [actionCreators.functionCall('subscribe', { months }, 30_000_000_000_000n, BigInt(totalYocto))] });
+  return { txHash: outcome?.transaction?.hash || outcome?.transaction_outcome?.id };
+}

@@ -18,5 +18,13 @@
       "wasmSha256": "8bf5371ad14bc2346de6f96f0ef37775d37e4ae5608e707d3718286180cd06c4",
       "at": "2026-11-14T05:23:12.639Z"
     }
-  ]
+  ],
+  "plans": {
+    "contract": "plans.sealops.kanth_s.testnet",
+    "owner": "kanth_s.testnet",
+    "pricePerMonthNear": "1",
+    "createTx": "CiFJywZjCvBhmXrgR3mnkEdpaXMZrJatznMMiqJBkHdb",
+    "deployTx": "4FcvXCyMX5upAJ3Y4J8UrTKKEUkg7XGnCnqeYV4qeDZC",
+    "deployedAt": "2026-11-14T11:48:42.053Z"
+  }
 }

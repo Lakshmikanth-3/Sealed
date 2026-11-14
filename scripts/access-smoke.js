@@ -2,12 +2,13 @@
 // Signs with near-api-js exactly as Meteor Wallet would (same transaction, same NEP-413
 // message), using throwaway testnet accounts. Usage: node --env-file=.env scripts/access-smoke.js [baseUrl]
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPair, KeyPairSigner } from 'near-api-js';
-import { createSealChain } from '../server/sealChain.js';
+import { createSealChain, sealChainConfig } from '../server/sealChain.js';
 import { nep413Hash } from '../server/nearAuth.js';
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, sha256Hex, combineKey, decryptFile } from '../lib/sealcrypto.js';
 
 const BASE = process.argv[2] || 'http://localhost:8787';
-const chain = createSealChain();
+// Test scripts sign with their own operator key so they never collide with a running server's nonce.
+const chain = createSealChain({ ...sealChainConfig(), opsKey: process.env.SEAL_OPS_PRIVATE_KEY_TESTS || process.env.SEAL_OPS_PRIVATE_KEY });
 const provider = new FailoverRpcProvider(chain.config.rpcUrls.map((url) => new JsonRpcProvider({ url })));
 const implicit = (kp) => Buffer.from(kp.getPublicKey().data).toString('hex');
 const results = []; const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`); };
@@ -84,5 +85,34 @@ check('on-chain log shows not-allowed alert, early open and both releases', log.
   check('a cancelled file cannot be opened, even after its time', opened.status === 410 && opened.body.status === 'cancelled');
   const log = (await get(`/api/seals/${made.sealId}/log`)).body.log.map((e) => e.kind);
   check('cancellation is in the public record', log.includes('alert:cancelled'), log.join(', '));
+}
+// Premium: Free allows 3 trusted people; a real subscribe() payment lifts the limit.
+if (process.env.SEAL_PLANS_CONTRACT) {
+  const plansContract = process.env.SEAL_PLANS_CONTRACT;
+  const four = await splitKey(randomBytes(32), 4, 2);
+  const fourMeta = async () => {
+    const enc = await encryptFile(new TextEncoder().encode('Premium check ' + Date.now()), { name: 'p.txt', type: 'text/plain' });
+    const wk = randomBytes(32), hs = [];
+    for (const part of four) { const kp = KeyPair.fromRandom('ed25519'), acct = implicit(kp), w = await wrapPart(wk, part.part, acct); hs.push({ account: acct, own: false, commitment: await sha256Hex(new TextEncoder().encode(w)) }); }
+    return { enc, meta: { label: 'Premium check', unlockAtMs: Date.now() + 3600_000, mode: 'split', n: 4, k: 2, fileHash: enc.hash, wrapKey: toB64url(wk), holders: hs } };
+  };
+  const lock = (enc, meta, pass) => fetch(BASE + '/api/seals', { method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-seal-meta': toB64url(new TextEncoder().encode(JSON.stringify(meta))), ...(pass ? { 'x-plan-pass': pass } : {}) }, body: enc.sealed }).then(async (r) => ({ status: r.status, body: await r.json() }));
+  const free = await fourMeta();
+  const refused = await lock(free.enc, free.meta);
+  check('Free plan refuses 4 trusted people', refused.status === 402, refused.body.error);
+  const buyerKey = KeyPair.fromRandom('ed25519'), buyer = implicit(buyerKey);
+  await chain.fundAccounts([buyer], 1_100_000_000_000_000_000_000_000n);
+  const price = BigInt((await (await get('/api/plan')).body).pricePerMonthYocto);
+  const buyerAcct = new Account(buyer, provider, KeyPairSigner.fromSecretKey(buyerKey.toString()));
+  const paid = await buyerAcct.callFunctionRaw({ contractId: plansContract, methodName: 'subscribe', args: { months: 1 }, gas: 30_000_000_000_000n, deposit: price, waitUntil: 'EXECUTED_OPTIMISTIC' });
+  check('subscribe() paid on NEAR', Boolean(paid.status?.SuccessValue), `${process.env.NEAR_EXPLORER_URL}/txns/${paid.transaction.hash}`);
+  await new Promise((r) => setTimeout(r, 3000));
+  const c = (await get('/api/plan/challenge')).body;
+  const sig = buyerKey.sign(nep413Hash({ message: c.message, nonce: Buffer.from(c.nonce, 'base64'), recipient: c.recipient })).signature;
+  const passRes = await post('/api/plan/pass', { proof: { accountId: buyer, publicKey: buyerKey.getPublicKey().toString(), signature: Buffer.from(sig).toString('base64'), nonce: c.nonce } });
+  check('Premium confirmed from the contract after a wallet signature', passRes.status === 200 && passRes.body.premium === true);
+  const prem = await fourMeta();
+  const allowed = await lock(prem.enc, prem.meta, passRes.body.pass);
+  check('Premium allows 4 trusted people', allowed.status === 201, allowed.body.error || allowed.body.sealId);
 }
 console.log(results.every(Boolean) ? `\nALL PASS · seal ${sealId}` : '\nSOME CHECKS FAILED'); process.exit(results.every(Boolean) ? 0 : 1);

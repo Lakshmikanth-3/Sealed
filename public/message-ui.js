@@ -58,6 +58,7 @@ $('msgForm').onsubmit = async (e) => {
     key.fill(0);
     status('Locking it… (about 10 seconds)');
     const headers = { 'content-type': 'application/octet-stream', 'x-seal-meta': toB64url(new TextEncoder().encode(JSON.stringify(meta))) };
+    try { const pass = localStorage.getItem('sealed:plan-pass'); if (pass) headers['x-plan-pass'] = pass; } catch { /* Free plan */ }
     let r;
     if (cfg.upload === 'blob') {
       const { uploadToBlob } = await import('/assets/sealed.js');
