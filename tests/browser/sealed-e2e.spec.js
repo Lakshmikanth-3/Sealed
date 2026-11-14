@@ -17,7 +17,8 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
     await page.setInputFiles('#file', { name, mimeType: mime, buffer: bytes });
     await page.fill('#label', `E2E ${name}`);
     await page.check(`input[name=mode][value=${mode}]`);
-    if (mode === 'split') { await page.fill('#n', String(n)); await page.fill('#k', String(k)); await page.dispatchEvent('#n', 'input'); }
+    if (mode === 'split') await page.click(`.preset[data-n="${n}"][data-k="${k}"]`); // the '2 of 3 people' button
+    await page.click('details.more:has(#ownerEmail) > summary'); // open 'More options'
     await page.fill('#ownerEmail', 'owner@example.com');
     const unlockAt = Math.ceil((Date.now() + inSec * 1000) / 1000) * 1000;
     await page.selectOption('#tz', 'local'); await page.fill('#unlockAt', local(unlockAt));
