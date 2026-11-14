@@ -28,7 +28,9 @@ export function createSealChain(config = sealChainConfig()) {
   };
   async function view(methodName, args = {}) {
     if (!config.contract) throw new Error('SEAL_CONTRACT is not configured');
-    return provider.callFunction({ contractId: config.contract, method: methodName, args, blockQuery: { finality: 'final' } });
+    const res = await rawQuery({ request_type: 'call_function', account_id: config.contract, method_name: methodName, args_base64: Buffer.from(JSON.stringify(args)).toString('base64'), finality: 'final' });
+    if (!res) throw new Error(`Contract ${config.contract} not found`);
+    return JSON.parse(Buffer.from(res.result).toString('utf8'));
   }
   // Serialize writes so the operator key's nonce never races.
   let queue = Promise.resolve();

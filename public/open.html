@@ -22,7 +22,7 @@
   <div class="panel open-actions">
     <div id="accessBox" class="wallet-box hidden"><p><b>Only <span id="viewerCount"></span> chosen people can open this file.</b> Connect your NEAR wallet app to show it is you. It is free and takes a few seconds.</p><div class="row"><button id="connectBtn" class="secondary">Connect my wallet</button><span id="walletState" class="muted"></span></div></div>
     <label class="check-row"><input type="checkbox" id="shareGps"> Share my exact location (optional)</label>
-    <div class="row"><button id="openBtn" class="big-btn">Open file</button><a class="btn ghost" id="verifyLink" href="#">Check this file</a></div>
+    <div class="row"><button id="openBtn" class="big-btn" disabled>Loading…</button><a class="btn ghost" id="verifyLink" href="#">Check this file</a></div>
     <details><summary>I have a downloaded locked copy</summary><label for="sealedDoc">Choose the locked copy you downloaded</label><input id="sealedDoc" type="file" accept=".sealed,application/json"><p class="field-note" id="docNote">It still opens only at the right time.</p></details>
   </div>
   <section id="result" class="result hidden" aria-live="polite"></section>

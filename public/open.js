@@ -10,6 +10,15 @@ async function load() {
   const r = await api(`/api/seals/${sealId}`);
   if (!r.ok) { $('title').textContent = 'We could not find this file. Check the link.'; $('state').textContent = 'Unknown'; $('openBtn').disabled = true; return; }
   seal = r.body; skew = seal.now - Date.now();
+  if (seal.viewed) {
+    $('title').textContent = seal.label; $('count').textContent = 'OPENED';
+    $('result').className = 'result tampered';
+    $('result').replaceChildren(el('h2', { text: 'Already opened' }), el('p', { text: 'This was a view-once message. It was opened once and its key was destroyed, so nobody can open it again.' }));
+    $('openBtn').disabled = true; seal.cancelled = true; return;
+  }
+  if (seal.kind === 'message') {
+    if (seal.viewOnce) $('statusLine').textContent = 'You can open this only once. Read it carefully: after that it is destroyed.';
+  }
   if (seal.cancelled) {
     $('title').textContent = seal.label; $('count').textContent = 'CANCELLED';
     $('result').className = 'result tampered';
@@ -17,9 +26,10 @@ async function load() {
     for (const id of ['openBtn', 'releaseBtn']) if ($(id)) $(id).disabled = true;
     return;
   }
+  $('openBtn').textContent = seal.kind === 'message' ? 'Open message' : 'Open file'; $('openBtn').disabled = false;
   document.title = `${seal.label} · Sealed`;
   $('title').textContent = seal.label;
-  $('kind').textContent = seal.mode === 'split' ? `Locked file · ${seal.k} of ${seal.n} trusted people must agree` : 'Locked file · opens by itself on time';
+  $('kind').textContent = seal.kind === 'message' ? (seal.viewOnce ? 'Secret message · view once' : 'Secret message') : seal.mode === 'split' ? `Locked file · ${seal.k} of ${seal.n} trusted people must agree` : 'Locked file · opens by itself on time';
   $('until').textContent = `Opens on ${istText(seal.unlockAtMs)}`;
   if (seal.restricted) { $('accessBox').classList.remove('hidden'); $('viewerCount').textContent = seal.viewerCount; void refreshWallet(); }
   renderProgress(); renderLog();
@@ -84,6 +94,10 @@ async function openFile(auto = false) {
     $('statusLine').textContent = 'Checking…';
     const proof = await accountProof();
     const r = await api(`/api/seals/${sealId}/open`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ gps: await gps(), proof }) });
+    if (r.status === 410) {
+      showResult('tampered', el('h2', { text: r.body.status === 'viewed' ? 'Already opened' : 'Cancelled by the owner' }), el('p', { text: r.body.error }));
+      $('statusLine').textContent = ''; return renderLog();
+    }
     if (r.status === 401 || r.status === 403) {
       showResult('tampered', el('h2', { text: r.status === 403 ? 'Not allowed' : 'Please confirm who you are' }), el('p', { text: r.body.message || r.body.error }));
       $('statusLine').textContent = ''; return renderLog();
@@ -119,12 +133,28 @@ async function openFile(auto = false) {
       throw e;
     }
     $('statusLine').textContent = '';
-    await renderFile(out, actual, auto);
+    if (out.meta.type === 'application/vnd.sealed.message+json') await renderMessage(out, auto, r.body.viewOnce);
+    else await renderFile(out, actual, auto);
     renderLog();
   } catch (e) { $('statusLine').textContent = ''; toast(e.message, 6000); }
   finally { opening = false; $('openBtn').disabled = false; }
 }
 $('openBtn').onclick = () => openFile(false);
+
+async function renderMessage({ bytes }, auto, viewOnce) {
+  const msg = JSON.parse(new TextDecoder().decode(bytes));
+  const parts = [el('p', { class: 'eyebrow', text: auto ? 'Opened on time' : 'Secret message' }), el('h2', { text: 'Your secret message' })];
+  if (msg.text) parts.push(el('div', { class: 'message-bubble', text: msg.text }));
+  if (msg.attachment) {
+    const raw = Uint8Array.from(atob(msg.attachment.data.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - msg.attachment.data.length % 4) % 4)), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([raw], { type: msg.attachment.type }));
+    if (msg.attachment.type.startsWith('image/')) parts.push(el('img', { src: url, alt: msg.attachment.name, class: 'message-photo' }));
+    parts.push(el('div', { class: 'row' }, el('a', { class: 'btn', href: url, download: msg.attachment.name }, `Download ${msg.attachment.name}`)));
+  }
+  parts.push(el('p', { class: 'verified', text: '✓ Checked: this is exactly what was sent' }));
+  if (viewOnce) parts.push(el('p', { class: 'warn-note', text: 'This was a view-once message. Its key has now been destroyed; this link will not open again.' }));
+  showResult('open', ...parts);
+}
 
 async function renderFile({ bytes, meta }, hash, auto) {
   const blob = new Blob([bytes], { type: meta.type || 'application/octet-stream' }), url = URL.createObjectURL(blob);

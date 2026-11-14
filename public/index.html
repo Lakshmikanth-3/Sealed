@@ -16,6 +16,7 @@
       <button data-view="seal"><span class="nav-number">1</span> Lock a file</button>
       <button data-view="seals"><span class="nav-number">2</span> My locked files</button>
       <button data-view="exam"><span class="nav-number">3</span> Exam papers</button>
+      <button data-view="message"><span class="nav-number">4</span> Secret messages</button>
     </nav>
     <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHECKING…</span></p><p>Files locked so far: <span id="sideSeals">—</span></p>
       <details class="tech"><summary>Technical details</summary><p>Contract: <span id="sideContract">—</span></p><p>Service account: <span id="sideOps">—</span></p></details>
@@ -108,10 +109,36 @@
       </section>
     </section>
 
+    <section id="view-message" class="workspace-view hidden" aria-labelledby="msgTitle">
+      <div class="page-title"><p class="eyebrow">Secret messages</p><h1 id="msgTitle" tabindex="-1">Send a private message or photo.</h1><p>It is scrambled on your device. Only the link can open it, at the time you choose. Choose "view once" and it is destroyed after it is read.</p></div>
+      <form id="msgForm" class="card" novalidate>
+        <h2><span class="step">1</span> Write your message</h2>
+        <label for="msgText">Message</label><textarea id="msgText" rows="5" maxlength="20000" placeholder="Type your message"></textarea>
+        <label for="msgFile" class="drop"><span>Add a photo or file (optional)</span><input id="msgFile" type="file"></label>
+        <p class="field-note" id="msgFileInfo">No photo or file added.</p>
+        <label for="msgFrom">From (shown before opening, optional)</label><input id="msgFrom" maxlength="60" placeholder="Your name">
+
+        <h2><span class="step">2</span> When can it be read?</h2>
+        <div class="mode-pick" role="radiogroup" aria-label="When">
+          <label class="mode"><input type="radio" name="msgWhen" value="soon" checked><span><b>In about 30 seconds</b><small>The blockchain needs a time in the future, so it opens about 30 seconds after you send it.</small></span></label>
+          <label class="mode"><input type="radio" name="msgWhen" value="at"><span><b>At a time I choose</b><small>For birthdays, results or surprises.</small></span></label>
+        </div>
+        <div id="msgAtBox" class="hidden"><label for="msgAt">Date and time (my time)</label><input id="msgAt" type="datetime-local" step="1"></div>
+
+        <h2><span class="step">3</span> Privacy</h2>
+        <label class="check-row"><input type="checkbox" id="msgOnce" checked> View once: destroy it after it is opened the first time</label>
+        <label for="msgOnly">Only this NEAR account can read it (optional)</label><input id="msgOnly" placeholder="name.testnet" autocomplete="off" spellcheck="false">
+        <p class="field-note" id="msgOnlyCheck"></p>
+        <div class="capture-footer"><button id="msgBtn" type="submit" class="big-btn">Send secret message</button><span class="muted" id="msgStatus" role="status"></span></div>
+      </form>
+      <section id="msgSent" class="card hidden" aria-live="polite"><p class="eyebrow">Sent</p><h2>Your secret message is ready</h2><p id="msgSummary"></p><div id="msgShare"></div><div class="row"><button type="button" id="msgAgain" class="secondary">Write another message</button></div></section>
+    </section>
+
     <footer class="app-footer"><span>Sealed</span><a href="/verify">Check a locked file</a><span>Test network · not legal advice</span></footer>
   </main>
 </div>
 <script type="module" src="/app.js"></script>
 <script type="module" src="/exam-ui.js"></script>
+<script type="module" src="/message-ui.js"></script>
 </body>
 </html>

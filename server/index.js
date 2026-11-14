@@ -95,7 +95,8 @@ function validateMeta(m) {
   for (const v of viewers) if (!validAccountId(v)) fail(`"${v}" is not a valid NEAR account`);
   if (m.mode === 'single') {
     if (typeof m.fileKey !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(m.fileKey)) fail('Single mode needs the 32-byte file key');
-    return { label, unlockAtMs, mode: 'single', k: 0, n: 0, holders: [], owner, viewers };
+    // Secret messages: viewOnce destroys the key after the first successful opening.
+    return { label, unlockAtMs, mode: 'single', k: 0, n: 0, holders: [], owner, viewers, viewOnce: m.viewOnce === true, kind: m.kind === 'message' ? 'message' : 'file' };
   }
   if (m.mode !== 'split') fail('Mode must be single or split');
   if (typeof m.wrapKey !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(m.wrapKey)) fail('Split mode needs the 32-byte part wrap key');
@@ -110,12 +111,14 @@ function validateMeta(m) {
   });
   if (new Set(holders.map((h) => h.account)).size !== n) fail('Holder accounts must be unique');
   for (const h of holders) if (!h.own && !/^[0-9a-f]{64}$/.test(h.account)) fail(`${h.account}: app-created holder accounts must be implicit`);
-  return { label, unlockAtMs, mode: 'split', k, n, holders, owner, viewers };
+  if (m.viewOnce) fail('View once is only available when no trusted people are needed');
+  return { label, unlockAtMs, mode: 'split', k, n, holders, owner, viewers, viewOnce: false, kind: m.kind === 'message' ? 'message' : 'file' };
 }
 const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs,
   fileHash: meta.fileHash, size: meta.size, createdAt: meta.createdAt, createTx: meta.createTx, contract: chain.config.contract,
   holders: meta.holders.map((h) => ({ label: h.label, account: h.account, own: Boolean(h.own) })), releasedParts: Object.keys(meta.parts || {}).length,
-  restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0, cancelled: meta.cancelled || null });
+  restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0, cancelled: meta.cancelled || null,
+  viewOnce: Boolean(meta.viewOnce), viewed: meta.viewed || null, kind: meta.kind || 'file' });
 
 // ---------- request handler ----------
 export async function handler(req, res) {
@@ -201,6 +204,7 @@ export async function handler(req, res) {
       if (!blobUrl) await store.saveFile(sealId, bytes);
       await store.saveMeta(sealId, { sealId, blobUrl, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, fileHash: raw.fileHash,
         size: bytes.length, createdAt: new Date().toISOString(), createTx: created.txHash, fundTxs, holders: meta.holders, owner: meta.owner, viewers: meta.viewers,
+        viewOnce: meta.viewOnce, kind: meta.kind,
         ownerTokenHash: store.tokenHash(ownerToken), escrowedKey: meta.mode === 'single' ? sealBox(escrow, Buffer.from(raw.fileKey, 'base64url')) : null,
         escrowedWrapKey: meta.mode === 'split' ? sealBox(escrow, Buffer.from(raw.wrapKey, 'base64url')) : null,
         alertContacts: [meta.owner, ...meta.holders.map((h) => h.contact)].filter((c) => c.email || c.phone), parts: {} });
@@ -247,6 +251,7 @@ export async function handler(req, res) {
         await store.recordActivity({ at, sealId, kind: 'alert:cancelled', tx: r.txHash });
         return send(res, 200, { cancelled, explorer: chain.explorerTx(r.txHash) });
       }
+      if (meta.viewed && action === 'open') return send(res, 410, { status: 'viewed', viewed: meta.viewed, error: 'This was a view-once message and it has already been opened. Its key was destroyed.' });
       if (meta.cancelled && ['open', 'parts'].includes(action)) return send(res, 410, { status: 'cancelled', cancelled: meta.cancelled, error: 'The owner cancelled this file. It can no longer be opened.' });
 
       if (action === 'challenge' && req.method === 'GET') return send(res, 200, await challenges.issue(sealId, chain.config.contract));
@@ -275,7 +280,17 @@ export async function handler(req, res) {
         }
         if (status === 'awaiting_parts') return send(res, 409, { status, tx: r.txHash, released: Object.keys(meta.parts || {}).length, k: meta.k, message: `Waiting for key holders: ${meta.k} parts are needed.` });
         if (status !== 'open') return send(res, 502, { error: 'Unexpected contract status' });
-        if (meta.mode === 'single') return send(res, 200, { status, tx: r.txHash, mode: 'single', viewer, key: openBox(escrow, meta.escrowedKey).toString('base64url') });
+        if (meta.mode === 'single') {
+          const key = openBox(escrow, meta.escrowedKey).toString('base64url');
+          if (meta.viewOnce) {
+            // First successful opening of a view-once message: destroy the key and record it on NEAR.
+            const at = new Date().toISOString();
+            await store.updateMeta(sealId, (x) => { x.viewed = { at }; x.escrowedKey = null; });
+            const v = await chain.recordAlert(sealId, sha256(`viewed:${sealId}:${at}`), 'viewed_once').catch(() => null);
+            if (v) { await store.updateMeta(sealId, (x) => { x.viewed.tx = v.txHash; }); await store.recordActivity({ at, sealId, kind: 'alert:viewed_once', tx: v.txHash }); }
+          }
+          return send(res, 200, { status, tx: r.txHash, mode: 'single', viewer, viewOnce: Boolean(meta.viewOnce), key });
+        }
         return send(res, 200, { status, tx: r.txHash, mode: 'split', viewer, parts: Object.values(meta.parts || {}) });
       }
 

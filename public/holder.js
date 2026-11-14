@@ -28,6 +28,7 @@ async function load() {
   $('until').textContent = `You can say yes from ${istText(seal.unlockAtMs)}`;
   $('account').textContent = secret.s ? '' : `Your NEAR account: ${secret.a}`;
   if (!secret.s) { $('walletBox').classList.remove('hidden'); $('ownAccount').textContent = secret.a; void refreshWallet(); }
+  if (!seal.chain?.releasedAccounts?.includes(secret.a)) { $('releaseBtn').textContent = 'Say yes'; $('releaseBtn').disabled = false; }
   render();
 }
 function render() {

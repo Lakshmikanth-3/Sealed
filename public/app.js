@@ -2,7 +2,7 @@ import { $, api, config, el, toast, utcText, istText, localText, countdown, byte
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, newHolderKey, qrSvg, MAX_FILE_BYTES } from '/assets/sealed.js';
 
 // ---------- navigation ----------
-const VIEWS = { overview: 'HOME', seal: 'LOCK A FILE', seals: 'MY LOCKED FILES', exam: 'EXAM PAPERS' };
+const VIEWS = { overview: 'HOME', seal: 'LOCK A FILE', seals: 'MY LOCKED FILES', exam: 'EXAM PAPERS', message: 'SECRET MESSAGES' };
 const EXPLORER = (await config()).explorer;
 function showView(view, focus = false) {
   if (!VIEWS[view]) view = 'overview';
