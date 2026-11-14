@@ -10,6 +10,13 @@ async function load() {
   const r = await api(`/api/seals/${sealId}`);
   if (!r.ok) { $('title').textContent = 'We could not find this file. Check the link.'; $('state').textContent = 'Unknown'; $('openBtn').disabled = true; return; }
   seal = r.body; skew = seal.now - Date.now();
+  if (seal.cancelled) {
+    $('title').textContent = seal.label; $('count').textContent = 'CANCELLED';
+    $('result').className = 'result tampered';
+    $('result').replaceChildren(el('h2', { text: 'Cancelled by the owner' }), el('p', { text: 'This file can no longer be opened. Its key was destroyed. Ask the sender for the new link.' }));
+    for (const id of ['openBtn', 'releaseBtn']) if ($(id)) $(id).disabled = true;
+    return;
+  }
   document.title = `${seal.label} · Sealed`;
   $('title').textContent = seal.label;
   $('kind').textContent = seal.mode === 'split' ? `Locked file · ${seal.k} of ${seal.n} trusted people must agree` : 'Locked file · opens by itself on time';
@@ -49,7 +56,7 @@ async function renderLog() {
     el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
 }
 function tick() {
-  if (!seal) return;
+  if (!seal || seal.cancelled) return;
   const left = seal.unlockAtMs - (Date.now() + skew);
   $('count').textContent = left > 0 ? countdown(left) : '00:00:00';
   $('until').textContent = `${left > 0 ? 'Opens on' : 'Opening time was'} ${istText(seal.unlockAtMs)}`;

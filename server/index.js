@@ -115,7 +115,7 @@ function validateMeta(m) {
 const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs,
   fileHash: meta.fileHash, size: meta.size, createdAt: meta.createdAt, createTx: meta.createTx, contract: chain.config.contract,
   holders: meta.holders.map((h) => ({ label: h.label, account: h.account, own: Boolean(h.own) })), releasedParts: Object.keys(meta.parts || {}).length,
-  restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0 });
+  restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0, cancelled: meta.cancelled || null });
 
 // ---------- request handler ----------
 export async function handler(req, res) {
@@ -209,7 +209,7 @@ export async function handler(req, res) {
       return send(res, 201, { sealId, ownerToken, createTx: created.txHash, explorer: chain.explorerTx(created.txHash), fundTxs });
     }
 
-    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge|exam-report))?$/);
+    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge|exam-report|cancel))?$/);
     if (m) {
       const [, sealId, action] = m;
       const meta = await store.readMeta(sealId);
@@ -234,6 +234,21 @@ export async function handler(req, res) {
         await store.recordActivity({ at: new Date().toISOString(), sealId, kind: `alert:${body.kind}`, tx: r.txHash });
         return send(res, 201, { tx: r.txHash, explorer: chain.explorerTx(r.txHash), index: r.value });
       }
+      // Owner cancels: key material is destroyed (escrowed key, wrap key, received pieces), so the file
+      // can never be opened, and the cancellation is recorded on NEAR.
+      if (action === 'cancel' && req.method === 'POST') {
+        const body = await readJson(req);
+        if (!store.checkToken(meta, body.token)) return send(res, 403, { error: 'Only the owner can cancel this file' });
+        if (meta.cancelled) return send(res, 200, { cancelled: meta.cancelled });
+        const at = new Date().toISOString();
+        const r = await chain.recordAlert(sealId, sha256(`cancel:${sealId}:${at}`), 'cancelled');
+        const cancelled = { at, tx: r.txHash, replacedBy: typeof body.replacedBy === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(body.replacedBy) ? body.replacedBy : null };
+        await store.updateMeta(sealId, (x) => { x.cancelled = cancelled; x.escrowedKey = null; x.escrowedWrapKey = null; x.parts = {}; });
+        await store.recordActivity({ at, sealId, kind: 'alert:cancelled', tx: r.txHash });
+        return send(res, 200, { cancelled, explorer: chain.explorerTx(r.txHash) });
+      }
+      if (meta.cancelled && ['open', 'parts'].includes(action)) return send(res, 410, { status: 'cancelled', cancelled: meta.cancelled, error: 'The owner cancelled this file. It can no longer be opened.' });
+
       if (action === 'challenge' && req.method === 'GET') return send(res, 200, await challenges.issue(sealId, chain.config.contract));
 
       if (action === 'open' && req.method === 'POST') {

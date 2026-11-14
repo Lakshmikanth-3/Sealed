@@ -255,3 +255,7 @@ details.tech summary { cursor: pointer; color: var(--muted); }
 .proof-table th { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
 .proof-table td:first-child { white-space: nowrap; color: var(--soft-ink); }
 @media (max-width: 760px) { .proof-table th:nth-child(3), .proof-table td:nth-child(3) { display: none; } }
+
+.danger-row { margin-top: 8px; }
+button.danger { color: var(--bad); border-color: #4d1d19; }
+.seal-card.cancelled { opacity: .6; }

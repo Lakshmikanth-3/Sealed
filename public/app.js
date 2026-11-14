@@ -176,6 +176,7 @@ $('sealForm').onsubmit = async (e) => {
     if (!r.ok) throw new Error(r.body.error || 'Sealing failed');
     const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now(), viewers };
     saveMine([seal, ...mine()]);
+    if (replacing) { const old = replacing; replacing = null; if (await cancelSeal(old, { quiet: true, replacedBy: seal.sealId })) toast(`New version locked. The old "${old.label}" is cancelled; send the new link.`, 7000); }
     showSealed(seal, holderSecrets);
     status(''); renderOverview();
   } catch (err) { status(''); toast('Could not lock the file: ' + err.message, 7000); }
@@ -221,14 +222,39 @@ async function renderSeals() {
       shareButtons(seal, { qr: qrSvg }),
       el('div', { class: 'row' }, el('a', { class: 'btn', href: `/s/${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Open the share page'), el('a', { class: 'btn ghost', href: `/verify?id=${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Check it'),
         el('a', { class: 'btn ghost', href: `${EXPLORER}/txns/${seal.createTx}`, target: '_blank', rel: 'noopener' }, 'Public record')),
+      el('div', { class: 'row danger-row', 'data-actions': '' },
+        el('button', { type: 'button', class: 'secondary', onclick: () => replaceSeal(seal) }, 'Replace with a new version'),
+        el('button', { type: 'button', class: 'secondary danger', onclick: () => cancelSeal(seal) }, 'Cancel this file')),
       el('details', {}, el('summary', { text: 'Alerts (who attempted to open it)' }), el('ol', { class: 'activity', 'data-alerts': '' }, el('li', { class: 'muted', text: 'Loading…' }))),
       el('details', {}, el('summary', { text: 'Public record of every attempt' }), el('ol', { class: 'activity', 'data-log': '' }, el('li', { class: 'muted', text: 'Loading…' }))));
     void fillSeal(card, seal);
     return card;
   }));
 }
+// Cancel: the service destroys the key material and records the cancellation on NEAR.
+async function cancelSeal(seal, { quiet = false, replacedBy = null } = {}) {
+  if (!quiet && !confirm(`Cancel "${seal.label}"? Nobody will ever be able to open it, including you. This cannot be undone.`)) return false;
+  const r = await api(`/api/seals/${seal.sealId}/cancel`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: seal.ownerToken, replacedBy }) });
+  if (!r.ok) { toast('Could not cancel: ' + (r.body.error || 'unknown error'), 7000); return false; }
+  if (!quiet) toast('Cancelled. The key was destroyed and the cancellation is in the public record.', 6000);
+  renderSeals(); return true;
+}
+// Replace: open the Lock form with the same name and time; the old file is cancelled once the new one is locked.
+let replacing = null;
+function replaceSeal(seal) {
+  replacing = seal;
+  location.hash = 'seal';
+  $('label').value = seal.label;
+  const d = new Date(seal.unlockAtMs), pad = (n) => String(n).padStart(2, '0');
+  $('tz').value = 'local';
+  $('unlockAt').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  $('unlockAt').dispatchEvent(new Event('input'));
+  toast(`Choose the corrected file. When you lock it, "${seal.label}" will be cancelled.`, 7000);
+}
+
 async function fillSeal(card, seal) {
   const [s, a, l] = await Promise.all([api(`/api/seals/${seal.sealId}`), api(`/api/seals/${seal.sealId}/alerts?token=${encodeURIComponent(seal.ownerToken)}`), api(`/api/seals/${seal.sealId}/log`)]);
+  if (s.ok && s.body.cancelled) { card.classList.add('cancelled'); card.querySelector('[data-badge]').textContent = 'Cancelled'; card.querySelector('[data-actions]')?.remove(); }
   if (s.ok && seal.mode === 'split') card.querySelector('[data-progress]').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < (s.body.chain?.released || 0) ? ' on' : ''), title: `part ${i + 1}` })), el('small', { text: ` ${s.body.chain?.released || 0} of ${seal.k} people have said yes` }));
   card.querySelector('[data-alerts]').replaceChildren(...(a.ok && a.body.alerts.length ? a.body.alerts.map(alertItem) : [el('li', { class: 'muted', text: 'No alerts. Nobody has attempted to open it early.' })]));
   card.querySelector('[data-log]').replaceChildren(...(l.ok && l.body.log.length ? l.body.log.slice().reverse().map((e) => el('li', {}, el('time', { text: utcText(Number(e.at_ms)) }), el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));

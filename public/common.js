@@ -101,7 +101,7 @@ const LOG_WORDS = {
   'open:early': 'Someone attempted to open it too early (blocked)', 'open:awaiting_parts': 'Someone attempted to open it (waiting for people)', 'open:open': 'The file was opened',
   'alert:early_open': 'Owner told: early opening attempt', 'alert:early_release': 'Owner told: early yes', 'alert:not_holder': 'Owner told: stranger attempted',
   'alert:not_allowed': 'Owner told: someone not allowed attempted', 'alert:wrong_key': 'Owner told: wrong key', 'alert:file_tampered': 'Owner told: file was changed',
-  'alert:repeated_failures': 'Owner told: many attempts in a row', 'alert:leak_report': 'Leak report saved', 'alert:exam_audit': 'Exam check saved',
+  'alert:repeated_failures': 'Owner told: many attempts in a row', 'alert:cancelled': 'The owner cancelled this file (key destroyed)', 'alert:leak_report': 'Leak report saved', 'alert:exam_audit': 'Exam check saved',
 };
 export const plainLog = (kind) => LOG_WORDS[kind] || kind;
 const ALERT_WORDS = { early_open: 'Attempted to open too early', early_release: 'Trusted person attempted too early', not_holder: 'Stranger attempted to unlock',

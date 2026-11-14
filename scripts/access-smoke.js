@@ -71,4 +71,18 @@ if (opened.status === 200) {
 }
 const log = (await get(`/api/seals/${sealId}/log`)).body.log.map((e) => e.kind);
 check('on-chain log shows not-allowed alert, early open and both releases', log.includes('alert:not_allowed') || log.filter((k) => k.startsWith('alert:')).length >= 1, log.join(', '));
+// Owner cancels a file: key material destroyed, cancellation recorded on NEAR, opening refused.
+{
+  const one = await encryptFile(new TextEncoder().encode('Cancelled paper ' + Date.now()), { name: 'c.txt', type: 'text/plain' });
+  const m = { label: 'Cancel check', unlockAtMs: Date.now() + 40_000, mode: 'single', fileHash: one.hash, fileKey: toB64url(one.key) };
+  const made = await fetch(BASE + '/api/seals', { method: 'POST', headers: { 'content-type': 'application/octet-stream', 'x-seal-meta': toB64url(new TextEncoder().encode(JSON.stringify(m))) }, body: one.sealed }).then((r) => r.json());
+  check('wrong owner token cannot cancel', (await post(`/api/seals/${made.sealId}/cancel`, { token: 'not-the-owner' })).status === 403);
+  const cancelled = await post(`/api/seals/${made.sealId}/cancel`, { token: made.ownerToken });
+  check('owner cancels; recorded on NEAR', cancelled.status === 200 && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(cancelled.body.cancelled?.tx || ''), cancelled.body.explorer);
+  await new Promise((r) => setTimeout(r, Math.max(0, m.unlockAtMs - Date.now() + 2000)));
+  const opened = await post(`/api/seals/${made.sealId}/open`, {});
+  check('a cancelled file cannot be opened, even after its time', opened.status === 410 && opened.body.status === 'cancelled');
+  const log = (await get(`/api/seals/${made.sealId}/log`)).body.log.map((e) => e.kind);
+  check('cancellation is in the public record', log.includes('alert:cancelled'), log.join(', '));
+}
 console.log(results.every(Boolean) ? `\nALL PASS · seal ${sealId}` : '\nSOME CHECKS FAILED'); process.exit(results.every(Boolean) ? 0 : 1);

@@ -17,6 +17,13 @@ async function load() {
   const r = await api(`/api/seals/${sealId}`);
   if (!r.ok) { $('title').textContent = 'We could not find this file.'; $('releaseBtn').disabled = true; return; }
   seal = r.body; skew = seal.now - Date.now();
+  if (seal.cancelled) {
+    $('title').textContent = seal.label; $('count').textContent = 'CANCELLED';
+    $('result').className = 'result tampered';
+    $('result').replaceChildren(el('h2', { text: 'Cancelled by the owner' }), el('p', { text: 'This file can no longer be opened. Its key was destroyed. Ask the sender for the new link.' }));
+    for (const id of ['openBtn', 'releaseBtn']) if ($(id)) $(id).disabled = true;
+    return;
+  }
   $('title').textContent = seal.label; $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} are 1 of ${seal.n} trusted people · ${seal.k} must say yes`;
   $('until').textContent = `You can say yes from ${istText(seal.unlockAtMs)}`;
   $('account').textContent = secret.s ? '' : `Your NEAR account: ${secret.a}`;
@@ -29,7 +36,7 @@ function render() {
   if (released.includes(secret.a)) { $('releaseBtn').disabled = true; $('releaseBtn').textContent = 'You said yes ✓'; }
 }
 setInterval(() => {
-  if (!seal) return;
+  if (!seal || seal.cancelled) return;
   const left = seal.unlockAtMs - (Date.now() + skew);
   $('count').textContent = countdown(left);
   $('state').textContent = left > 0 ? 'Wait' : 'You can say yes now'; $('state').className = 'badge ' + (left > 0 ? 'warn' : 'ok');
