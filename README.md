@@ -599,3 +599,29 @@ flowchart LR
   S -->|"CIPHERTEXT"| V
   V --> D["Hash check, key rebuild, AES-GCM decrypt<br/>PLAINTEXT only in the receiver's browser"]
 ```
+
+## The Idea in 3D (animated)
+
+These animations are recorded from the live site (https://sealedfiles.vercel.app) and re-rendered with `node scripts/render-readme-gifs.js`.
+
+<table>
+<tr>
+<td width="40%" valign="top"><img src="docs/brand/hero-3d.gif" alt="A 3D paper is written, sealed with a padlock, encrypted, split into three key parts, merged back, then decrypted and opened" width="100%"></td>
+<td valign="top">
+
+**One document, six steps** (the home-page animation):
+
+1. **Written:** any file, a contract or results report.
+2. **Sealed:** a padlock locks it.
+3. **Encrypted on your device:** the text turns into cipher.
+4. **Split into 3 parts:** the key is shared between trusted people (K of N).
+5. **Parts merged:** enough parts come back together.
+6. **Decrypted and opened:** only then can it be read, and NEAR records every step.
+
+</td>
+</tr>
+</table>
+
+**How it works, as an 8-scene 3D story** (time lock, merge lock and encrypted chat):
+
+<p align="center"><img src="docs/brand/story-3d.gif" alt="Eight scenes: write, seal, choose how it unlocks, wait for the time with an early attempt refused, decrypt on time, split between people, merge the parts, and an encrypted two-person chat" width="100%"></p>
