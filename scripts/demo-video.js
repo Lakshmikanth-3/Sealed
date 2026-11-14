@@ -363,6 +363,13 @@ await say('b_opened', 'Opened by merging', 'Verified against the fingerprint on 
 // ================= 3c. Flow three: private live chat, side by side =================
 await finishSpeech();
 await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;background:#111;z-index:2147483640'; document.body.append(d); window.__cap?.('', ''); });
+const phoneTag = (pg, name, side) => pg.evaluate(([n, sd]) => {
+  document.getElementById('__phoneTag')?.remove();
+  const t = document.createElement('div'); t.id = '__phoneTag'; t.textContent = n;
+  Object.assign(t.style, { position: 'fixed', top: '19px', right: '52px', zIndex: 2147483646, padding: '6px 14px', borderRadius: '999px',
+    background: sd === 'left' ? '#ff6b1a' : '#111', color: '#fff', font: '600 15px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.3)', pointerEvents: 'none' });
+  document.documentElement.appendChild(t);
+}, [name, side]);
 const ctxA = await newRecorded(640, 720), ctxB = await newRecorded(640, 720);
 const pa = await ctxA.newPage(); const aOff = (Date.now() - vStart) / 1000; watch(pa);
 const pb = await ctxB.newPage(); const bOff = (Date.now() - vStart) / 1000; watch(pb);
@@ -374,10 +381,12 @@ await say('c_intro', 'Flow 3: private live chat', 'Left: Asha (legal team). Righ
 await pa.fill('#chatName', 'Asha'); await finishSpeech();
 await pa.click('#chatNewBtn');
 await pa.waitForURL(/\/c\//); await pa.waitForSelector('#invite:not(.hidden)');
+await phoneTag(pa, "Asha's phone (legal team)", 'left');
 const invite = await pa.textContent('#inviteLink');
 ok(invite.includes('#k='), 'chat created with the key only in the link');
 await say('c_invite', 'Invite one person', 'The key lives only inside the link.');
 await pb.goto(invite); await pb.waitForSelector('#joinName');
+await phoneTag(pb, "Bala's phone (client)", 'right');
 await say('c_join', 'Bala joins', 'Only two people can ever be in this chat.', { hold: 0 });
 await pb.fill('#joinName', 'Bala'); await pb.click('#joinBtn');
 await pa.waitForFunction(() => document.getElementById('otherName').textContent === 'Bala', null, { timeout: 30000 });
