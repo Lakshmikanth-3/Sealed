@@ -35,7 +35,7 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 1. `npm install && npm test` (no secrets or accounts needed) → 36 tests pass (`npm run contract:test` → 10, `npm run plans:test` → 8).
 2. https://sealedfiles.vercel.app/api/chain → live `seal_count` from the contract.
 3. Lock a small file on https://sealedfiles.vercel.app, open its link early → **Still locked**, with the `request_open` transaction (`"early"`) linked.
-4. [Full demo on YouTube](https://youtu.be/VpjFS-zH_NA) (8½ minutes, narrated, real testnet transactions); 3½-minute cut in [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4).
+4. [Full demo on YouTube](https://youtu.be/VpjFS-zH_NA) (about 5 minutes, narrated, real testnet transactions); 3½-minute cut in [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4).
 
 **Roadmap to remove the operator trust:** holders combine parts in their own browsers (the server never sees parts), time-only keys encrypted to a future drand round (tlock), and a threshold or multi-operator release. Details: [`docs/reviews/AI-SCREENING.md`](docs/reviews/AI-SCREENING.md).
 
@@ -53,10 +53,10 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 ## Demo Video
 
 <p align="center">
-  <a href="https://youtu.be/VpjFS-zH_NA"><img src="docs/demo/sealed-demo-poster.png" alt="Watch the Sealed demo video on YouTube (about 8 minutes, narrated)" width="100%"></a>
+  <a href="https://youtu.be/VpjFS-zH_NA"><img src="docs/demo/sealed-demo-poster.png" alt="Watch the Sealed demo video on YouTube (about 5 minutes, narrated)" width="100%"></a>
 </p>
 
-**[▶ Watch the full demo on YouTube (about 8½ minutes, narrated)](https://youtu.be/VpjFS-zH_NA)**. A 3½-minute cut is in the repo: [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4). Recorded on the live site with real NEAR testnet transactions; waiting time (block confirmations, unlock times) is cut out.
+**[▶ Watch the full demo on YouTube (about 5 minutes, narrated)](https://youtu.be/VpjFS-zH_NA)**. A 3½-minute cut is in the repo: [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4). Recorded on the live site with real NEAR testnet transactions; waiting time (block confirmations, unlock times) is cut out.
 
 Hackathon demo post on **[X](https://x.com/lakchu_3/status/2121735872269992198)**.
 
@@ -309,7 +309,7 @@ Everything runs on **NEAR testnet**; no mainnet funds are involved.
 3. **Proof page:** https://sealedfiles.vercel.app/proof
 4. **Lock contract:** https://testnet.nearblocks.io/address/sealed.kanth_s.testnet
 5. **Plans contract:** https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet
-6. **Demo video:** [YouTube](https://youtu.be/VpjFS-zH_NA) (narrated, about 8½ minutes); short cut [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4). It can be regenerated with `npm run demo:video` (needs Windows and ffmpeg).
+6. **Demo video:** [YouTube](https://youtu.be/VpjFS-zH_NA) (narrated, about 5 minutes); short cut [`docs/demo/sealed-x-post.mp4`](docs/demo/sealed-x-post.mp4). It can be regenerated with `npm run demo:video` (needs Windows and ffmpeg).
 7. **Create a test lock:** open the app → **Lock a file** → choose any small file → **One person** → **On a date and time** → pick a time 2–3 minutes ahead → **Lock my file**. The summary links to the `create_seal` transaction.
 8. **Reproduce an early refusal:** open the share link before the time and press **Open file**. The page shows **Still locked** with a link to the `request_open` transaction whose result is `"early"`.
 9. **Inspect the transaction:** on the explorer, open the transaction and check the method (`create_seal` / `request_open`) and the returned value. The contract log is readable with `get_log` (view call).
