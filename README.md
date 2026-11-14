@@ -11,7 +11,7 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 | **Live app** | **https://sealedfiles.vercel.app** |
 | **Proof page** (every real transaction, clickable) | https://sealedfiles.vercel.app/proof |
 | **Smart contracts** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) (locks, attempts, alerts) · [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet) (Premium payments) |
-| **Tracks** | Privacy & Private AI (main) · Real-World Money · Open Innovation |
+| **Tracks** | Privacy (main) · Open Innovation · Real-World Money (payments in testnet NEAR). There is no AI component. |
 | **Who it is for** | Companies (results, merger plans, board papers), governments (orders, budgets, tenders), legal teams (contracts, rulings), families (wills), schools (exam papers) |
 | **Tests** | 36 unit · 18 contract (10 + 8) · 3 offline browser · live testnet suites (22 access checks, end to end, 17 chat checks): all passing |
 
@@ -19,9 +19,31 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 
 ---
 
+## Evaluator Notes
+
+**Problem.** Open a file only after a set time, or only when K of N named people agree, and keep a public, permanent record of every attempt, including refused ones.
+
+**On NEAR (testnet), verifiable now:**
+- Lock contract [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet): SHA-256 of the encrypted file, holder accounts, SHA-256 commitment of each key part, unlock time checked against block time, and an attempt log where refusals are recorded instead of reverted (300 entries per file; extra attempts are counted in `dropped_logs`). See [`contract/src/lib.rs`](contract/src/lib.rs).
+- Plans contract [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet): Premium at 10 testnet NEAR a month.
+
+**Trusted, off-chain (stated plainly):** the release service stores ciphertext; it escrows the file key (time-only mode) and the wrap key (split mode) and receives released key parts. It hands out key material only after the contract answers `open`, but a dishonest operator could decrypt early. Plan limits are enforced by the server. There is one operator key. Files are encrypted in the browser, so storage never sees plaintext.
+
+**Track fit:** Privacy (browser AES-256-GCM, Shamir K-of-N, encrypted two-person chat) and Open Innovation (refused attempts become public evidence). Payments are real NEAR transactions on testnet. No AI.
+
+**Verify in 5 minutes:**
+1. `npm install && npm test` → 36 tests pass (`npm run contract:test` → 10, `npm run plans:test` → 8).
+2. https://sealedfiles.vercel.app/api/chain → live `seal_count` from the contract.
+3. Lock a small file on https://sealedfiles.vercel.app, open its link early → **Still locked**, with the `request_open` transaction (`"early"`) linked.
+4. [`docs/demo/sealed-demo.mp4`](docs/demo/sealed-demo.mp4): 8-minute narrated demo on real testnet transactions.
+
+**Roadmap to remove the operator trust:** holders combine parts in their own browsers (the server never sees parts), time-only keys encrypted to a future drand round (tlock), and a threshold or multi-operator release. Details: [`docs/AI-SCREENING.md`](docs/AI-SCREENING.md).
+
+**History.** The repository started on 12 Nov 2026 as an earlier idea ("Appeal") and was pivoted to Sealed; all Sealed commits are 12 to 14 Nov 2026 (UTC).
+
 ## Contents
 
-- **Overview:** [Demo Video](#demo-video) · [The Idea in 3D (animated)](#the-idea-in-3d-animated) · [The problem](#the-problem) · [Why NEAR](#why-near) · [Executive Summary for Technical Evaluators](#executive-summary-for-technical-evaluators)
+- **Overview:** [Evaluator Notes](#evaluator-notes) · [Demo Video](#demo-video) · [The Idea in 3D (animated)](#the-idea-in-3d-animated) · [The problem](#the-problem) · [Why NEAR](#why-near) · [Executive Summary for Technical Evaluators](#executive-summary-for-technical-evaluators)
 - **How it works:** [How it works](#how-it-works) · [System Architecture](#system-architecture) · [End-to-End Encryption and Key Lifecycle](#end-to-end-encryption-and-key-lifecycle) · [NEAR Contract Interaction](#near-contract-interaction) · [Data Flow: Plaintext vs Ciphertext](#data-flow-plaintext-vs-ciphertext) · [On-Chain vs Off-Chain Architecture](#on-chain-vs-off-chain-architecture) · [Shamir Secret Sharing](#shamir-secret-sharing)
 - **Proof and evaluation:** [Evidence: real transactions on NEAR testnet](#evidence-real-transactions-on-near-testnet) · [Judge's Quick Evaluation Guide](#judges-quick-evaluation-guide) · [Use it (about 3 minutes)](#use-it-about-3-minutes)
 - **Security:** [What is guaranteed, and the limits](#what-is-guaranteed-and-the-limits) · [Threat Model and Security Boundaries](#threat-model-and-security-boundaries) · [Exam Paper Security Workflow](#exam-paper-security-workflow) · [Technical Innovation and Differentiation](#technical-innovation-and-differentiation)
