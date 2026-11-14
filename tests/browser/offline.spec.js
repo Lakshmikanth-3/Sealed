@@ -39,3 +39,15 @@ test('visual shares: each share is noise, all shares together reveal the image',
   await page.click('#visualMerge');
   await expect(page.locator('canvas.revealed')).toBeVisible({ timeout: 5000 });
 });
+
+test('exam mode: setter, auditor and investigator in the browser', async ({ page }) => {
+  await page.goto('/app#exam');
+  await page.click('#loadSample'); await page.fill('#centres', '4'); await page.click('#genVersions');
+  await expect(page.locator('#versions article')).toHaveCount(4);
+  await expect(page.locator('#auditVerdict')).toContainText('Passed');
+  await page.click('#simLeak'); await page.click('#trace');
+  await expect(page.locator('.trace-big')).toContainText(/Centre [1-4]/);
+  await page.locator('#versions article button', { hasText: 'Seal this version' }).first().click();
+  await expect(page.locator('#view-seal')).toBeVisible();
+  await expect(page.locator('#fileInfo')).toContainText('centre 1.txt');
+});

@@ -3,7 +3,7 @@ import { $, api, config, el, toast, utcText, istText, localText, countdown, byte
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, newHolderKey, qrSvg, MAX_FILE_BYTES } from '/assets/sealed.js';
 
 // ---------- navigation ----------
-const VIEWS = { overview: 'COMMAND CENTER', seal: 'SEAL A FILE', seals: 'MY SEALS', visual: 'VISUAL SHARES' };
+const VIEWS = { overview: 'COMMAND CENTER', seal: 'SEAL A FILE', seals: 'MY SEALS', visual: 'VISUAL SHARES', exam: 'EXAM MODE' };
 function showView(view, focus = false) {
   if (!VIEWS[view]) view = 'overview';
   for (const name of Object.keys(VIEWS)) $('view-' + name).classList.toggle('hidden', name !== view);

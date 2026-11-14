@@ -169,7 +169,7 @@ async function handler(req, res) {
       return send(res, 201, { sealId, ownerToken, createTx: created.txHash, explorer: chain.explorerTx(created.txHash), fundTxs });
     }
 
-    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge))?$/);
+    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge|exam-report))?$/);
     if (m) {
       const [, sealId, action] = m;
       const meta = store.readMeta(sealId);
@@ -185,6 +185,14 @@ async function handler(req, res) {
       }
       if (action === 'log' && req.method === 'GET') return send(res, 200, { log: await chain.getLog(sealId, Number(url.searchParams.get('from') || 0), 100) });
 
+      if (action === 'exam-report' && req.method === 'POST') {
+        // Owner records the SHA-256 of an exam audit or leak-trace report on NEAR.
+        const body = await readJson(req);
+        if (!store.checkToken(meta, body.token)) return send(res, 403, { error: 'Owner token required' });
+        if (!/^[0-9a-f]{64}$/.test(body.reportHash || '') || !['exam_audit', 'leak_report'].includes(body.kind)) return send(res, 400, { error: 'reportHash (SHA-256 hex) and kind exam_audit or leak_report are required' });
+        const r = await chain.recordAlert(sealId, body.reportHash, body.kind);
+        return send(res, 201, { tx: r.txHash, explorer: chain.explorerTx(r.txHash), index: r.value });
+      }
       if (action === 'challenge' && req.method === 'GET') return send(res, 200, challenges.issue(sealId, chain.config.contract));
 
       if (action === 'open' && req.method === 'POST') {

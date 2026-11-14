@@ -235,3 +235,11 @@ button.secondary:hover:not(:disabled), .btn.ghost:hover { border-color: var(--ac
   .open-main { padding: 20px 16px 40px; }
 }
 @media (prefers-reduced-motion: reduce) { .radar .sweep, .noise-share, .revealed { animation: none; transition: none; } }
+
+/* exam mode */
+textarea { resize: vertical; font-size: .8rem; line-height: 1.5; }
+.version-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.version-grid article { background: var(--panel-2); border-radius: 4px; padding: 12px; }
+.version-grid pre { white-space: pre-wrap; font-size: .7rem; max-height: 200px; overflow: auto; margin: 8px 0; color: var(--soft-ink); }
+.trace-big { font: 800 1.6rem var(--mono); color: var(--accent); margin: 4px 0 8px; }
+@media (max-width: 760px) { .workspace-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); } }

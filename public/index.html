@@ -16,6 +16,7 @@
       <button data-view="seal"><span class="nav-number">01</span> Seal a file</button>
       <button data-view="seals"><span class="nav-number">02</span> My seals</button>
       <button data-view="visual"><span class="nav-number">03</span> Visual shares</button>
+      <button data-view="exam"><span class="nav-number">04</span> Exam mode</button>
     </nav>
     <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHAIN: CHECKING</span></p><p>CONTRACT: <span id="sideContract">—</span></p><p>SEALS ON-CHAIN: <span id="sideSeals">—</span></p><p>OPERATOR: <span id="sideOps">—</span></p><a href="/verify">Verify a seal →</a></div>
   </aside>
@@ -91,9 +92,27 @@
       <div id="visualStage" class="visual-stage" aria-live="polite"></div>
     </section>
 
+    <section id="view-exam" class="workspace-view hidden" aria-labelledby="examTitle">
+      <div class="page-title"><p class="eyebrow">Exam mode</p><h1 id="examTitle" tabindex="-1">One paper per centre. Trace any leak.</h1><p>Every centre gets the same questions, options and answers, in a different question order, option order and wording. A leaked copy, even retyped, carries that fingerprint. These three agents are rule-based and run in your browser; no AI service is used.</p></div>
+      <section class="card"><h2>1 · Setter</h2>
+        <label for="examText">Questions: "Q: …" then options "A) …", with * after the correct option; blank line between questions</label>
+        <textarea id="examText" rows="10" spellcheck="false"></textarea>
+        <div class="grid"><div><label for="examTitleIn">Exam name</label><input id="examTitleIn" value="Mock exam" maxlength="80"></div><div><label for="centres">Exam centres</label><input id="centres" type="number" min="2" max="50" value="3"></div></div>
+        <div class="row"><button id="genVersions">Generate versions</button><button id="loadSample" class="secondary" type="button">Load sample paper</button></div>
+        <div id="versions" class="version-grid"></div></section>
+      <section class="card hidden" id="auditCard"><h2>2 · Auditor</h2><p id="auditVerdict"></p><ol id="auditRows" class="activity"></ol></section>
+      <section class="card hidden" id="investCard"><h2>3 · Investigator</h2>
+        <label for="leakText">Paste the leaked text (a retyped or partial copy works)</label><textarea id="leakText" rows="6"></textarea>
+        <div class="row"><button id="trace">Trace the leak</button><button id="simLeak" class="secondary" type="button">Simulate a leak from a random centre</button></div>
+        <div id="traceResult" class="result hidden" aria-live="polite"></div>
+        <div id="anchorBox" class="hidden"><label for="anchorSeal">Record this report's hash on NEAR against one of your seals</label><select id="anchorSeal"></select><button id="anchorReport" class="secondary">Record on NEAR</button><p id="anchorStatus" class="field-note"></p></div>
+      </section>
+    </section>
+
     <footer class="app-footer"><span>Sealed Paper</span><a href="/verify">Verify a seal</a><span>Testnet demo · not legal or exam-board advice</span></footer>
   </main>
 </div>
 <script type="module" src="/app.js"></script>
+<script type="module" src="/exam-ui.js"></script>
 </body>
 </html>
