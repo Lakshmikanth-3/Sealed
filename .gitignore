@@ -1,26 +1,10 @@
 node_modules/
 .env
-data/
-
 .env.*
 !.env.example
-playwright-report/
-test-results/
+data/
+public/assets/
 contract/target/
 contract/build/
-# Relay databases are local state, including when DATA_DIR is outside data/.
-*.sqlite
-*.sqlite-wal
-*.sqlite-shm
-# Consented observations, private quotes and cost worksheets are not source.
-pilot-data/
-validation-data/
-
-# Local implementation ledger
-IMPLEMENTATION-PLAN.md
-
-public/assets/
-
-# Vercel
-.vercel
-.vercel-static/
+playwright-report/
+test-results/

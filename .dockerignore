@@ -5,9 +5,5 @@ node_modules
 data
 test-results
 playwright-report
-pilot-data
-validation-data
 contract/target
 contract/build
-IMPLEMENTATION-PLAN.md
-*.sqlite*
