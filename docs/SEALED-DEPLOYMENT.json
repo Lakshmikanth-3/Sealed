@@ -22,9 +22,14 @@
   "plans": {
     "contract": "plans.sealops.kanth_s.testnet",
     "owner": "kanth_s.testnet",
-    "pricePerMonthNear": "1",
+    "pricePerMonthNear": "10",
     "createTx": "CiFJywZjCvBhmXrgR3mnkEdpaXMZrJatznMMiqJBkHdb",
     "deployTx": "4FcvXCyMX5upAJ3Y4J8UrTKKEUkg7XGnCnqeYV4qeDZC",
-    "deployedAt": "2026-11-14T11:48:42.053Z"
+    "deployedAt": "2026-11-14T11:48:42.053Z",
+    "upgradeTx": "5Y81DR2ywBCWqYPYtPhsbkST6HRHX6iKP2mCRqQ9QXf4",
+    "wasmSha256": "5256ea25f6a53a89fc9891227121179f9cb5818c2b175ec0a947ebfcf26524d7",
+    "upgradedAt": "2026-11-14T19:25:51.613Z",
+    "priceTx": "H4Q74uz4cTL6DJrWzBffpvBTM9aQ1sP96zDdxZuKtWhs",
+    "priceSetAt": "2026-11-14T19:29:55.127Z"
   }
 }
