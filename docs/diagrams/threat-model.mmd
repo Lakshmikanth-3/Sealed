@@ -1,0 +1,25 @@
+flowchart LR
+  subgraph T["Threats"]
+    T1["Early opener"]
+    T2["Non-holder posing as a trusted person"]
+    T3["Account not on the allow-list"]
+    T4["Compromised or curious storage"]
+    T5["Altered ciphertext"]
+    T6["Malicious operator of the release service"]
+  end
+
+  subgraph C["Controls"]
+    C1["NEAR block time in request_open and release_part"]
+    C2["Holder list + SHA-256 part commitments on NEAR"]
+    C3["NEP-413 signed one-time challenge + on-chain key check"]
+    C4["AES-256-GCM: storage only sees ciphertext"]
+    C5["SHA-256 on NEAR + per-chunk GCM authentication"]
+    C6["Public, append-only contract log of every attempt"]
+  end
+
+  T1 --> C1 --> C6
+  T2 --> C2 --> C6
+  T3 --> C3
+  T4 --> C4
+  T5 --> C5
+  T6 -.->|"not fully prevented: holds escrowed keys<br/>and released parts; actions are still logged on NEAR"| C6

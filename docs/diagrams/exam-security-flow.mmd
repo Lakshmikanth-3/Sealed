@@ -1,0 +1,13 @@
+flowchart TD
+  A["Exam authority writes the original paper<br/>Q: and A) format"] --> P["parseExam: questions, choices, marked answer"]
+  P --> B["setVersions: one version per centre<br/>question order, option order, wording"]
+  B --> C["audit: fairness check<br/>same questions, choices and answers"]
+  C --> D["Each centre's version locked with Lock a file<br/>time-only mode, opens at the exam time"]
+  D --> E["create_seal registers the release time on NEAR"]
+  E --> F["Private link sent to each centre"]
+  F --> G["Paper opens at the scheduled time; early attempts refused and logged"]
+  G --> H{"A copy leaks?"}
+  H -->|"retyped or pasted text"| I["investigate: compare order and wording clues"]
+  I --> J["Likely centre with a confidence score<br/>or 'not enough text'"]
+  J --> K["Report downloaded; its SHA-256 can be recorded on NEAR<br/>record_alert kind leak_report"]
+  H -->|"photo of the paper"| X["Not supported: no OCR"]

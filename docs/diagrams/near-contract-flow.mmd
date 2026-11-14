@@ -1,0 +1,33 @@
+sequenceDiagram
+  autonumber
+  participant Owner
+  participant Browser as Owner's browser
+  participant Svc as Release service
+  participant Lock as NEAR lock contract
+  participant Holder as Trusted person
+  participant Recv as Receiver's browser
+
+  Owner->>Browser: choose file, people, K, time
+  Browser->>Browser: encrypt, hash, split and wrap parts
+  Browser->>Svc: ciphertext or Blob URL, hash, settings, wrap key
+  Svc->>Lock: create_seal(seal_id, file_hash, unlock_at_ms, mode, holders, commitments, K, N)
+  Lock-->>Svc: seal stored, log "create"
+
+  Recv->>Svc: open (before the time)
+  Svc->>Lock: request_open(seal_id)
+  Lock-->>Svc: "early" and log "open:early"
+  Svc->>Lock: record_alert(seal_id, alert_hash, "early_open")
+  Svc-->>Owner: alert (email or WhatsApp, if configured)
+  Svc-->>Recv: 423 Locked
+
+  Holder->>Lock: release_part(seal_id, commitment) signed by the holder
+  Lock-->>Holder: "released" (or early / not_holder / bad_commitment / already_released)
+  Holder->>Svc: wrapped part
+  Svc->>Lock: get_seal (view): holder released? commitment matches?
+  Svc->>Svc: unwrap and store the part
+
+  Recv->>Svc: open (after the time)
+  Svc->>Lock: request_open(seal_id)
+  Lock-->>Svc: "open" once time passed and K parts are released
+  Svc-->>Recv: released parts
+  Recv->>Recv: combine parts, SHA-256 check against chain hash, AES-GCM decrypt

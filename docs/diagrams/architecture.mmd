@@ -1,0 +1,36 @@
+flowchart LR
+  subgraph OWNER["Owner's browser (plaintext lives only here)"]
+    F["File selected"] --> ENC["AES-256-GCM encrypt<br/>1 MB chunks, SEALPAP1 container"]
+    ENC --> FP["SHA-256 of the encrypted container"]
+    ENC --> SS["Shamir split of the file key<br/>(split mode, K of N)"]
+    SS --> WR["Each part wrapped with a per-file wrap key<br/>AES-GCM, bound to the holder account"]
+  end
+
+  subgraph OFF["Off-chain services"]
+    API["Node.js release service<br/>server/index.js"]
+    BLOB[("Vercel Blob<br/>ciphertext")]
+    KV[("Upstash Redis<br/>seal metadata, escrowed keys,<br/>released parts, alerts, chat")]
+  end
+
+  subgraph CHAIN["NEAR testnet (public)"]
+    LOCK["Lock contract<br/>sealed.kanth_s.testnet"]
+    PLANS["Plans contract<br/>plans.sealops.kanth_s.testnet"]
+  end
+
+  subgraph RECV["Receiver and trusted people"]
+    HP["Trusted person page /h/:id<br/>own wallet or app-created key"]
+    OP["Open page /s/:id<br/>rebuild key, verify, decrypt"]
+  end
+
+  ENC -->|"ciphertext upload"| BLOB
+  FP -->|"hash + settings"| API
+  WR -->|"wrap key, or file key in time-only mode"| API
+  API -->|"escrow (encrypted at rest)"| KV
+  API -->|"create_seal, request_open, record_alert"| LOCK
+  HP -->|"release_part (signed by the holder)"| LOCK
+  HP -->|"wrapped part"| API
+  OP -->|"open request"| API
+  API -->|"key material only after request_open = open"| OP
+  BLOB -->|"ciphertext"| OP
+  OWNER -->|"subscribe (wallet)"| PLANS
+  API -->|"get_plan"| PLANS

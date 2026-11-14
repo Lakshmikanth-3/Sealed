@@ -1,0 +1,20 @@
+flowchart TD
+  A["1. Owner selects a file"] --> B["2. Browser creates a random 32-byte file key"]
+  B --> C["3. AES-256-GCM encrypts metadata + 1 MB chunks<br/>each chunk's AAD binds its index and the chunk count"]
+  C --> D["4. SHA-256 of the whole encrypted container"]
+  C --> M{"Mode"}
+  M -->|"single (time only)"| S1["File key sent to the release service<br/>escrowed AES-256-GCM under SEAL_ESCROW_SECRET"]
+  M -->|"split (K of N)"| S2["5. Shamir split of the file key into N parts"]
+  S2 --> S3["6. Each part wrapped with a random per-file wrap key<br/>commitment = SHA-256 of the wrapped part"]
+  S3 --> S4["Wrap key escrowed by the release service<br/>each wrapped part goes into one person's private link"]
+  D --> U["7. Ciphertext uploaded (Vercel Blob or server disk)"]
+  U --> R["8. create_seal on NEAR: hash, time, mode, holders, commitments, K"]
+  S4 --> H["9. Trusted person calls release_part with the commitment"]
+  H --> V["10. Contract checks holder, time, commitment and records the release"]
+  V --> X["Service unwraps that part only after NEAR shows the release"]
+  R --> O["11. Receiver: request_open returns open"]
+  X --> O
+  S1 --> O
+  O --> K["12. Service returns the file key (single) or the released parts (split)<br/>browser rebuilds the key with Shamir combine"]
+  K --> I["13. Browser compares SHA-256 of the downloaded container with the chain hash"]
+  I --> P["14. AES-GCM decrypts and authenticates every chunk; original file shown"]

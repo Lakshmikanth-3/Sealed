@@ -1,0 +1,11 @@
+flowchart LR
+  O["Owner<br/>PLAINTEXT"] --> E["Browser encryption<br/>PLAINTEXT in, CIPHERTEXT out"]
+  E -->|"CIPHERTEXT"| S[("Blob or server disk<br/>CIPHERTEXT only")]
+  E -->|"hash, settings, wrap key or file key"| R["Release service<br/>no plaintext file; holds escrowed key material"]
+  R -->|"create_seal: hash, time, holders, commitments"| N["NEAR lock contract<br/>no file content, no keys"]
+  P["Trusted people"] -->|"release_part"| N
+  P -->|"wrapped part"| R
+  N -->|"request_open = open"| R
+  R -->|"key or released parts"| V["Receiver's browser"]
+  S -->|"CIPHERTEXT"| V
+  V --> D["Hash check, key rebuild, AES-GCM decrypt<br/>PLAINTEXT only in the receiver's browser"]
