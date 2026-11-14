@@ -2,8 +2,8 @@
 // blocked and recorded on NEAR, then it opens by itself on time. Loops; static when motion is reduced.
 const SCRIPT = [
   { at: 400, clock: '08:30', type: 'typing', side: 'out' },
-  { at: 1400, clock: '08:30', side: 'out', text: 'Here is the paper for Centre B 👇' },
-  { at: 2400, clock: '08:31', side: 'out', file: { name: 'maths-paper.pdf', note: 'Locked until 09:00' } },
+  { at: 1400, clock: '08:30', side: 'out', text: 'Here is the merger agreement for the board 👇' },
+  { at: 2400, clock: '08:31', side: 'out', file: { name: 'merger-agreement.pdf', note: 'Locked until 09:00' } },
   { at: 3800, clock: '08:41', type: 'typing', side: 'in' },
   { at: 4900, clock: '08:42', side: 'in', text: 'Can I open it now?' },
   { at: 5900, clock: '08:42', side: 'sys', tone: 'bad', text: 'Opened at 08:42, too early. Blocked and recorded on NEAR.' },

@@ -13,7 +13,7 @@ startChatAnimation($('chat'));
 startStory(document.querySelector('.story'));
 
 // Rotating word in the headline.
-const words = ['the exam', 'the result', 'the reveal', 'the deadline', 'the launch', 'the right time'];
+const words = ['the signing', 'the tender', 'the launch', 'the hearing', 'the results', 'the right time'];
 let wi = 0;
 if (!reduce) setInterval(() => {
   const r = $('rotator'); r.classList.add('out');
@@ -29,10 +29,10 @@ if (!reduce) setInterval(() => { si = (si + 1) % steps.length; showStep(); }, 40
 
 // Real leak events, shown one at a time.
 const LEAKS = [
-  { q: 'The exam for about 22.79 lakh students was cancelled after the paper leaked on WhatsApp and Telegram.', k: 'NEET-UG 2026, India', src: 'https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/' },
-  { q: 'The exam was cancelled a day later after reports the paper was sold online. Investigators later said they found no proof of a leak.', k: 'UGC-NET 2024, India', src: 'https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116' },
   { q: 'The report could be opened about 40 minutes early just by changing a web address. It was opened over 24,000 times.', k: 'UK Budget report, 2025', src: 'https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs' },
   { q: 'A draft ruling leaked. Nearly 100 staff were questioned and the leaker was never found.', k: 'US Supreme Court, 2022', src: 'https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing' },
+  { q: 'The exam for about 22.79 lakh students was cancelled after the paper leaked on WhatsApp and Telegram.', k: 'NEET-UG 2026, India', src: 'https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/' },
+  { q: 'The exam was cancelled a day later after reports the paper was sold online. Investigators later said they found no proof of a leak.', k: 'UGC-NET 2024, India', src: 'https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116' },
 ];
 let qi = 0;
 const dots = LEAKS.map((_, i) => { const b = el('button', { class: 'q-dot', 'aria-label': `Event ${i + 1}` }); b.onclick = () => { qi = i; showQuote(); }; return b; });
