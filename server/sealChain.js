@@ -27,7 +27,10 @@ export function createSealChain(config = sealChainConfig()) {
   }
   // Serialize writes so the operator key's nonce never races.
   let queue = Promise.resolve();
-  const serial = (fn) => { const run = queue.then(fn, fn); queue = run.catch(() => {}); return run; };
+  // Each write has a deadline so one slow RPC call cannot stall every later write.
+  const WRITE_TIMEOUT_MS = Number(process.env.SEAL_WRITE_TIMEOUT_MS || 30_000);
+  const withDeadline = (fn) => () => Promise.race([fn(), new Promise((_, reject) => setTimeout(() => reject(new Error('NEAR is responding slowly; try again in a moment')), WRITE_TIMEOUT_MS))]);
+  const serial = (fn) => { const run = queue.then(withDeadline(fn), withDeadline(fn)); queue = run.catch(() => {}); return run; };
   async function call(methodName, args) {
     requireWrite();
     return serial(async () => {
@@ -51,14 +54,14 @@ export function createSealChain(config = sealChainConfig()) {
     /** Fund new holder accounts (implicit accounts derived from keys the owner's browser generated). */
     fundAccounts: (accountIds, yocto = NEAR / 20n) => {
       requireWrite();
-      return serial(async () => {
+      return (async () => {
         const hashes = [];
-        for (const id of accountIds) {
-          const res = await account.signAndSendTransaction({ receiverId: id, actions: [actions.transfer(yocto)], waitUntil: 'EXECUTED_OPTIMISTIC', throwOnFailure: true });
+        for (const id of accountIds) { // one queued job (and deadline) per transfer
+          const res = await serial(() => account.signAndSendTransaction({ receiverId: id, actions: [actions.transfer(yocto)], waitUntil: 'EXECUTED_OPTIMISTIC', throwOnFailure: true }));
           hashes.push(res.transaction.hash);
         }
         return hashes;
-      });
+      })();
     },
   };
 }
