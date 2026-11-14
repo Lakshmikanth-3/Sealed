@@ -367,7 +367,7 @@ const ctxA = await newRecorded(640, 720), ctxB = await newRecorded(640, 720);
 const pa = await ctxA.newPage(); const aOff = (Date.now() - vStart) / 1000; watch(pa);
 const pb = await ctxB.newPage(); const bOff = (Date.now() - vStart) / 1000; watch(pb);
 const chatFrom = Date.now() - vStart + 1200;
-await pa.goto(BASE + '/app#message'); await pb.setContent('<body style="margin:0;height:100vh;display:grid;place-items:center;background:#d1d7db;font:20px system-ui;color:#54656f">Bala\'s phone</body>');
+for (let t = 0; t < 3; t++) { try { await pa.goto(BASE + '/app#message', { waitUntil: 'domcontentloaded', timeout: 45000 }); break; } catch (e) { if (t === 2) throw e; } } await pb.setContent('<body style="margin:0;height:100vh;display:grid;place-items:center;background:#d1d7db;font:20px system-ui;color:#54656f">Bala\'s phone</body>');
 capPage = pa;
 await sleep(1500);
 await say('c_intro', 'Flow 3: private live chat', 'Left: Asha (legal team). Right: Bala (client).', { hold: 0 });
