@@ -239,3 +239,363 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 ## AI assistance and licence
 
 Built during the NEAR hackathon window, on 14 November 2026. Earlier commits in this repository belong to an abandoned idea and are not part of this submission. Most code was written with an AI coding assistant (Claude Code) under the author's direction; the author chose the product, the trust model and every deployment. MIT licence. Not legal or exam-board advice.
+
+
+---
+
+<!-- Technical appendix for evaluators. Everything above this line is the original README, unchanged. -->
+
+## Executive Summary for Technical Evaluators
+
+Sealed is a blockchain-enforced, time-locked and threshold-authorized file-sharing system. It encrypts files in the browser, stores ciphertext off-chain, enforces release conditions through NEAR smart contracts, and provides publicly verifiable evidence of access attempts.
+
+**Problem.** A document that must stay closed until a moment (a contract before signing, a government order, quarterly results before an announcement, a tender bid, a will, an exam paper) is normally protected only by whoever holds it. Ordinary file sharing has no enforced opening time, no multi-person approval, and no tamper-proof record of who tried to open the file and when.
+
+**What Sealed does differently.**
+
+| Concern | How Sealed handles it | Where in the code |
+|---|---|---|
+| File contents | AES-256-GCM in the browser, 1 MB chunks, each chunk's additional data binds its index and the chunk count | [`lib/sealcrypto.js`](lib/sealcrypto.js) `encryptFile` / `decryptFile` |
+| Opening time | `request_open` and `release_part` compare NEAR block time with `unlock_at_ms` | [`contract/src/lib.rs`](contract/src/lib.rs) |
+| Multi-person approval | The file key is split with Shamir secret sharing (K of N); each holder's part is committed on NEAR as SHA-256 | `splitKey`, `partCommitment`, contract `create_seal` |
+| Evidence | Every `release_part` and `request_open` call, including refusals, is appended to a per-seal log in contract storage; off-chain alerts are anchored with `record_alert` (SHA-256 of the alert record) | contract `log`, `record_alert`; [`server/alerts.js`](server/alerts.js) |
+| Integrity | SHA-256 of the encrypted container is stored on NEAR at `create_seal`; the opener compares it before decrypting, and AES-GCM authenticates every chunk | [`public/open.js`](public/open.js) |
+
+**What is technically interesting.** The contract never sees file content or keys, yet it decides when key material may be released. Refusals return a status instead of failing, so an early attempt still produces a permanent, public log entry. Key parts are wrapped per holder (AES-GCM with the holder's account as additional data) so that holders alone cannot combine them, and the release service unwraps a part only after the contract has recorded that holder's release.
+
+**What is deployed and tested (NEAR testnet only).** Both contracts are deployed ([`docs/SEALED-DEPLOYMENT.json`](docs/SEALED-DEPLOYMENT.json)); the app is hosted at https://sealedfiles.vercel.app. The tests are listed in [Feature-to-Test Traceability](#feature-to-test-traceability).
+
+**Main limitation, stated plainly.** Sealed is not trustless. The release service (operator) escrows the file key for time-only files and the wrap key for split files, and it receives released parts. A malicious operator plus enough released parts, or the operator alone for a time-only file, could decrypt a file before the intended reader. The contract makes every official attempt public, but it cannot stop an operator acting outside the API. See [Threat Model and Security Boundaries](#threat-model-and-security-boundaries).
+
+## System Architecture
+
+Plaintext exists only in the owner's and the receiver's browsers. The release service and storage handle ciphertext and key material; NEAR holds hashes, times, holder lists, commitments and the attempt log. Source: [`docs/diagrams/architecture.mmd`](docs/diagrams/architecture.mmd).
+
+```mermaid
+flowchart LR
+  subgraph OWNER["Owner's browser (plaintext lives only here)"]
+    F["File selected"] --> ENC["AES-256-GCM encrypt<br/>1 MB chunks, SEALPAP1 container"]
+    ENC --> FP["SHA-256 of the encrypted container"]
+    ENC --> SS["Shamir split of the file key<br/>(split mode, K of N)"]
+    SS --> WR["Each part wrapped with a per-file wrap key<br/>AES-GCM, bound to the holder account"]
+  end
+  subgraph OFF["Off-chain services"]
+    API["Node.js release service<br/>server/index.js"]
+    BLOB[("Vercel Blob<br/>ciphertext")]
+    KV[("Upstash Redis<br/>seal metadata, escrowed keys,<br/>released parts, alerts, chat")]
+  end
+  subgraph CHAIN["NEAR testnet (public)"]
+    LOCK["Lock contract<br/>sealed.kanth_s.testnet"]
+    PLANS["Plans contract<br/>plans.sealops.kanth_s.testnet"]
+  end
+  subgraph RECV["Receiver and trusted people"]
+    HP["Trusted person page /h/:id<br/>own wallet or app-created key"]
+    OP["Open page /s/:id<br/>rebuild key, verify, decrypt"]
+  end
+  ENC -->|"ciphertext upload"| BLOB
+  FP -->|"hash + settings"| API
+  WR -->|"wrap key, or file key in time-only mode"| API
+  API -->|"escrow (encrypted at rest)"| KV
+  API -->|"create_seal, request_open, record_alert"| LOCK
+  HP -->|"release_part (signed by the holder)"| LOCK
+  HP -->|"wrapped part"| API
+  OP -->|"open request"| API
+  API -->|"key material only after request_open = open"| OP
+  BLOB -->|"ciphertext"| OP
+  OWNER -->|"subscribe (wallet)"| PLANS
+  API -->|"get_plan"| PLANS
+```
+
+| Component | Responsibility | Source |
+|---|---|---|
+| Browser crypto | Encrypt, hash, split, wrap, combine, decrypt | [`lib/sealcrypto.js`](lib/sealcrypto.js), bundled by [`scripts/build-client.js`](scripts/build-client.js) |
+| Release service | Validates requests, uploads, escrow, contract calls, alerts, rate limits, Free/Premium limits, chat relay | [`server/index.js`](server/index.js) |
+| NEAR access | Contract calls through a failover RPC provider, serialized writes, stale-nonce retry | [`server/sealChain.js`](server/sealChain.js) |
+| Storage | Disk locally; Vercel Blob (ciphertext) and Upstash Redis (records) when hosted | [`server/sealStore.js`](server/sealStore.js), [`server/kv.js`](server/kv.js) |
+| Account proof | NEP-413 signed one-time challenges, verified against the account's on-chain full-access keys | [`server/nearAuth.js`](server/nearAuth.js) |
+| Lock contract | Seals, holder releases, opening decisions, attempt log | [`contract/src/lib.rs`](contract/src/lib.rs) |
+| Plans contract | Premium subscriptions paid in NEAR | [`contract-plans/src/lib.rs`](contract-plans/src/lib.rs) |
+
+## End-to-End Encryption and Key Lifecycle
+
+Source: [`docs/diagrams/encryption-lifecycle.mmd`](docs/diagrams/encryption-lifecycle.mmd).
+
+```mermaid
+flowchart TD
+  A["1. Owner selects a file"] --> B["2. Browser creates a random 32-byte file key"]
+  B --> C["3. AES-256-GCM encrypts metadata + 1 MB chunks<br/>each chunk's AAD binds its index and the chunk count"]
+  C --> D["4. SHA-256 of the whole encrypted container"]
+  C --> M{"Mode"}
+  M -->|"single (time only)"| S1["File key sent to the release service<br/>escrowed AES-256-GCM under SEAL_ESCROW_SECRET"]
+  M -->|"split (K of N)"| S2["5. Shamir split of the file key into N parts"]
+  S2 --> S3["6. Each part wrapped with a random per-file wrap key<br/>commitment = SHA-256 of the wrapped part"]
+  S3 --> S4["Wrap key escrowed by the release service<br/>each wrapped part goes into one person's private link"]
+  D --> U["7. Ciphertext uploaded (Vercel Blob or server disk)"]
+  U --> R["8. create_seal on NEAR: hash, time, mode, holders, commitments, K"]
+  S4 --> H["9. Trusted person calls release_part with the commitment"]
+  H --> V["10. Contract checks holder, time, commitment and records the release"]
+  V --> X["Service unwraps that part only after NEAR shows the release"]
+  R --> O["11. Receiver: request_open returns open"]
+  X --> O
+  S1 --> O
+  O --> K["12. Service returns the file key (single) or the released parts (split)<br/>browser rebuilds the key with Shamir combine"]
+  K --> I["13. Browser compares SHA-256 of the downloaded container with the chain hash"]
+  I --> P["14. AES-GCM decrypts and authenticates every chunk; original file shown"]
+```
+
+Implementation details verified in the source:
+
+- **Container.** `SEALPAP1` magic, chunk size, chunk count; chunk 0 holds encrypted metadata (name, type, size); each chunk has its own 12-byte IV. Reordering, dropping, truncating or appending chunks fails authentication (`decryptFile`).
+- **Fingerprint.** The value stored on NEAR is the SHA-256 of the encrypted container, not of the plaintext. The server refuses an upload whose bytes do not match the declared hash (`server/index.js`, "File hash does not match").
+- **Escrow.** The escrow key is SHA-256(`sealed-paper-escrow-v1:` + `SEAL_ESCROW_SECRET`); escrowed values are AES-256-GCM boxes (`server/sealStore.js` `sealBox` / `openBox`).
+- **Wrapped parts.** `wrapPart` encrypts a part with AES-GCM using the per-file wrap key and `holder:<account>` as additional data, so a part only unwraps for its own holder. The contract stores SHA-256 of the wrapped string as the commitment.
+- **K = 1.** The Shamir library needs K ≥ 2, so with K = 1 every part is the whole key, tagged `k.` (documented in `splitKey`).
+- **Why plaintext stays in the browser.** The server, Blob storage and Redis only receive ciphertext, so a storage breach or a log leak does not reveal file contents. This does not remove the operator's ability to obtain keys described above.
+
+## NEAR Contract Interaction
+
+Method names are exactly those in [`contract/src/lib.rs`](contract/src/lib.rs). Source: [`docs/diagrams/near-contract-flow.mmd`](docs/diagrams/near-contract-flow.mmd).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Owner
+  participant Browser as Owner's browser
+  participant Svc as Release service
+  participant Lock as NEAR lock contract
+  participant Holder as Trusted person
+  participant Recv as Receiver's browser
+  Owner->>Browser: choose file, people, K, time
+  Browser->>Browser: encrypt, hash, split and wrap parts
+  Browser->>Svc: ciphertext or Blob URL, hash, settings, wrap key
+  Svc->>Lock: create_seal(seal_id, file_hash, unlock_at_ms, mode, holders, commitments, K, N)
+  Lock-->>Svc: seal stored, log "create"
+  Recv->>Svc: open (before the time)
+  Svc->>Lock: request_open(seal_id)
+  Lock-->>Svc: "early" and log "open:early"
+  Svc->>Lock: record_alert(seal_id, alert_hash, "early_open")
+  Svc-->>Owner: alert (email or WhatsApp, if configured)
+  Svc-->>Recv: 423 Locked
+  Holder->>Lock: release_part(seal_id, commitment) signed by the holder
+  Lock-->>Holder: "released" (or early / not_holder / bad_commitment / already_released)
+  Holder->>Svc: wrapped part
+  Svc->>Lock: get_seal (view): holder released? commitment matches?
+  Svc->>Svc: unwrap and store the part
+  Recv->>Svc: open (after the time)
+  Svc->>Lock: request_open(seal_id)
+  Lock-->>Svc: "open" once time passed and K parts are released
+  Svc-->>Recv: released parts
+  Recv->>Recv: combine parts, SHA-256 check against chain hash, AES-GCM decrypt
+```
+
+| Method | Caller | Checks | Result |
+|---|---|---|---|
+| `create_seal` | Operator accounts only | Seal id format and uniqueness, SHA-256 hex hash, future unlock time, `single` (no holders, K = N = 0) or `split` (2 ≤ N ≤ 20, 1 ≤ K ≤ N, unique holders, one commitment each) | Seal stored, log `create` |
+| `release_part` | Any account | Mode is split, caller is a holder, time reached, not already released, commitment matches | `released`, `single_mode`, `not_holder`, `early`, `already_released` or `bad_commitment`; always logged |
+| `request_open` | Any account (the service in practice) | Time reached; in split mode at least K releases | `early`, `awaiting_parts` or `open`; always logged |
+| `record_alert` | Operator accounts only | Seal exists, SHA-256 hex, short lowercase kind | Log entry `alert:<kind>` |
+| `get_seal`, `get_log`, `is_unlocked`, `get_config` | Anyone (view) | | Public state |
+
+The log keeps up to 300 entries per seal (`MAX_LOG_PER_SEAL`); calls keep answering after that, as tested in `log_is_capped_but_calls_still_answer`.
+
+## On-Chain vs Off-Chain Architecture
+
+| Data / operation | Location (verified in code) | Purpose |
+|---|---|---|
+| Original plaintext | Owner's and receiver's browsers only | Creating and reading the file |
+| File ciphertext | Vercel Blob when hosted (browser uploads directly); `data/` on disk locally | Storage that cannot read the file |
+| SHA-256 of the ciphertext | NEAR lock contract (`file_hash`) and seal metadata | Integrity check before decryption |
+| Unlock time | NEAR lock contract (`unlock_at_ms`) | Time enforcement by block time |
+| Holder accounts and part commitments | NEAR lock contract | Who may release, and which part |
+| File key (time-only mode) | Release service, escrowed AES-256-GCM in Redis/disk metadata | Released only after `request_open` = `open` |
+| Wrap key (split mode) | Release service, escrowed the same way | Unwrap a part after its on-chain release |
+| Wrapped parts | Each trusted person's private link (URL fragment, not sent to the server until released) | One part per person |
+| Released parts | Release service metadata, after the on-chain release check | Returned to the opener after `open` |
+| Access attempts | NEAR contract log (`open:*`, `release:*`, `alert:*`) | Public, permanent audit trail |
+| Alerts (time, device, rough location, optional GPS) | Redis/disk; SHA-256 of each alert record on NEAR via `record_alert` | Notifications without publishing personal data |
+| Chat messages and files | Redis (ciphertext) and Blob/disk (encrypted files); key only in the invite link fragment | Two-person private messaging; not on NEAR |
+| Premium subscription | NEAR plans contract (`subscribe`, `get_plan`); 24-hour signed pass in the browser | Paid plan verification |
+
+Sensitive content stays off-chain because contract storage is public and permanent: anything written there is readable by everyone forever. Only hashes, times, account names and statuses are stored on NEAR.
+
+## Shamir Secret Sharing
+
+Example: an agreement is shared with five trusted people, 3 of 5 required.
+
+```mermaid
+flowchart LR
+  K["32-byte file key"] --> S["Shamir split, K = 3, N = 5"]
+  S --> P1["Part 1 → Person 1"]
+  S --> P2["Part 2 → Person 2"]
+  S --> P3["Part 3 → Person 3"]
+  S --> P4["Part 4 → Person 4"]
+  S --> P5["Part 5 → Person 5"]
+  P1 --> R{"Released on NEAR<br/>and commitment matches?"}
+  P3 --> R
+  P5 --> R
+  R -->|"3 valid releases"| C["Combine any 3 parts → file key"]
+  R -->|"2 or fewer"| N["Not enough: key cannot be rebuilt"]
+```
+
+- **K-of-N.** `splitKey(key, n, k)` uses the `shamir-secret-sharing` library (2 ≤ N ≤ 20). Any K parts rebuild the key with `combineKey`; fewer than K do not. The unit test `Shamir (2,2), (3,5), (5,7): any K parts rebuild, K-1 parts cannot decrypt` checks this for three configurations.
+- **Binding parts to people.** Each part is wrapped for one holder account and its SHA-256 commitment is stored on NEAR at the same index as that holder.
+- **Checking commitments.** `release_part` compares the submitted commitment with the stored one (`bad_commitment` otherwise). The service then re-checks the wrapped part against the on-chain commitment before unwrapping it.
+- **Unauthorized release.** A caller who is not a listed holder gets `not_holder`, which is logged permanently on NEAR. Releasing twice gives `already_released`.
+- **Scope.** This describes the implemented design. It is not an independent cryptographic audit or certification.
+
+## Threat Model and Security Boundaries
+
+Source: [`docs/diagrams/threat-model.mmd`](docs/diagrams/threat-model.mmd).
+
+```mermaid
+flowchart LR
+  subgraph T["Threats"]
+    T1["Early opener"]
+    T2["Non-holder posing as a trusted person"]
+    T3["Account not on the allow-list"]
+    T4["Compromised or curious storage"]
+    T5["Altered ciphertext"]
+    T6["Malicious operator of the release service"]
+  end
+  subgraph C["Controls"]
+    C1["NEAR block time in request_open and release_part"]
+    C2["Holder list + SHA-256 part commitments on NEAR"]
+    C3["NEP-413 signed one-time challenge + on-chain key check"]
+    C4["AES-256-GCM: storage only sees ciphertext"]
+    C5["SHA-256 on NEAR + per-chunk GCM authentication"]
+    C6["Public, append-only contract log of every attempt"]
+  end
+  T1 --> C1 --> C6
+  T2 --> C2 --> C6
+  T3 --> C3
+  T4 --> C4
+  T5 --> C5
+  T6 -.->|"not fully prevented: holds escrowed keys<br/>and released parts; actions are still logged on NEAR"| C6
+```
+
+**Assets protected:** original files; file keys; Shamir parts; file integrity; trusted-person authorization; unlock conditions; the record of access attempts.
+
+**Threat actors:** unauthorized viewers; people trying to open early; accounts posing as trusted people; accounts not on an allow-list; compromised storage; altered files; a malicious insider operating the release service.
+
+**Security mechanisms:** AES-256-GCM with per-chunk position binding; SHA-256 file fingerprint on NEAR; Shamir secret sharing; per-holder wrapped parts with SHA-256 commitments; NEAR block-time checks; NEP-413 signatures with one-time challenges and on-chain full-access-key checks; a strict Content-Security-Policy (`server/index.js`); a public contract log; rate limits shared through Redis.
+
+| Guarantee | Provided by | Notes |
+|---|---|---|
+| Storage and the service never receive plaintext files | Browser cryptography | Holds for files and chat; the service does receive key material |
+| No release and no open before the time | NEAR contract | The service relies on the contract answer before returning key material |
+| Only listed holders with the committed part | NEAR contract | Re-checked by the service before unwrapping |
+| A changed file is detected | Browser (SHA-256 vs chain hash, AES-GCM) | The open page receives the chain hash from the service's `/api/seals/:id`; the **Check a file** page ([`public/verify.js`](public/verify.js)) reads NEAR directly over RPC |
+| Every attempt made through the app is public | NEAR contract log | Capped at 300 entries per seal |
+| Only allow-listed accounts can open | Release service (NEP-413) | Not enforced by the contract |
+| Key material is withheld until the contract says `open` | Release service | Trusted behaviour; the operator holds escrowed keys |
+| Chat "sealed until" and "view once" | Release service | Not enforced by NEAR; chat is not written to NEAR |
+| Free/Premium limits | Release service, reading the plans contract | |
+
+**Not claimed.** Sealed is not trustless and not immune to attack. The original README limits remain valid (collusion, escrow for time-only files, the owner keeps the original, photos after opening, app-created holder keys inside links). Verified additions: the operator receives released parts in plaintext form inside the service, so after K releases it can rebuild the key; chat confidentiality depends on the invite link staying private.
+
+## Exam Paper Security Workflow
+
+Question papers are one application among many (contracts, government orders, company results and so on use the same lock). This workflow adds version generation and leak tracing for papers written in the `Q:` / `A)` format. Source: [`docs/diagrams/exam-security-flow.mmd`](docs/diagrams/exam-security-flow.mmd), logic in [`lib/exam.js`](lib/exam.js).
+
+```mermaid
+flowchart TD
+  A["Exam authority writes the original paper<br/>Q: and A) format"] --> P["parseExam: questions, choices, marked answer"]
+  P --> B["setVersions: one version per centre<br/>question order, option order, wording"]
+  B --> C["audit: fairness check<br/>same questions, choices and answers"]
+  C --> D["Each centre's version locked with Lock a file<br/>time-only mode, opens at the exam time"]
+  D --> E["create_seal registers the release time on NEAR"]
+  E --> F["Private link sent to each centre"]
+  F --> G["Paper opens at the scheduled time; early attempts refused and logged"]
+  G --> H{"A copy leaks?"}
+  H -->|"retyped or pasted text"| I["investigate: compare order and wording clues"]
+  I --> J["Likely centre with a confidence score<br/>or 'not enough text'"]
+  J --> K["Report downloaded; its SHA-256 can be recorded on NEAR<br/>record_alert kind leak_report"]
+  H -->|"photo of the paper"| X["Not supported: no OCR"]
+```
+
+| Capability | What it does | What it does not do |
+|---|---|---|
+| Preventing early access | The general time lock and contract log | Does not stop someone who legitimately opened it from copying it |
+| Distinct versions | Different question order, option order and meaning-preserving wording per centre; `audit` confirms equivalence | Does not create different questions |
+| Leak tracing | Compares a retyped or pasted leak with each version; reports the likely centre and confidence, or "not enough text" | No OCR: a photographed paper must be retyped first |
+
+## Technical Innovation and Differentiation
+
+None of the individual building blocks is new: AES-GCM, SHA-256, Shamir secret sharing, NEP-413 and smart contracts are all established. What Sealed contributes is the integration:
+
+- Browser-side encryption keeps plaintext out of storage and the service.
+- A smart contract decides *when* key material may be released, using block time, and holds the holder list and part commitments.
+- Threshold release turns "open after the time" into "open after the time **and** after K named people agree", or (merge-only) "open when K parts are merged".
+- Refusals are recorded instead of reverted, so the evidence of an early attempt is itself on-chain.
+- Integrity is anchored by the on-chain hash and checked before decryption.
+- The same keying model supports secret links (view once, one allowed account), cancel/replace (destroying escrowed material and logging it), a two-person encrypted chat, and centre-specific question papers with leak tracing.
+
+No performance or competitor comparisons are claimed here.
+
+## Feature-to-Test Traceability
+
+Re-run for this documentation update on 15 November 2026: `npm test` (**36 passed**), `npm run contract:test` (**10 passed**), `npm run plans:test` (**8 passed**), `npm run test:browser` (**3 passed**). The live suites (marked "earlier run") were run on 14 November 2026 against NEAR testnet; they spend testnet NEAR and were not repeated here.
+
+| Feature | Source | Test command | Verified result | What it proves | What it does not prove |
+|---|---|---|---|---|---|
+| AES-256-GCM container | `lib/sealcrypto.js` | `npm test` (`tests/sealcrypto.test.js`) | Pass | Round-trips PDF, image, video, text across chunks; files over 100 MB refused | Side-channel or browser-environment security |
+| Tamper detection | `lib/sealcrypto.js`, `public/open.js` | `npm test`; `npm run test:e2e` (earlier run) | Pass | Any altered byte, wrong key, wrong part or chunk reordering fails; e2e shows an altered stored file is refused | Detection when the service lies about the chain hash on the open page (use the Check page) |
+| Shamir K-of-N | `lib/sealcrypto.js` | `npm test` | Pass | (2,2), (3,5), (5,7): any K rebuild, K−1 cannot; K = 1 behaviour | Formal cryptographic properties of the library |
+| Wrapped parts | `lib/sealcrypto.js` | `npm test` | Pass | Holders cannot read them; only the right seal and holder unwrap | Operator honesty |
+| Early refusal, holders, commitments | `contract/src/lib.rs` | `npm run contract:test` | 10 passed | `early_release_refused_and_logged`, `non_holder_wrong_commitment_and_duplicate_refused`, `unlocks_after_time_and_k_parts`, `single_mode_opens_by_time_only`, operator-only rules, bad threshold, past unlock, log cap | Behaviour of the deployed binary beyond these unit tests |
+| Live early refusal and release | contract + service | `npm run test:e2e` (earlier run) | Passed (≈2 min) | On testnet: lock 2-of-3, refuse early, release, open, auto-open a time lock, detect tampering | Behaviour under heavy load |
+| Allow-list, own-account holder, cancel, Premium | `server/index.js`, `server/nearAuth.js`, `server/plans.js` | `npm run test:access` (earlier run) | 22 / 22 | Forged keys and unlisted accounts refused and alerted; cancel recorded and enforced; Free limit; real `subscribe` payment unlocks Premium | Wallet UX in every wallet |
+| NEP-413 proofs | `server/nearAuth.js` | `npm test` (`tests/near-auth.test.js`) | Pass | Bad signature, foreign key, function-call key, malformed proof rejected; challenges one-time and expiring | |
+| Alerts | `server/alerts.js` | `npm test` (`tests/alerts.test.js`) | Pass | Alert fields, GPS only when shared, escalation after 5 failures, failed on-chain writes recorded | Delivery of email/WhatsApp messages |
+| Shared rate limits, cloud store | `server/kv.js`, `server/sealStore.js` | `npm test` (`tests/kv.test.js`) | Pass | Limits shared across two instances; metadata in Redis, ciphertext read from Blob | |
+| Stale-nonce retry | `server/sealChain.js` | `npm test` (`tests/write-failover.test.js`) | Pass | Nonce errors are passed through so near-api-js retries | Every RPC failure mode |
+| Premium plans contract | `contract-plans/src/lib.rs` | `npm run plans:test` | 8 passed | Exact payment, stacking renewals, expiry, wrong deposit refused, admin rules (the 8th test covers a change not yet deployed) | The deployed version includes that change (it does not yet) |
+| Premium limits and pass | `server/plans.js` | `npm test` (`tests/plans.test.js`) | Pass | Limits from configuration, unforgeable 24-hour pass, 60-second cache, daily Free count | |
+| Two-person chat | `server/chat.js`, `public/chat-ui.js` | `npm test` (`tests/chat.test.js`); `npm run test:chat` (earlier run) | Pass; 17 / 17 on the hosted site | Two members only, timed messages withheld, view-once deleted, receipts; files decrypt byte-for-byte | That a leaked invite link cannot be misused |
+| Exam versions and tracing | `lib/exam.js` | `npm test` (`tests/exam.test.js`) | Pass | Distinct but equivalent versions; a retyped partial leak traced; at least 18 of 20 leaked copies traced | OCR, or accuracy on very short leaks |
+| Pages, headers, safe refusals | `public/*`, `server/index.js` | `npm run test:browser` | 3 passed | Pages load with CSP; unknown seals refused; exam flow in a browser | Every browser and device |
+| Proof page | `public/proof.js` | Manual + live suites (earlier run) | Lists real transactions | Entries link to the NEAR explorer | Completeness of the activity list (it shows recent app activity) |
+
+## Judge's Quick Evaluation Guide
+
+Everything runs on **NEAR testnet**; no mainnet funds are involved.
+
+1. **Live app:** https://sealedfiles.vercel.app
+2. **Repository:** https://github.com/Lakshmikanth-3/Sealed
+3. **Proof page:** https://sealedfiles.vercel.app/proof
+4. **Lock contract:** https://testnet.nearblocks.io/address/sealed.kanth_s.testnet
+5. **Plans contract:** https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet
+6. **Demo video:** not published at a public URL yet. It can be regenerated with `npm run demo:video` (needs Windows and ffmpeg).
+7. **Create a test lock:** open the app → **Lock a file** → choose any small file → **One person** → **On a date and time** → pick a time 2–3 minutes ahead → **Lock my file**. The summary links to the `create_seal` transaction.
+8. **Reproduce an early refusal:** open the share link before the time and press **Open file**. The page shows **Still locked** with a link to the `request_open` transaction whose result is `"early"`.
+9. **Inspect the transaction:** on the explorer, open the transaction and check the method (`create_seal` / `request_open`) and the returned value. The contract log is readable with `get_log` (view call).
+10. **Verify the fingerprint:** open **Check a file** (https://sealedfiles.vercel.app/verify), paste the link and optionally a downloaded locked copy. The page reads `get_seal` from NEAR directly and compares SHA-256 values. Note that the fingerprint is of the encrypted container.
+
+Free use allows 5 locks per day per visitor.
+
+## Additional Technical References
+
+| Document | Contents |
+|---|---|
+| [`docs/PROJECT-REPORT.md`](docs/PROJECT-REPORT.md) | Full project report |
+| [`docs/README-AUDIT.md`](docs/README-AUDIT.md) | Audit of the original README claims, including inconsistencies |
+| [`docs/README-ENHANCEMENT-REPORT.md`](docs/README-ENHANCEMENT-REPORT.md) | What this appendix added and how it was checked |
+| [`docs/SEALED-DEPLOYMENT.json`](docs/SEALED-DEPLOYMENT.json) | Deployment and upgrade transactions |
+| [`docs/diagrams/`](docs/diagrams/) | Mermaid sources: architecture, encryption lifecycle, contract flow, threat model, exam workflow, data flow |
+| [`PRD-Sealed-Paper-v2-TimeLock.md`](PRD-Sealed-Paper-v2-TimeLock.md) | Product requirements |
+
+Data flow (plaintext vs ciphertext). Source: [`docs/diagrams/data-flow.mmd`](docs/diagrams/data-flow.mmd).
+
+```mermaid
+flowchart LR
+  O["Owner<br/>PLAINTEXT"] --> E["Browser encryption<br/>PLAINTEXT in, CIPHERTEXT out"]
+  E -->|"CIPHERTEXT"| S[("Blob or server disk<br/>CIPHERTEXT only")]
+  E -->|"hash, settings, wrap key or file key"| R["Release service<br/>no plaintext file; holds escrowed key material"]
+  R -->|"create_seal: hash, time, holders, commitments"| N["NEAR lock contract<br/>no file content, no keys"]
+  P["Trusted people"] -->|"release_part"| N
+  P -->|"wrapped part"| R
+  N -->|"request_open = open"| R
+  R -->|"key or released parts"| V["Receiver's browser"]
+  S -->|"CIPHERTEXT"| V
+  V --> D["Hash check, key rebuild, AES-GCM decrypt<br/>PLAINTEXT only in the receiver's browser"]
+```
