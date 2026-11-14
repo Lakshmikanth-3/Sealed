@@ -16,7 +16,7 @@
       <button data-view="seal"><span class="nav-number">1</span> Lock a file</button>
       <button data-view="seals"><span class="nav-number">2</span> My locked files</button>
       <button data-view="exam"><span class="nav-number">3</span> Exam papers</button>
-      <button data-view="message"><span class="nav-number">4</span> Secret messages</button>
+      <button data-view="message"><span class="nav-number">4</span> Live chat</button>
       <button data-view="plans"><span class="nav-number">5</span> Plans</button>
     </nav>
     <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHECKING…</span></p><p>Files locked so far: <span id="sideSeals">—</span></p>
@@ -111,8 +111,15 @@
     </section>
 
     <section id="view-message" class="workspace-view hidden" aria-labelledby="msgTitle">
-      <div class="page-title"><p class="eyebrow">Secret messages</p><h1 id="msgTitle" tabindex="-1">Send a private message or photo.</h1><p>It is scrambled on your device. Only the link can open it, at the time you choose. Choose "view once" and it is destroyed after it is read.</p></div>
+      <div class="page-title"><p class="eyebrow">Live chat</p><h1 id="msgTitle" tabindex="-1">Chat privately with one person.</h1><p>Like WhatsApp, but end-to-end encrypted with a key only you two have. Send messages and photos, set a message to open later, or make it view once.</p></div>
       <div class="msg-layout"><div class="msg-main">
+      <form id="chatNewForm" class="card chat-new">
+        <h2><span class="step">1</span> Start a new chat</h2>
+        <label for="chatName">Your name (they will see it)</label><input id="chatName" maxlength="40" required placeholder="Your name">
+        <div class="capture-footer"><button id="chatNewBtn" type="submit" class="big-btn">Start chat and get invite link</button><span class="muted">Free. No wallet needed.</span></div>
+      </form>
+      <section class="card"><h2><span class="step">2</span> My chats</h2><ul class="chat-list" id="chatList"></ul></section>
+      <details class="more" id="secretLink"><summary>Or send a one-time secret link (no replies, opens at a time, recorded on NEAR)</summary>
       <form id="msgForm" class="card" novalidate>
         <h2><span class="step">1</span> Write your message</h2>
         <label for="msgText">Message</label><textarea id="msgText" rows="5" maxlength="20000" placeholder="Type your message"></textarea>
@@ -134,12 +141,8 @@
         <div class="capture-footer"><button id="msgBtn" type="submit" class="big-btn">Send secret message</button><span class="muted" id="msgStatus" role="status"></span></div>
       </form>
       <section id="msgSent" class="card hidden" aria-live="polite"><p class="eyebrow">Sent</p><h2>Your secret message is ready</h2><p id="msgSummary"></p><div id="msgShare"></div><div class="row"><button type="button" id="msgAgain" class="secondary">Write another message</button></div></div>
-      <aside class="msg-aside" aria-label="Illustration: how a secret message works"><div class="chat small-chat" id="chat">
-        <div class="chat-head"><span class="chat-av">EB</span><div><b>Exam Board</b><small class="chat-status">online</small></div><span class="chat-clock mono">08:30</span></div>
-        <div class="chat-body"></div>
-        <div class="chat-foot"><span class="dot live"></span> Locked with Sealed · recorded on NEAR</div>
-      </div><p class="muted center">How it looks for the person you send it to.</p></aside></div>
-    </section>
+      </div>
+    </section></details>
     </section>
 
     <section id="view-plans" class="workspace-view hidden" aria-labelledby="plansTitle">

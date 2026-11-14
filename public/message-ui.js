@@ -2,9 +2,27 @@
 // locked on NEAR until a time, optionally view-once and limited to one NEAR account.
 import { $, api, config, el, toast, istText, shareButtons } from '/common.js';
 import { encryptFile, toB64url, randomBytes, qrSvg } from '/assets/sealed.js';
-import { startChatAnimation } from '/chat-anim.js';
+import { newChatKey, chatCrypto, saveChat, listChats } from '/chat-store.js';
 
-if ($('chat')) startChatAnimation($('chat'));
+// ---------- live chat ----------
+function renderChats() {
+  const chats = listChats();
+  $('chatList').replaceChildren(...(chats.length ? chats.map((c) => el('li', {}, el('a', { href: `/c/${c.id}`, class: 'chat-row' },
+    el('span', { class: 'wa-av', text: (c.name || '?').slice(0, 1).toUpperCase() }), el('span', {}, el('b', { text: `Chat started ${new Date(c.createdAt).toLocaleString()}` }), el('small', { text: `You are ${c.name}` })), el('span', { class: 'chat-open', text: 'Open →' }))))
+    : [el('li', { class: 'muted', text: 'No chats yet. Start one above.' })]));
+}
+renderChats();
+$('chatNewForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('chatNewBtn'); btn.disabled = true;
+  try {
+    const name = $('chatName').value.trim(), key = newChatKey(), box = await chatCrypto(key);
+    const r = await api('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: await box.seal({ name }) }) });
+    if (!r.ok) throw new Error(r.body.error || 'Could not start the chat');
+    saveChat({ id: r.body.chatId, key, token: r.body.token, memberId: r.body.memberId, name, createdAt: Date.now() });
+    location.href = `/c/${r.body.chatId}#k=${key}`;
+  } catch (err) { toast(err.message, 6000); btn.disabled = false; }
+};
 
 export const MESSAGE_TYPE = 'application/vnd.sealed.message+json';
 const ACCOUNT_RE = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;

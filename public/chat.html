@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#0f5c4d"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+  <title>Sealed Chat</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
+</head>
+<body class="chat-page">
+<div class="wa">
+  <header class="wa-head">
+    <a class="wa-back" href="/app#message" aria-label="Back to Sealed">←</a>
+    <span class="wa-av" id="otherAv">?</span>
+    <div class="wa-who"><b id="otherName">Sealed Chat</b><small id="otherStatus">connecting…</small></div>
+    <span class="wa-e2e" title="End-to-end encrypted">🔒</span>
+  </header>
+
+  <main class="wa-body" id="msgs" aria-live="polite">
+    <p class="wa-note">🔒 Messages are end-to-end encrypted. The key is only in your link, so not even Sealed can read them.</p>
+  </main>
+
+  <section class="wa-invite hidden" id="invite">
+    <b>Invite one person</b>
+    <p>Send them this link. Only the first person who opens it can join. Anyone with the link can read the chat, so share it privately.</p>
+    <div class="wa-link"><code id="inviteLink"></code></div>
+    <div class="row"><button type="button" id="copyLink" class="secondary">Copy link</button><a class="btn" id="waShare" target="_blank" rel="noopener">Share on WhatsApp</a></div>
+  </section>
+
+  <form class="wa-compose" id="compose" autocomplete="off">
+    <div class="wa-opts hidden" id="opts">
+      <span class="mono">Open this message</span>
+      <div class="wa-chips" id="whenChips">
+        <button type="button" data-min="0" class="on">Now</button><button type="button" data-min="1">In 1 min</button><button type="button" data-min="60">In 1 hour</button><button type="button" data-min="tomorrow">Tomorrow 9:00</button><button type="button" data-min="custom">Pick a time</button>
+      </div>
+      <input type="datetime-local" id="whenAt" class="hidden" aria-label="Opening time">
+      <label class="check-row"><input type="checkbox" id="viewOnce"> View once (deleted after they open it)</label>
+    </div>
+    <div class="wa-bar">
+      <button type="button" class="wa-icon" id="toggleOpts" aria-label="Timer and view once" aria-expanded="false">⏱</button>
+      <label class="wa-icon" aria-label="Send a photo">📷<input type="file" id="photo" accept="image/*" hidden></label>
+      <textarea id="text" rows="1" maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
+      <button type="submit" class="wa-send" id="sendBtn" aria-label="Send">➤</button>
+    </div>
+    <p class="wa-pending mono hidden" id="pending"></p>
+  </form>
+</div>
+
+<div class="wa-modal hidden" id="joinBox" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+  <form class="wa-card" id="joinForm">
+    <h1 id="joinTitle">Join this private chat</h1>
+    <p class="muted">Messages are end-to-end encrypted. Only two people can be in this chat.</p>
+    <label for="joinName">Your name</label><input id="joinName" maxlength="40" required placeholder="Your name">
+    <button type="submit" class="big-btn" id="joinBtn">Join chat</button>
+  </form>
+</div>
+<div class="wa-modal hidden" id="viewer" role="dialog" aria-modal="true" aria-label="View once"><div class="wa-viewer"><div id="viewerBody"></div><button type="button" id="viewerClose">Close (it will be gone)</button></div></div>
+<div id="toast" class="toast hidden" role="status"></div>
+<script type="module" src="/chat-ui.js"></script>
+</body>
+</html>

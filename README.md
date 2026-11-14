@@ -12,7 +12,7 @@ Exam papers, results, tenders, wills, embargoed reports: pick a file and the exa
 | **Tracks** | Privacy & Private AI (main) · Real-World Money · Open Innovation |
 | **Tests** | 30 unit · 17 contract (10 + 7) · 3 offline browser · 3 live testnet suites (22 live checks): all passing |
 
-**What you can do:** lock any file until a time · require K of N trusted people · cancel or replace a locked file · send **secret messages** (text, photo or file; view once; open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
+**What you can do:** lock any file until a time · require K of N trusted people · cancel or replace a locked file · **live private chat** between two people, like WhatsApp (end-to-end encrypted; ticks, typing and online status; photos; messages sealed until a time; view once) · send one-time **secret links** (open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
 
 ---
 
@@ -83,7 +83,8 @@ Open **https://sealedfiles.vercel.app**, or run it locally (below).
 | **Proof** (`/proof`) | Every recent transaction with a link to the explorer |
 | **Exam papers** → paste questions → 3 centres → **Make one paper per centre** → paste a leaked copy → **Find which centre** | One distinct paper per centre, a fairness check, and "Centre N, NN% confidence"; the report can be saved on NEAR |
 | **My locked files** → **Replace with a new version** or **Cancel this file** | Cancelling destroys the key (nobody can ever open it) and records it on NEAR; replacing cancels the old one once the new version is locked |
-| **Secret messages** → write a message, add a photo → **View once** → **Send secret message** | A link that opens at the chosen time, shows the message and photo once, then says **Already opened** forever |
+| **Live chat** → your name → **Start chat** → send the invite link → chat; ⏱ seals a message until a time, ① makes it view once | Two-person chat with ✓ / ✓✓ / blue ticks, typing… and online. A sealed message shows 🔒 with a countdown to the other person and opens on time; a view-once message is deleted from the server after one view |
+| **Live chat** → **Or send a one-time secret link** → write a message, add a photo → **View once** → **Send secret message** | A link that opens at the chosen time, shows the message and photo once, then says **Already opened** forever |
 | **Plans** → **Connect my NEAR wallet** → **Upgrade with NEAR** | Your wallet pays the plans contract; one signature turns Premium on (more files, 100 MB, up to 20 people) |
 
 Words in the app: **lock** = encrypt and register the time on NEAR; **trusted people** = holders of one key piece each; **say yes** = release a key piece (only after the time); **public record** = the contract's log.
@@ -166,14 +167,15 @@ Payment is `subscribe(months)` on [`plans.sealops.kanth_s.testnet`](https://test
 | After opening | Nothing stops a photo of the file. |
 | App-created accounts | That trusted person's link holds their key; people using their own NEAR account sign in their wallet instead. |
 | Network | NEAR testnet only; payments are in testnet NEAR. |
-| Secret messages | One-way locked messages via a link, not live two-way chat. "In about 30 seconds" is the soonest, because NEAR needs a future time. |
+| Live chat | Two people per chat. The key is only in the invite link, so anyone given the link before the second person joins could join instead. Updates arrive by polling every 1.5 s (Vercel has no WebSockets). "Sealed until" and view-once in chat are enforced by our server, not by NEAR; chat messages are not written to NEAR. |
+| Secret links | One-way locked messages via a link. "In about 30 seconds" is the soonest, because NEAR needs a future time. |
 | Cancel | Destroys our copy of the key. Someone who already downloaded and opened the file before cancelling still has it. |
 
 ## Tests
 
 | Suite | Command | Result | Covers |
 |---|---|---|---|
-| Unit | `npm test` | **30 passed** | Encryption round-trips (PDF, image, video, text); Shamir 2-of-2 / 3-of-5 / 5-of-7; K−1 pieces fail; tamper, reorder and truncate detection; wrapped pieces; alerts and escalation; escrow; NEP-413 (forged key, function-call key, replay, expiry); shared rate limits across instances; exam tracing (at least 18 of 20) |
+| Unit | `npm test` | **34 passed** | Encryption round-trips (PDF, image, video, text); Shamir 2-of-2 / 3-of-5 / 5-of-7; K−1 pieces fail; tamper, reorder and truncate detection; wrapped pieces; alerts and escalation; escrow; NEP-413 (forged key, function-call key, replay, expiry); shared rate limits across instances; exam tracing (at least 18 of 20) |
 | Contract | `npm run contract:test` | **10 passed** | Early refusal, non-holder, commitments, K-of-N, time-only mode, operator rules, log cap |
 | Plans contract | `npm run plans:test` | **7 passed** | Exact payment extends Premium, renewals stack, expired restarts, wrong deposit refused, owner-only price and withdraw |
 | Browser (offline) | `npm run test:browser` | **3 passed** | Pages and security headers, safe refusals, exam papers |
@@ -197,8 +199,9 @@ server/alerts.js           Alerts: record, fingerprint on-chain, email / WhatsAp
 server/nearAuth.js         NEP-413 proof that a viewer owns a NEAR account
 server/kv.js               Shared state for rate limits and one-time codes
 server/plans.js            Free / Premium limits, Premium pass, get_plan on NEAR
+server/chat.js             Two-person encrypted chat: members, messages, sealed-until, view once, receipts
 client/                    Browser bundles: crypto + QR (sealed.js), Meteor Wallet (wallet.js)
-public/                    Pages: landing, app (lock, my files, exam papers, secret messages, plans), open, trusted person, check, proof
+public/                    Pages: landing, app (lock, my files, exam papers, live chat, plans), chat, open, trusted person, check, proof
 api/index.js               Vercel entry (same handler as local)
 scripts/                   Contract deploy and upgrade, plans deploy, extra operator keys, live testnet checks
 tests/                     Unit tests and Playwright browser suites
@@ -221,9 +224,9 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 
 ## Status
 
-- Live at https://sealedfiles.vercel.app. Locking, sharing, early refusal, automatic opening, cancel, secret messages, Premium and the Proof page all work on the hosted copy.
+- Live at https://sealedfiles.vercel.app. Locking, sharing, early refusal, automatic opening, cancel, live chat, secret links, Premium and the Proof page all work on the hosted copy.
 - Both contracts deployed on NEAR testnet; all unit, contract, browser and live testnet suites pass.
-- Not built: live two-way chat, exam leak tracing from photos (OCR), AI features, mainnet, payment with other tokens.
+- Not built: exam leak tracing from photos (OCR), AI features, mainnet, payment with other tokens.
 
 ## AI assistance and licence
 

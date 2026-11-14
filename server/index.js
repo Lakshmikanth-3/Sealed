@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createSealChain, sealChainConfig } from './sealChain.js';
 import { openSealStore, openCloudStore, escrowKey, sealBox, openBox } from './sealStore.js';
 import { createKv, limited as kvLimited } from './kv.js';
+import { createChat } from './chat.js';
 import { createPlans, planLimits } from './plans.js';
 import { handleUpload } from '@vercel/blob/client';
 import { createAlerts, createGeo, createNotifier } from './alerts.js';
@@ -57,7 +58,7 @@ function readBody(req, max) {
     req.on('error', reject);
   });
 }
-const readJson = async (req) => { try { return JSON.parse((await readBody(req, MAX_JSON)).toString('utf8') || '{}'); } catch (e) { throw e.code ? e : new Error('Invalid JSON'); } };
+const readJson = async (req, max = MAX_JSON) => { try { return JSON.parse((await readBody(req, max)).toString('utf8') || '{}'); } catch (e) { throw e.code ? e : new Error('Invalid JSON'); } };
 function serveStatic(res, rel, as) {
   const base = path.join(root, 'public');
   const file = path.resolve(base, '.' + path.posix.normalize('/' + rel));
@@ -69,6 +70,7 @@ const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
 // ---------- rate limits (shared across instances when Redis is configured) ----------
 const limited = (key, max, windowMs) => kvLimited(kv, key, max, windowMs);
+const chat = createChat({ kv });
 const MAX_UPLOAD = Number(process.env.SEAL_MAX_FILE_MB || 100) * 1024 * 1024;
 
 // ---------- seal validation ----------
@@ -128,6 +130,27 @@ export async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname, ip = clientIp(req), ua = String(req.headers['user-agent'] || '').slice(0, 300);
   try {
+    // Live chat polls often, so it has its own, larger limit.
+    if (p.startsWith('/api/chat')) {
+      if (await limited('chat|' + ip, 400, 60_000)) return send(res, 429, { error: 'Too many requests. Please wait one minute.' });
+      const reply = (r) => (r.error ? send(res, r.code || 400, { error: r.error }) : send(res, 200, r));
+      const token = String(req.headers['x-chat-token'] || '');
+      if (p === '/api/chat' && req.method === 'POST') {
+        if (await limited('chatnew|' + ip, 30, 3600_000)) return send(res, 429, { error: 'Too many new chats this hour' });
+        return reply(await chat.create(await readJson(req)));
+      }
+      const m = p.match(/^\/api\/chat\/([A-Za-z0-9_-]{16})\/(join|messages|state)$/);
+      if (!m) return send(res, 404, { error: 'Not found' });
+      const [, id, action] = m;
+      if (action === 'join' && req.method === 'POST') return reply(await chat.join(id, await readJson(req)));
+      if (action === 'messages' && req.method === 'GET') return reply(await chat.read(id, token, { after: Number(url.searchParams.get('after') ?? -1) }));
+      if (action === 'messages' && req.method === 'POST') {
+        if (await limited(`chatmsg|${id}|${ip}`, 60, 60_000)) return send(res, 429, { error: 'Slow down a little' });
+        return reply(await chat.post(id, token, await readJson(req, 1_500_000)));
+      }
+      if (action === 'state' && req.method === 'POST') return reply(await chat.state(id, token, await readJson(req)));
+      return send(res, 405, { error: 'Method not allowed' });
+    }
     if (p.startsWith('/api/') && await limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Please wait one minute.' });
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Cross-site writes refused' });
@@ -366,6 +389,7 @@ export async function handler(req, res) {
     if (p === '/app') return serveStatic(res, 'index.html');
     if (/^\/s\/[A-Za-z0-9_-]{6,64}$/.test(p)) return serveStatic(res, 'open.html');
     if (/^\/h\/[A-Za-z0-9_-]{6,64}$/.test(p)) return serveStatic(res, 'holder.html');
+    if (/^\/c\/[A-Za-z0-9_-]{16}$/.test(p)) return serveStatic(res, 'chat.html');
     if (p === '/verify') return serveStatic(res, 'verify.html');
     if (p === '/proof') return serveStatic(res, 'proof.html');
     if (p === '/docs-deployment.json') {

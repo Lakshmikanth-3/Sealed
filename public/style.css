@@ -599,3 +599,69 @@ button.danger { color: var(--bad); border-color: #f1c4bf; }
 .small-chat .chat-body { height: 400px; }
 .small-chat { border-color: var(--line); box-shadow: 0 20px 50px #0000001f; }
 @media (max-width: 1100px) { .msg-layout { grid-template-columns: 1fr; } .msg-aside { position: static; max-width: 440px; margin: 0 auto; } }
+
+/* ===================== Live chat (WhatsApp-style) ===================== */
+.chat-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.chat-row { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); background: #fff; text-decoration: none; color: var(--ink); }
+.chat-row:hover { border-color: var(--ink); }
+.chat-row b { display: block; font-weight: 500; } .chat-row small { color: var(--muted); }
+.chat-open { font-size: .85rem; color: var(--soft-ink); }
+.msg-layout { grid-template-columns: minmax(0, 760px); }
+#secretLink .card { margin: 12px 0 0; }
+
+.chat-page { margin: 0; background: #d1d7db; height: 100dvh; overflow: hidden; }
+.wa { max-width: 860px; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; background: #efeae2; box-shadow: 0 0 40px #0002; position: relative; }
+.wa-head { display: flex; align-items: center; gap: 12px; background: #0f5c4d; color: #fff; padding: 10px 14px; flex-shrink: 0; }
+.wa-back { color: #fff; text-decoration: none; font-size: 1.4rem; padding: 4px 8px 4px 0; }
+.wa-av { width: 40px; height: 40px; border-radius: 50%; background: #d9fdd3; color: #0f5c4d; display: grid; place-items: center; font: 600 1rem var(--sans); flex-shrink: 0; }
+.wa-who { min-width: 0; flex: 1; } .wa-who b { display: block; font-weight: 500; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-who small { color: #cfe9e2; font-size: .78rem; } .wa-who small.typing { color: #9ff5c7; font-style: italic; }
+.wa-e2e { opacity: .8; }
+.wa-body { flex: 1; overflow-y: auto; padding: 14px 6% 10px; display: flex; flex-direction: column; gap: 4px;
+  background-image: radial-gradient(#00000012 1px, transparent 1px); background-size: 18px 18px; }
+.wa-note { align-self: center; max-width: 520px; text-align: center; background: #fff3c4; color: #54470c; font-size: .78rem; padding: 6px 12px; border-radius: 8px; margin: 4px 0 10px; }
+.wa-day { align-self: center; background: #fff; color: #54656f; font-size: .74rem; padding: 4px 12px; border-radius: 8px; margin: 10px 0 6px; box-shadow: 0 1px 1px #0000001a; }
+.wa-msg { max-width: min(75%, 520px); padding: 6px 9px 4px; border-radius: 8px; font-size: .95rem; line-height: 1.38; box-shadow: 0 1px 1px #0000001a; position: relative; animation: wa-pop .22s ease-out; overflow-wrap: anywhere; }
+.wa-msg p { margin: 0; white-space: pre-wrap; }
+.wa-msg.out { align-self: flex-end; background: #d9fdd3; border-top-right-radius: 2px; }
+.wa-msg.in { align-self: flex-start; background: #fff; border-top-left-radius: 2px; }
+.wa-msg.locked { background: #1f2c34; color: #e9edef; }
+.wa-msg.locked .wa-meta { color: #8696a0; }
+.wa-msg.gone { color: #667781; font-style: italic; }
+.wa-meta { display: flex; justify-content: flex-end; gap: 4px; font-size: .68rem; color: #667781; margin-top: 2px; }
+.wa-tick { letter-spacing: -3px; padding-right: 3px; } .wa-tick.read { color: #53bdeb; }
+.wa-img { display: block; max-width: 100%; max-height: 340px; border-radius: 6px; margin-bottom: 4px; cursor: zoom-in; }
+.wa-count { display: block; color: #9ff5c7; margin-top: 2px; }
+.wa-unsealed { font-size: .74rem; color: #128c7e; margin-bottom: 2px !important; }
+.wa-once { min-height: 0; background: transparent; color: #027eb5; padding: 4px 0; border-radius: 0; font: 500 .92rem var(--sans); }
+.wa-once:hover:not(:disabled) { background: transparent; text-decoration: underline; }
+@keyframes wa-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } }
+.wa-invite { margin: 0 6% 10px; background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px #0000001a; }
+.wa-invite p { font-size: .85rem; color: #54656f; margin: 6px 0 10px; }
+.wa-link { background: #f0f2f5; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.wa-invite .btn { background: #25d366; color: #fff; } .wa-invite .btn:hover { background: #1ebe5b; }
+.wa-compose { background: #f0f2f5; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+.wa-bar { display: flex; align-items: flex-end; gap: 6px; }
+.wa-bar textarea { flex: 1; margin: 0; border: 0; border-radius: 22px; padding: 11px 16px; font: .98rem/1.35 var(--sans); resize: none; max-height: 140px; background: #fff; }
+.wa-icon { min-height: 0; width: 44px; height: 44px; border-radius: 50%; background: transparent; color: #54656f; display: grid; place-items: center; font-size: 1.25rem; padding: 0; cursor: pointer; margin: 0; }
+.wa-icon:hover:not(:disabled) { background: #e2e5e9; } .wa-icon.on { background: #d9fdd3; }
+.wa-send { min-height: 0; width: 46px; height: 46px; border-radius: 50%; background: #00a884; color: #fff; padding: 0; font-size: 1.1rem; }
+.wa-send:hover:not(:disabled) { background: #029273; }
+.wa-opts { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.wa-opts .mono { font-size: .74rem; color: #54656f; }
+.wa-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.wa-chips button { min-height: 32px; padding: 0 12px; font-size: .82rem; background: #f0f2f5; color: #111; }
+.wa-chips button.on, .wa-chips button.on:hover:not(:disabled) { background: #00a884; color: #fff; }
+.wa-chips button:hover:not(:disabled) { background: #e2e5e9; }
+.wa-opts input[type=datetime-local] { margin: 4px 0 8px; }
+.wa-opts .check-row { margin: 4px 0 0; font-size: .88rem; }
+.wa-pending { margin: 6px 4px 0; font-size: .74rem; color: #128c7e; }
+.wa-modal { position: fixed; inset: 0; background: #0b141acc; display: grid; place-items: center; z-index: 30; padding: 16px; }
+.wa-card { background: #fff; border-radius: 16px; padding: 28px; width: min(420px, 100%); }
+.wa-card h1 { font-size: 1.6rem; margin-bottom: 8px; }
+.wa-card .big-btn { width: 100%; background: #00a884; } .wa-card .big-btn:hover:not(:disabled) { background: #029273; }
+.wa-viewer { background: #111b21; color: #e9edef; border-radius: 16px; padding: 20px; width: min(560px, 100%); display: grid; gap: 14px; }
+.wa-viewer img { max-width: 100%; max-height: 65vh; border-radius: 8px; justify-self: center; }
+.wa-viewer p { white-space: pre-wrap; font-size: 1.05rem; margin: 0; }
+.chat-page .toast { bottom: 90px; }
+@media (max-width: 760px) { .wa-body { padding: 10px 10px; } .wa-msg { max-width: 85%; } .wa-invite { margin: 0 10px 10px; } }

@@ -18,6 +18,7 @@
     "contract:build": "node scripts/contract.js build",
     "contract:deploy": "node --env-file-if-exists=.env scripts/deploy-sealed.js",
     "contract:upgrade": "node --env-file-if-exists=.env scripts/upgrade-sealed.js",
+    "test:chat": "node scripts/chat-smoke.js",
     "test:access": "node --env-file-if-exists=.env scripts/access-smoke.js",
     "plans:test": "cd contract-plans && cargo test --locked",
     "plans:build": "cd contract-plans && cargo near build non-reproducible-wasm --no-abi --locked --out-dir build",
