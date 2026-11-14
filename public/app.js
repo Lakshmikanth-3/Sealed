@@ -155,7 +155,7 @@ $('sealForm').onsubmit = async (e) => {
     const { sealed, key, hash } = await encryptFile(new Uint8Array(await f.arrayBuffer()), { name: f.name, type: f.type });
     const viewers = viewerList();
     for (const id of viewers) { const d = describe(await lookup(id)); if (!d.ok) throw new Error(`Who can open it: ${d.text.replace(/^✕ /, '')}`); }
-    const meta = { label, unlockAtMs, mode, fileHash: hash, viewers, owner: { email: $('ownerEmail').value, phone: $('ownerPhone').value } };
+    const meta = { label, unlockAtMs, mode, unlockBy: unlock, fileHash: hash, viewers, owner: { email: $('ownerEmail').value, phone: $('ownerPhone').value } };
     let holderSecrets = [];
     if (mode === 'single') meta.fileKey = toB64url(key);
     else {
@@ -231,7 +231,9 @@ function showSealed(seal, holders) {
 // ---------- my seals ----------
 async function renderSeals() {
   const list = mine();
-  if (!list.length) return $('sealCards').replaceChildren(el('p', { class: 'muted', text: 'You have not locked any files yet.' }));
+  if (!list.length) return $('sealCards').replaceChildren(el('div', { class: 'card empty' }, el('h2', { text: 'No locked files yet' }),
+    el('p', { class: 'muted', text: 'Files you lock on this device show up here with their countdown, share buttons and alerts.' }),
+    el('a', { class: 'btn big-btn', href: '#seal', text: '＋ Lock your first file' })));
   $('sealCards').replaceChildren(...list.map((seal) => {
     const card = el('section', { class: 'card seal-card', 'data-id': seal.sealId },
       el('div', { class: 'day-head' }, el('h2', { text: seal.label }), el('span', { class: 'badge', 'data-badge': '' }, '…')),
