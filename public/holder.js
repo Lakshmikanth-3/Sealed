@@ -29,6 +29,7 @@ async function load() {
   }
   $('title').textContent = seal.label; $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} are 1 of ${seal.n} trusted people · ${seal.k} must say yes`;
   $('until').textContent = seal.unlockBy === 'merge' ? `No time limit. It opens when ${seal.k} of ${seal.n} parts are merged.` : `You can say yes from ${istText(seal.unlockAtMs)}`;
+  if (seal.unlockBy === 'merge') $('howTo').replaceChildren('You hold one part of the key to this file. One part alone cannot open it. There is no time limit: tap ', el('b', { text: 'Merge my part' }), ` to add your part. The file opens when ${seal.k} of ${seal.n} parts are merged.`);
   if (seal.unlockBy === 'merge') $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} hold part of the key · ${seal.k} of ${seal.n} parts must be merged`;
   $('account').textContent = secret.s ? '' : `Your NEAR account: ${secret.a}`;
   if (!secret.s) { $('walletBox').classList.remove('hidden'); $('ownAccount').textContent = secret.a; void refreshWallet(); }
