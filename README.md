@@ -1,63 +1,72 @@
 # Sealed Paper
 
-**Files nobody can open before the second you choose.**
+**Lock a file so nobody can open it before the time you choose. Not even you.**
 
-Seal any file (exam paper, tender, results, will, video) until an exact date and time. Optionally split its key across 2 to 20 holders, of whom K must release their parts. A NEAR testnet contract refuses every early release or open, writes every attempt to a public log, and the owner gets an alert with the time, device and approximate location.
+Pick a file (an exam paper, results, a tender, a will, a surprise video) and the exact date and time it may open. Before that time, every try to open it is **blocked, recorded in public and reported to you**. For extra safety you can name a few trusted people, and a set number of them must say yes before it opens.
 
-- Contract: [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) ([deploy tx](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC), details in [docs/SEALED-DEPLOYMENT.json](docs/SEALED-DEPLOYMENT.json))
-- Release-service operator: [`sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet)
-- Tracks: **Privacy & Private AI** (primary), Open Innovation
-- Product brief and the real leak events behind it: [PRD-Sealed-Paper-v2-TimeLock.md](PRD-Sealed-Paper-v2-TimeLock.md)
+The rules are enforced by a small program on the NEAR blockchain (test network), not by us, so nobody can quietly change them.
 
 ## Why
 
 Sensitive files keep leaking before their release time, because whoever holds the file can open it:
 
-| Event | What happened |
+| What happened | Source |
 |---|---|
-| NEET-UG 2026, India | Exam for about 22.79 lakh students cancelled after a leaked "guess paper" matched real questions ([source](https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/)) |
-| UGC-NET 2024, India | Exam cancelled after reports the paper was sold on Telegram; the CBI later filed a closure report finding no evidence of a leak ([source](https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116)) |
-| UK Budget report, Nov 2025 | Reachable about 40 minutes early by editing a URL; accessed 24,000+ times before the speech ([source](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs)) |
-| US Supreme Court Dobbs draft, 2022 | Leaked; nearly 100 staff interviewed and the source never identified ([source](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing)) |
+| **NEET-UG 2026, India:** the exam for about 22.79 lakh students was cancelled after the paper leaked on WhatsApp and Telegram | [The South First](https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/) |
+| **UGC-NET 2024, India:** cancelled a day later after reports the paper was sold online; investigators later found no proof of a leak | [Deccan Herald](https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116) |
+| **UK Budget report, 2025:** opened about 40 minutes early by changing a web address, 24,000+ times | [Ross Martin](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs) |
+| **US Supreme Court draft, 2022:** leaked; nearly 100 staff questioned and the leaker never found | [ABA Journal](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing) |
 
-## Try it
+## Try it in 3 minutes
 
-Requires Node 22 or newer.
+Hosted version: not online yet (deployment pending). Run it on your computer:
 
 ```sh
 npm ci
-cp .env.example .env      # then fill SEAL_OPS_PRIVATE_KEY and SEAL_ESCROW_SECRET, or deploy your own (below)
-npm run dev:all           # builds the browser bundle and starts http://localhost:8787
+cp .env.example .env     # fill SEAL_OPS_PRIVATE_KEY and SEAL_ESCROW_SECRET (or deploy your own contract, see below)
+npm run dev:all          # then open http://localhost:8787
 ```
 
-| Do this | See this |
+| Do this | You will see |
 |---|---|
-| Open `/app` → **Seal a file**, choose a PDF, preset **2 of 3**, click **+2 min**, **Seal and lock on NEAR** | Seal created on NEAR (tx link), share buttons, QR code, and 3 private holder links shown once |
-| Open a holder link and click **Release my part** before the time | "Refused: too early". The refusal is on NEAR and the owner gets an alert |
-| Open the share link `/s/<id>` and click **Open file** before the time | "Refused: still locked", logged on-chain, alert created |
-| After the countdown, release from 2 holder links, then **Open file** | The key is rebuilt in the browser; the file's hash is checked against NEAR, then it opens (PDF, image, video, audio or text preview) |
-| Seal a file in **Single lock** mode and leave its share page open | It opens automatically at its time, with no holders |
-| Change any byte of `data/seals/<id>.sealed`, then open | **FILE TAMPERED**, nothing decrypted, alert created |
-| **My seals** | Countdown, release progress, alert feed (with on-chain hash links) and the on-chain access log |
-| `/verify?id=<id>` | Seal record and full access log read directly from NEAR RPC in your browser |
-| Type `kanth.testnet` in a holder's **Own NEAR account** field | The account is looked up on NEAR (✓ balance, full-access keys; ✕ if it does not exist). That holder signs the release with their own Meteor Wallet instead of an app-created account |
-| **Exam mode** → paste your questions (`Q: …`, options `A) …`, `*` after the correct one), choose centres, **Generate versions** | One version per centre (same questions, options and answers; different question order, option order and wording) and an Auditor verdict |
-| Paste a leaked copy → **Trace the leak** | "Centre N, NN% confidence", ranking of centres, downloadable report; **Record on NEAR** writes the report's hash to one of your seals |
-| **Seal this version** on any centre's paper | That centre's paper is loaded into the Seal form, ready to time-lock |
-| List accounts in **Who can open**, e.g. `kanth.testnet, principal.testnet` | Only those accounts can open. On the open page the viewer connects Meteor Wallet and signs a one-time message (NEP-413, no transaction, no gas); anyone else gets "Not allowed" and the owner an alert |
+| Open the site and tap **Lock a file now** | A 3-step page: choose file, choose time, choose who must agree |
+| Choose any PDF, tap **In 2 minutes**, choose **Some trusted people → 2 of 3 people**, tap **Lock my file** | "Done: your file is locked", share buttons (link, WhatsApp, email, calendar, QR code) and one private link per trusted person |
+| Open the share link and tap **Open file** right away | **Still locked**: the try is blocked, recorded in public, and you get an alert |
+| Open one trusted person's link and tap **Say yes** right away | **Too early**: also blocked and recorded |
+| Wait for the countdown, tap **Say yes** on 2 of the 3 links, then **Open file** | The file opens with "✓ Checked: this is the same file that was locked" |
+| Go to **My locked files** | Countdown, who said yes, every alert (time, device, rough location) and the public record of every try |
+| Open **Check a locked file** and paste the share link | The public record read straight from the blockchain, so you don't have to trust us |
+| Go to **Exam papers**, paste questions, choose 3 centres, tap **Make one paper per centre** | One different paper per centre, a fairness check, and **Find which centre** for a pasted leak |
 
-Without a deployed contract and operator key, pages load but sealing is refused with a clear error.
+### Words used in the app
 
-### Deploy your own contract (testnet)
+| In the app | Meaning |
+|---|---|
+| Lock a file | Scramble it on your device and register the opening time on the blockchain |
+| Trusted people | People who each hold one piece of the key |
+| Say yes | A trusted person agrees to open it (only allowed after the time) |
+| Public record | The blockchain log of every try, which nobody can delete or edit |
+| Check a locked file | Read that record yourself |
 
-```sh
-npm run contract:test     # 10 Rust unit tests
-npm run contract:build
-CONTRACT_OWNER=<your>.testnet npm run contract:deploy              # prints the plan
-CONTRACT_OWNER=<your>.testnet npm run contract:deploy -- --broadcast
-```
+## Proof it is live (NEAR test network)
 
-It creates `sealops.<you>` (operator, 3 NEAR) and `sealed.<you>` (contract, 4 NEAR), signing with near CLI's keychain. New keys are generated locally and appended to `.env`, never printed. It also prints explorer links.
+- Program (smart contract): [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet), [deploy transaction](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC); details in [docs/SEALED-DEPLOYMENT.json](docs/SEALED-DEPLOYMENT.json)
+- Service account: [`sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet)
+- Hackathon tracks: **Privacy & Private AI** (main), Open Innovation
+
+## What is guaranteed, and the honest limits
+
+| Guaranteed | Honest limit |
+|---|---|
+| Nobody can open it before the chosen time | If our service **and** enough of your trusted people all work together, they could open it early |
+| Only your trusted people can help, once each | For "just the time" files, our service keeps the key until then |
+| Every try, even blocked ones, is in the public record | The person who locks the file already has the original |
+| A changed file will not open, and you are told | Once it opens, someone can still take a photo of it |
+| Your exact location is only shared if the visitor agrees | Rough location (when turned on) comes from the internet connection and can be wrong |
+
+---
+
+# For developers
 
 ## How it works
 
@@ -159,8 +168,25 @@ npm run test:access    # live testnet, against a running server: account lookup,
                        # allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts)
 npm run test:e2e       # live testnet browser E2E (~3 min): seal PDF 2-of-3 + single text, early release and open refused
                        # with alerts, release after unlock, PDF matches original, single opens automatically,
-                       # tampered file → FILE TAMPERED, alerts with location and on-chain hashes, verify page
+                       # tampered file → FILE TAMPERED, alerts and their public records, verify page
 ```
+
+Latest results: 26 unit, 10 contract and 3 offline browser tests pass. The live tests (`test:chain`, `test:access`, `test:e2e`) all passed earlier on 14 November. They are now waiting for the service account `sealops.kanth_s.testnet` to be topped up with test NEAR, because it spent its balance funding test files.
+
+### Deploy your own contract (test network)
+
+```sh
+npm run contract:test     # 10 Rust unit tests
+npm run contract:build
+CONTRACT_OWNER=<your>.testnet npm run contract:deploy              # prints the plan
+CONTRACT_OWNER=<your>.testnet npm run contract:deploy -- --broadcast
+```
+
+This creates `sealops.<you>` (service account, 3 NEAR) and `sealed.<you>` (contract, 4 NEAR), signing with near CLI's keychain. New keys are written to `.env` and never printed. Set `NEAR_RPC_URLS`, `NEAR_EXPLORER_URL`, `SEAL_HOLDER_FUNDING_NEAR` and `SEAL_ESCROW_SECRET` as in `.env.example`.
+
+### Hosting on Vercel
+
+`vercel.json` routes every page through one function, so the security headers apply everywhere. Connect **Vercel Blob** (encrypted files, uploaded straight from the browser) and **Upstash Redis** (records, alerts, rate limits, one-time codes) in the Vercel dashboard, and add the `.env` values as environment variables. Without Blob and Redis connected, the hosted site refuses to lock files instead of losing them.
 
 ## Stack and libraries
 
