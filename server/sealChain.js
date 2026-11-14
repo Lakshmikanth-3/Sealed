@@ -8,7 +8,7 @@ const GAS = 60_000_000_000_000n;
 
 export function sealChainConfig(env = process.env) {
   const network = env.NEAR_NETWORK || 'testnet';
-  if (network !== 'testnet') throw new Error('Sealed Paper runs on testnet only');
+  if (network !== 'testnet') throw new Error('Sealed runs on testnet only');
   // NEAR_RPC_URLS: comma-separated HTTPS endpoints, used in order. No built-in endpoints.
   const rpcUrls = [...new Set(String(env.NEAR_RPC_URLS || '').split(',').map((u) => u.trim()).filter((u) => /^https:\/\/\S+$/.test(u)))];
   if (!rpcUrls.length) throw new Error('Set NEAR_RPC_URLS (comma-separated HTTPS RPC endpoints) in .env');

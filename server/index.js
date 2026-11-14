@@ -1,4 +1,4 @@
-// Sealed Paper release service. It stores encrypted files, logs open attempts on NEAR,
+// Sealed release service. It stores encrypted files, logs open attempts on NEAR,
 // creates alerts, and hands out key material only after the contract says the seal is open:
 //   single mode: the escrowed file key, after request_open returns "open"
 //   split mode:  parts that holders released on-chain and then posted here
@@ -187,7 +187,7 @@ export async function handler(req, res) {
         bytes = Buffer.from(await r.arrayBuffer()); blobUrl = url;
       } else bytes = await readBody(req, MAX_FILE);
       if (bytes.length > MAX_UPLOAD + 2 * 1048576) return send(res, 413, { error: `Files are limited to ${MAX_UPLOAD / 1048576} MB` });
-      if (bytes.length < 16 || bytes.subarray(0, 8).toString() !== 'SEALPAP1') return send(res, 400, { error: 'Body must be a Sealed Paper encrypted file' });
+      if (bytes.length < 16 || bytes.subarray(0, 8).toString() !== 'SEALPAP1') return send(res, 400, { error: 'Body must be a Sealed encrypted file' });
       if (sha256(bytes) !== raw.fileHash) return send(res, 400, { error: 'File hash does not match the uploaded bytes' });
       // Named accounts (holders and viewers) must exist on NEAR testnet.
       for (const id of [...meta.holders.filter((h) => h.own).map((h) => h.account), ...meta.viewers]) {
@@ -328,7 +328,7 @@ if (!ON_VERCEL) {
   const server = http.createServer(handler);
   server.requestTimeout = 300_000; server.headersTimeout = 15_000;
   server.listen(PORT, () => {
-    console.log(`Sealed Paper on http://localhost:${server.address().port}  (app at /app)`);
+    console.log(`Sealed on http://localhost:${server.address().port}  (app at /app)`);
     console.log(`Contract: ${chain.config.contract || 'not configured'} · operator: ${chain.config.ops || 'not configured'}`);
   });
 }

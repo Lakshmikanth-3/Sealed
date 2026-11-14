@@ -8,7 +8,7 @@ const session = async () => (selector ||= await setupWalletSelector({ network: '
 export async function connectedAccount() {
   return (await session()).store.getState().accounts.find((a) => a.active)?.accountId || null;
 }
-/** Sign in, scoped to the Sealed Paper contract's release_part method. */
+/** Sign in, scoped to the Sealed contract's release_part method. */
 export async function connect(contractId) {
   const wallet = await (await session()).wallet('meteor-wallet');
   await wallet.signIn({ contractId, methodNames: ['release_part'] });

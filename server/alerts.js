@@ -116,7 +116,7 @@ export function createAlerts({ store, chain, geo, notify, kv = null, now = () =>
       const where = location.city ? `${location.city}, ${location.region || ''} ${location.country || ''}`.trim() : location.source === 'gps-consented' ? `GPS ${location.lat}, ${location.lon}` : 'unknown';
       const text = [`${record.summary}.`, `Seal: ${meta.label} (${sealId})`, `Time: ${record.atIst} / ${record.at} UTC`,
         `Account: ${account || 'none'}`, `Device: ${record.device.browser} on ${record.device.os}`, `Approximate location: ${where}`].join('\n');
-      const notified = await notify(meta.alertContacts || [], `Sealed Paper alert: ${ALERT_KINDS[kind]}`, text).catch(() => []);
+      const notified = await notify(meta.alertContacts || [], `Sealed alert: ${ALERT_KINDS[kind]}`, text).catch(() => []);
       await store.updateAlert(sealId, record.id, { chain: chainState, notified });
     })();
     if (awaitBackground) await background;

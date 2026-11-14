@@ -23,7 +23,7 @@ export function createChallenges({ kv, ttlMs = 5 * 60_000, now = Date.now }) {
   return {
     async issue(sealId, recipient) {
       const nonce = randomBytes(32).toString('base64');
-      const message = `Open Sealed Paper seal ${sealId}`;
+      const message = `Open Sealed seal ${sealId}`;
       await kv.set(`ch:${nonce}`, { sealId, message, recipient, expires: now() + ttlMs }, Math.ceil(ttlMs / 1000));
       return { nonce, message, recipient };
     },

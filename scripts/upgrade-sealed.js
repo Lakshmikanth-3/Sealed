@@ -1,4 +1,4 @@
-// Redeploy Sealed Paper contract code in place (state is kept; no init call).
+// Redeploy Sealed contract code in place (state is kept; no init call).
 // Only for changes that keep the storage layout. Signs with SEAL_CONTRACT_PRIVATE_KEY.
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';

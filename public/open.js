@@ -139,7 +139,7 @@ $('sealedDoc').onchange = async () => {
   const f = $('sealedDoc').files[0]; if (!f) return;
   try {
     const doc = JSON.parse(await f.text());
-    if (doc.format !== 'sealed-paper/1' || doc.sealId !== sealId) throw new Error('This .sealed file belongs to a different seal');
+    if (!['sealed/1', 'sealed-paper/1'].includes(doc.format) || doc.sealId !== sealId) throw new Error('This .sealed file belongs to a different seal');
     localCopy = Uint8Array.from(atob(doc.encrypted), (c) => c.charCodeAt(0));
     $('docNote').textContent = `Using your copy: ${f.name}. It is still checked before opening.`;
   } catch (e) { toast(e.message); }

@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a"><meta name="description" content="Lock a file so nobody can open it before the time you choose.">
-  <title>Sealed Paper — Lock a file</title>
+  <title>Sealed — Lock a file</title>
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="worker-app">
 <a class="skip-link" href="#workspace">Skip to main content</a>
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="/"><span><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">files that open on time</span></span></a>
+    <a class="brand" href="/"><span><span class="brand-mark">SEALED</span><span class="brand-sub">files that open on time</span></span></a>
     <nav class="workspace-nav" aria-label="Main menu">
       <button data-view="overview" aria-current="page"><span class="nav-number">⌂</span> Home</button>
       <button data-view="seal"><span class="nav-number">1</span> Lock a file</button>
@@ -22,7 +22,7 @@
       <a href="/verify">Check a locked file →</a><br><a href="/proof">Proof on the blockchain →</a></div>
   </aside>
   <main id="workspace" tabindex="-1">
-    <header class="workspace-header"><span class="crumb">SEALED PAPER / <b id="crumb">HOME</b></span><span class="header-right"><span class="last-sync">Updated: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
+    <header class="workspace-header"><span class="crumb">SEALED / <b id="crumb">HOME</b></span><span class="header-right"><span class="last-sync">Updated: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
 
     <section id="view-overview" class="workspace-view" aria-labelledby="overviewTitle">
       <div class="page-title"><p class="eyebrow">Home</p><h1 id="overviewTitle" tabindex="-1">Lock a file. Nobody opens it early.</h1><p>Pick a file and a time. Before that time, every attempt to open it is blocked and recorded in public, and you get an alert.</p></div>
@@ -108,7 +108,7 @@
       </section>
     </section>
 
-    <footer class="app-footer"><span>Sealed Paper</span><a href="/verify">Check a locked file</a><span>Test network · not legal advice</span></footer>
+    <footer class="app-footer"><span>Sealed</span><a href="/verify">Check a locked file</a><span>Test network · not legal advice</span></footer>
   </main>
 </div>
 <script type="module" src="/app.js"></script>

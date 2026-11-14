@@ -1,4 +1,4 @@
-// Shared browser helpers for Sealed Paper pages.
+// Shared browser helpers for Sealed pages.
 export const $ = (id) => document.getElementById(id);
 
 export async function api(path, opts = {}) {
@@ -51,7 +51,7 @@ export const mailtoUrl = (to, subject, body) => `mailto:${encodeURIComponent(to 
 export function icsFile(seal) {
   const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const esc = (s) => String(s).replace(/[\\,;]/g, (c) => '\\' + c).replace(/\n/g, '\\n');
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sealed Paper//EN', 'BEGIN:VEVENT', `UID:${seal.sealId}@sealed-paper`, `DTSTAMP:${stamp(Date.now())}`,
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sealed//EN', 'BEGIN:VEVENT', `UID:${seal.sealId}@sealed-paper`, `DTSTAMP:${stamp(Date.now())}`,
     `DTSTART:${stamp(seal.unlockAtMs)}`, `DTEND:${stamp(seal.unlockAtMs + 15 * 60000)}`, `SUMMARY:${esc('Opens: ' + seal.label)}`,
     `DESCRIPTION:${esc(shareText(seal))}`, `URL:${shareUrl(seal.sealId)}`, 'BEGIN:VALARM', 'TRIGGER:-PT5M', 'ACTION:DISPLAY', 'DESCRIPTION:Sealed file unlocks in 5 minutes', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 }
@@ -66,7 +66,7 @@ export async function copy(text, what = 'Link') {
 export async function sealedDocument(seal) {
   const r = await api(`/api/seals/${seal.sealId}/file`);
   const b64 = btoa(Array.from(new Uint8Array(r.body), (c) => String.fromCharCode(c)).join(''));
-  return JSON.stringify({ format: 'sealed-paper/1', sealId: seal.sealId, origin: location.origin, label: seal.label, unlockAtMs: seal.unlockAtMs, encrypted: b64 });
+  return JSON.stringify({ format: 'sealed/1', sealId: seal.sealId, origin: location.origin, label: seal.label, unlockAtMs: seal.unlockAtMs, encrypted: b64 });
 }
 
 export function shareButtons(seal, { qr } = {}) {

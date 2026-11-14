@@ -1,4 +1,4 @@
-# Sealed Paper
+# Sealed
 
 **Lock a file so nobody can open it before the time you choose. Not even you.**
 

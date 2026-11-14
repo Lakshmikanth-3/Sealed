@@ -1,4 +1,4 @@
-// Browser bundle for Sealed Paper: file encryption, Shamir parts, holder signing, QR codes.
+// Browser bundle for Sealed: file encryption, Shamir parts, holder signing, QR codes.
 import { Account, JsonRpcProvider, FailoverRpcProvider, KeyPair, KeyPairSigner } from 'near-api-js';
 import qrcode from 'qrcode-generator';
 export * from '../lib/sealcrypto.js';

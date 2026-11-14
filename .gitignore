@@ -10,3 +10,5 @@ playwright-report/
 test-results/
 .vercel
 .vercel-static/
+IMPLEMENTATION-PLAN.md
+validation-data/
