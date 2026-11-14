@@ -13,26 +13,26 @@ try {
 } catch { secret = null; }
 
 async function load() {
-  if (!secret) { $('title').textContent = 'This holder link is incomplete'; $('releaseBtn').disabled = true; $('state').textContent = 'Invalid'; return; }
+  if (!secret) { $('title').textContent = 'This link is not complete. Ask the owner to send it again.'; $('releaseBtn').disabled = true; $('state').textContent = 'Broken link'; return; }
   const r = await api(`/api/seals/${sealId}`);
-  if (!r.ok) { $('title').textContent = 'Seal not found'; $('releaseBtn').disabled = true; return; }
+  if (!r.ok) { $('title').textContent = 'We could not find this file.'; $('releaseBtn').disabled = true; return; }
   seal = r.body; skew = seal.now - Date.now();
-  $('title').textContent = seal.label; $('who').textContent = `${secret.l || 'Key holder'} · ${seal.k} of ${seal.n} needed`;
-  $('until').textContent = `Release opens at ${istText(seal.unlockAtMs)} · ${utcText(seal.unlockAtMs)}`;
-  $('account').textContent = secret.s ? `App-created testnet account: ${short(secret.a, 10)}` : `Your NEAR account: ${secret.a}`;
+  $('title').textContent = seal.label; $('who').textContent = `${secret.l ? secret.l + ', you' : 'You'} are 1 of ${seal.n} trusted people · ${seal.k} must say yes`;
+  $('until').textContent = `You can say yes from ${istText(seal.unlockAtMs)}`;
+  $('account').textContent = secret.s ? '' : `Your NEAR account: ${secret.a}`;
   if (!secret.s) { $('walletBox').classList.remove('hidden'); $('ownAccount').textContent = secret.a; void refreshWallet(); }
   render();
 }
 function render() {
   const released = seal.chain?.releasedAccounts || [];
-  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released.length ? ' on' : '') })), el('small', { text: ` ${released.length} of ${seal.k} released` }));
-  if (released.includes(secret.a)) { $('releaseBtn').disabled = true; $('releaseBtn').textContent = 'Part released'; }
+  $('progress').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < released.length ? ' on' : '') })), el('small', { text: ` ${released.length} of ${seal.k} have said yes` }));
+  if (released.includes(secret.a)) { $('releaseBtn').disabled = true; $('releaseBtn').textContent = 'You said yes ✓'; }
 }
 setInterval(() => {
   if (!seal) return;
   const left = seal.unlockAtMs - (Date.now() + skew);
   $('count').textContent = countdown(left);
-  $('state').textContent = left > 0 ? 'Locked' : 'Release open'; $('state').className = 'badge ' + (left > 0 ? 'warn' : 'ok');
+  $('state').textContent = left > 0 ? 'Wait' : 'You can say yes now'; $('state').className = 'badge ' + (left > 0 ? 'warn' : 'ok');
 }, 250);
 setInterval(async () => { if (!seal || document.hidden) return; const r = await api(`/api/seals/${sealId}`); if (r.ok) { seal = r.body; render(); } }, 6000);
 
@@ -44,7 +44,7 @@ async function refreshWallet() {
     const who = await (await wallet()).connectedAccount();
     $('walletState').textContent = who ? (who === secret.a ? `Connected as ${who}` : `Connected as ${who}, not ${secret.a}`) : 'Not connected';
     $('walletState').className = who === secret.a ? 'resolve ok' : 'muted';
-    $('connectBtn').textContent = who && who !== secret.a ? 'Switch account' : 'Connect Meteor Wallet';
+    $('connectBtn').textContent = who && who !== secret.a ? 'Switch account' : 'Connect my wallet';
     return who;
   } catch { $('walletState').textContent = 'Wallet unavailable'; return null; }
 }
@@ -62,25 +62,25 @@ $('releaseBtn').onclick = async () => {
   if (busy || !secret) return; busy = true; $('releaseBtn').disabled = true;
   try {
     const cfg = await config();
-    $('status').textContent = 'Signing release_part on NEAR testnet…';
+    $('status').textContent = 'Recording your yes…';
     const commitment = await sha256Hex(new TextEncoder().encode(secret.w));
     let status, txHash;
     if (secret.s) ({ status, txHash } = await releasePart({ rpcUrls: cfg.rpcUrls, contract: cfg.contract, sealId, account: secret.a, secretKey: secret.s, commitment }));
     else {
       const who = await refreshWallet();
-      if (who !== secret.a) throw new Error(`Connect ${secret.a} in Meteor Wallet first`);
-      $('status').textContent = 'Approve the release in Meteor Wallet…';
+      if (who !== secret.a) throw new Error(`Please connect ${secret.a} in your NEAR wallet app first`);
+      $('status').textContent = 'Please approve in your NEAR wallet app…';
       ({ status, txHash } = await (await wallet()).walletRelease(cfg.contract, sealId, commitment));
     }
-    const tx = el('a', { href: `${EXPLORER}/txns/${txHash}`, target: '_blank', rel: 'noopener' }, 'Transaction on NEAR →');
+    const tx = el('a', { href: `${EXPLORER}/txns/${txHash}`, target: '_blank', rel: 'noopener' }, 'See the public record →');
     if (status === 'early' || status === 'not_holder') {
       await api(`/api/seals/${sealId}/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: status === 'early' ? 'early_release' : 'not_holder', account: secret.a, detail: `release_part returned ${status} in ${txHash}` }) });
-      show('locked', el('h2', { text: status === 'early' ? 'Refused: too early' : 'Refused: not a holder' }),
-        el('p', { text: status === 'early' ? `The contract refused your release because ${istText(seal.unlockAtMs)} has not arrived. The attempt is logged on NEAR and the owner was alerted.` : 'This account is not a holder of this seal.' }), tx);
+      show('locked', el('h2', { text: status === 'early' ? 'Too early' : 'Not on the list' }),
+        el('p', { text: status === 'early' ? `Please wait until ${istText(seal.unlockAtMs)}, then tap the button again. This early try was recorded and the owner was told.` : 'This account is not one of the trusted people for this file.' }), tx);
       $('status').textContent = ''; $('releaseBtn').disabled = status !== 'early'; return;
     }
-    if (status !== 'released' && status !== 'already_released') { show('tampered', el('h2', { text: `Refused: ${status.replace(/_/g, ' ')}` }), tx); $('status').textContent = ''; return; }
-    $('status').textContent = 'Recorded on NEAR. Handing your wrapped part to the release service…';
+    if (status !== 'released' && status !== 'already_released') { show('tampered', el('h2', { text: 'Could not record your yes' }), el('p', { text: `Reason: ${status.replace(/_/g, ' ')}. Ask the owner for a new link.` }), tx); $('status').textContent = ''; return; }
+    $('status').textContent = 'Recorded. Finishing up…';
     let posted;
     for (let i = 0; i < 6; i++) { // final state can lag the optimistic receipt by a block or two
       posted = await api(`/api/seals/${sealId}/parts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account: secret.a, part: secret.w }) });
@@ -88,8 +88,8 @@ $('releaseBtn').onclick = async () => {
       await new Promise((r) => setTimeout(r, 1500));
     }
     if (!posted.ok) throw new Error(posted.body.error || 'Could not hand over the part');
-    show('open', el('h2', { text: 'Your part is released' }), el('p', { text: `${posted.body.released} of ${posted.body.k} needed parts are in. The file opens for viewers once ${posted.body.k} are released.` }), tx);
-    $('status').textContent = ''; $('releaseBtn').textContent = 'Part released';
+    show('open', el('h2', { text: 'Thank you. Your yes is recorded.' }), el('p', { text: `${posted.body.released} of ${posted.body.k} people have said yes. The file opens when ${posted.body.k} have.` }), tx);
+    $('status').textContent = ''; $('releaseBtn').textContent = 'You said yes ✓';
     const r = await api(`/api/seals/${sealId}`); if (r.ok) { seal = r.body; render(); }
   } catch (e) { $('status').textContent = ''; toast(e.message, 6000); $('releaseBtn').disabled = false; }
   finally { busy = false; }

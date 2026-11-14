@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
-  <title>Key holder · Sealed Paper</title>
+  <title>Your key piece · Sealed Paper</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing seal-page">
-<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">key holder</span></a><span id="state" class="badge">Loading</span></header>
+<header class="land-top"><a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">trusted person</span></a><span id="state" class="badge">Loading</span></header>
 <main class="open-main">
-  <p class="eyebrow center" id="who">Key holder</p>
+  <p class="eyebrow center" id="who">Trusted person</p>
   <h1 class="center" id="title">Loading…</h1>
   <div class="panel lock-panel">
     <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
@@ -18,16 +18,16 @@
     <div class="progress center" id="progress"></div>
   </div>
   <div class="panel open-actions">
-    <p>You hold one wrapped key part. You cannot read it, and it is useless alone. At the unlock time, release it so the file can open. Your release is signed with your own NEAR testnet key and recorded publicly.</p>
-    <p class="notice" role="note">Release attempts are logged on NEAR, including early ones. Early attempts alert the owner.</p>
-    <div id="walletBox" class="wallet-box hidden"><p>This part belongs to <b id="ownAccount"></b>. Connect that account in Meteor Wallet to sign the release.</p><div class="row"><button id="connectBtn" class="secondary">Connect Meteor Wallet</button><span id="walletState" class="muted"></span></div></div>
-    <div class="row"><button id="releaseBtn">Release my part</button><a class="btn ghost" id="openLink" href="#">Open page</a></div>
+    <p>You hold one piece of the key to this file. One piece alone cannot open it. When the countdown reaches zero, tap <b>Say yes</b> to help open the file.</p>
+    <p class="notice" role="note">Every tap is recorded in public, even early ones. Tapping too early tells the owner.</p>
+    <div id="walletBox" class="wallet-box hidden"><p>This key piece belongs to <b id="ownAccount"></b>. Connect that account in your NEAR wallet app first.</p><div class="row"><button id="connectBtn" class="secondary">Connect my wallet</button><span id="walletState" class="muted"></span></div></div>
+    <div class="row"><button id="releaseBtn" class="big-btn">Say yes</button><a class="btn ghost" id="openLink" href="#">See the file page</a></div>
     <p id="status" class="muted" role="status"></p>
     <p class="field-note" id="account"></p>
   </div>
   <section id="result" class="result hidden" aria-live="polite"></section>
 </main>
-<footer class="app-footer land-foot"><span>SEALED PAPER</span><span>Keep this link private. It is your key part.</span></footer>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><span>Keep this link private. It is your key piece.</span></footer>
 <script type="module" src="/holder.js"></script>
 </body>
 </html>

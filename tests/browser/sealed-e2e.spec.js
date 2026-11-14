@@ -51,8 +51,8 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   const single = await seal({ name: 'note.txt', mime: 'text/plain', bytes: Buffer.from('Results are embargoed until the bell.\n'), mode: 'single', inSec: 45 });
 
   await page.waitForTimeout(Math.max(0, split.unlockAt - Date.now() + 4000));
-  expect(await release(split.holders[0])).toMatch(/released/i);
-  expect(await release(split.holders[2])).toMatch(/released/i);
+  expect(await release(split.holders[0])).toMatch(/yes is recorded/i);
+  expect(await release(split.holders[2])).toMatch(/yes is recorded/i);
   p = await open(split.sealId, true);
   await expect(p.locator('#result.open')).toContainText(/same file that was locked/i);
   const download = p.waitForEvent('download'); await p.click('#result a[download]');
