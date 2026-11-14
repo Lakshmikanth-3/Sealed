@@ -6,7 +6,9 @@ let secret, seal, skew = 0, busy = false;
 $('openLink').href = `/s/${sealId}`;
 try {
   secret = JSON.parse(new TextDecoder().decode(fromB64url(location.hash.slice(1))));
-  if (!/^[0-9a-f]{64}$/.test(secret.a) || !secret.s?.startsWith('ed25519:') || !secret.w?.startsWith('w.')) throw new Error();
+  const named = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
+  if (!named.test(secret.a || '') || !secret.w?.startsWith('w.') || (secret.s && !secret.s.startsWith('ed25519:'))) throw new Error();
+  if (!secret.s && !secret.o) throw new Error();
 } catch { secret = null; }
 
 async function load() {
@@ -16,7 +18,8 @@ async function load() {
   seal = r.body; skew = seal.now - Date.now();
   $('title').textContent = seal.label; $('who').textContent = `${secret.l || 'Key holder'} · ${seal.k} of ${seal.n} needed`;
   $('until').textContent = `Release opens at ${istText(seal.unlockAtMs)} · ${utcText(seal.unlockAtMs)}`;
-  $('account').textContent = `Your testnet account: ${short(secret.a, 10)}`;
+  $('account').textContent = secret.s ? `App-created testnet account: ${short(secret.a, 10)}` : `Your NEAR account: ${secret.a}`;
+  if (!secret.s) { $('walletBox').classList.remove('hidden'); $('ownAccount').textContent = secret.a; void refreshWallet(); }
   render();
 }
 function render() {
@@ -32,6 +35,27 @@ setInterval(() => {
 }, 250);
 setInterval(async () => { if (!seal || document.hidden) return; const r = await api(`/api/seals/${sealId}`); if (r.ok) { seal = r.body; render(); } }, 6000);
 
+// ---------- own NEAR account: sign with Meteor Wallet ----------
+let walletMod;
+const wallet = async () => (walletMod ||= await import('/assets/wallet.js'));
+async function refreshWallet() {
+  try {
+    const who = await (await wallet()).connectedAccount();
+    $('walletState').textContent = who ? (who === secret.a ? `Connected as ${who}` : `Connected as ${who}, not ${secret.a}`) : 'Not connected';
+    $('walletState').className = who === secret.a ? 'resolve ok' : 'muted';
+    $('connectBtn').textContent = who && who !== secret.a ? 'Switch account' : 'Connect Meteor Wallet';
+    return who;
+  } catch { $('walletState').textContent = 'Wallet unavailable'; return null; }
+}
+$('connectBtn').onclick = async () => {
+  try {
+    const cfg = await config(), w = await wallet();
+    if (await w.connectedAccount()) await w.disconnect();
+    await w.connect(cfg.contract);
+    await refreshWallet();
+  } catch (e) { toast('Wallet: ' + e.message, 6000); }
+};
+
 function show(kind, ...children) { $('result').className = 'result ' + kind; $('result').replaceChildren(...children); }
 $('releaseBtn').onclick = async () => {
   if (busy || !secret) return; busy = true; $('releaseBtn').disabled = true;
@@ -39,7 +63,14 @@ $('releaseBtn').onclick = async () => {
     const cfg = await config();
     $('status').textContent = 'Signing release_part on NEAR testnet…';
     const commitment = await sha256Hex(new TextEncoder().encode(secret.w));
-    const { status, txHash } = await releasePart({ rpcUrls: [cfg.rpc, 'https://rpc.testnet.near.org'], contract: cfg.contract, sealId, account: secret.a, secretKey: secret.s, commitment });
+    let status, txHash;
+    if (secret.s) ({ status, txHash } = await releasePart({ rpcUrls: [cfg.rpc, 'https://rpc.testnet.near.org'], contract: cfg.contract, sealId, account: secret.a, secretKey: secret.s, commitment }));
+    else {
+      const who = await refreshWallet();
+      if (who !== secret.a) throw new Error(`Connect ${secret.a} in Meteor Wallet first`);
+      $('status').textContent = 'Approve the release in Meteor Wallet…';
+      ({ status, txHash } = await (await wallet()).walletRelease(cfg.contract, sealId, commitment));
+    }
     const tx = el('a', { href: `${EXPLORER}/txns/${txHash}`, target: '_blank', rel: 'noopener' }, 'Transaction on NEAR →');
     if (status === 'early' || status === 'not_holder') {
       await api(`/api/seals/${sealId}/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: status === 'early' ? 'early_release' : 'not_holder', account: secret.a, detail: `release_part returned ${status} in ${txHash}` }) });

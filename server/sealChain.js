@@ -41,9 +41,39 @@ export function createSealChain(config = sealChainConfig()) {
       return { txHash: res.transaction.hash, value: raw ? JSON.parse(raw) : null };
     });
   }
+  /** RPC query across endpoints. Returns null when NEAR says the account or key does not exist. */
+  async function rawQuery(params) {
+    let last;
+    for (const url of config.rpcUrls) {
+      try {
+        const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({ jsonrpc: '2.0', id: 'q', method: 'query', params }) });
+        const j = await r.json();
+        const cause = j.error?.cause?.name || '';
+        if (/UNKNOWN_ACCOUNT|UNKNOWN_ACCESS_KEY/.test(cause)) return null;
+        if (j.error) throw new Error(j.error.data || j.error.message);
+        if (j.result?.error && /does not exist/.test(j.result.error)) return null;
+        return j.result;
+      } catch (e) { last = e; }
+    }
+    throw last;
+  }
   return {
     config,
     explorerTx: (hash) => `https://testnet.nearblocks.io/txns/${hash}`,
+    /** Resolve a NEAR account: existence, balance and key counts. */
+    async lookupAccount(accountId) {
+      const acct = await rawQuery({ request_type: 'view_account', account_id: accountId, finality: 'final' });
+      if (acct === null) return { accountId, exists: false };
+      const list = (await rawQuery({ request_type: 'view_access_key_list', account_id: accountId, finality: 'final' }))?.keys || [];
+      return { accountId, exists: true, implicit: /^[0-9a-f]{64}$/.test(accountId), balanceNear: Number(BigInt(acct.amount) / 10n ** 20n) / 10000,
+        keys: list.length, fullAccessKeys: list.filter((k) => k.access_key.permission === 'FullAccess').length, hasContract: acct.code_hash !== '11111111111111111111111111111111' };
+    },
+    /** The on-chain access key for (account, public key), or null. */
+    async viewAccessKey(accountId, publicKey) {
+      const k = await rawQuery({ request_type: 'view_access_key', account_id: accountId, public_key: publicKey, finality: 'final' });
+      return k ? { permission: k.permission === 'FullAccess' ? 'FullAccess' : 'FunctionCall' } : null;
+    },
     getConfig: () => view('get_config'),
     getSeal: (sealId) => view('get_seal', { seal_id: sealId }),
     getLog: (sealId, from = 0, limit = 100) => view('get_log', { seal_id: sealId, from, limit }),

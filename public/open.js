@@ -13,7 +13,29 @@ async function load() {
   $('title').textContent = seal.label;
   $('kind').textContent = seal.mode === 'split' ? `Split lock · ${seal.k} of ${seal.n} key holders` : 'Single lock · opens by time';
   $('until').textContent = `Locked until ${istText(seal.unlockAtMs)} · ${utcText(seal.unlockAtMs)}`;
+  if (seal.restricted) { $('accessBox').classList.remove('hidden'); $('viewerCount').textContent = seal.viewerCount; void refreshWallet(); }
   renderProgress(); renderLog();
+}
+
+// ---------- allow-listed seals: prove the viewer's NEAR account ----------
+let walletMod;
+const wallet = async () => (walletMod ||= await import('/assets/wallet.js'));
+async function refreshWallet() {
+  try { const who = await (await wallet()).connectedAccount(); $('walletState').textContent = who ? `Connected as ${who}` : 'Not connected'; return who; }
+  catch { $('walletState').textContent = 'Wallet unavailable'; return null; }
+}
+$('connectBtn').onclick = async () => {
+  try { const w = await wallet(); if (await w.connectedAccount()) await w.disconnect(); await w.connect((await api('/api/config')).body.contract); await refreshWallet(); }
+  catch (e) { toast('Wallet: ' + e.message, 6000); }
+};
+async function accountProof() {
+  if (!seal.restricted) return null;
+  if (!(await refreshWallet())) await $('connectBtn').onclick();
+  if (!(await refreshWallet())) throw new Error('Connect your NEAR wallet to prove your account');
+  const c = await api(`/api/seals/${sealId}/challenge`);
+  $('statusLine').textContent = 'Sign the one-time message in Meteor Wallet…';
+  const signed = await (await wallet()).proveAccount(c.body);
+  return { ...signed, nonce: c.body.nonce };
 }
 function renderProgress() {
   if (seal.mode !== 'split') return $('progress').replaceChildren();
@@ -52,7 +74,12 @@ async function openFile(auto = false) {
   if (opening || !seal) return; opening = true; $('openBtn').disabled = true;
   try {
     $('statusLine').textContent = 'Asking the NEAR contract…';
-    const r = await api(`/api/seals/${sealId}/open`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ gps: await gps() }) });
+    const proof = await accountProof();
+    const r = await api(`/api/seals/${sealId}/open`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ gps: await gps(), proof }) });
+    if (r.status === 401 || r.status === 403) {
+      showResult('tampered', el('h2', { text: r.status === 403 ? 'Not allowed' : 'Account not verified' }), el('p', { text: r.body.message || r.body.error }));
+      $('statusLine').textContent = ''; return renderLog();
+    }
     const txLink = r.body.tx ? el('a', { href: `${EXPLORER}/txns/${r.body.tx}`, target: '_blank', rel: 'noopener' }, 'See the refusal on NEAR →') : null;
     if (r.status === 423) {
       showResult('locked', el('h2', { text: 'Refused: still locked' }), el('p', { text: `The contract refused this request because the unlock time (${istText(seal.unlockAtMs)}) has not arrived. The attempt was logged and the owner was alerted.` }), txLink);

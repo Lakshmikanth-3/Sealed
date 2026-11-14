@@ -20,6 +20,7 @@
   </div>
   <p class="notice" role="note"><b>Notice:</b> attempts to open this file are logged, including approximate location from your IP address, time, device and browser. A hash of each attempt is recorded on NEAR. Exact GPS location is shared only if you tick the box below.</p>
   <div class="panel open-actions">
+    <div id="accessBox" class="wallet-box hidden"><p><b>Restricted file.</b> Only <span id="viewerCount"></span> specific NEAR account(s) can open it. You will sign a one-time message in Meteor Wallet to prove your account; this is not a transaction and costs nothing.</p><div class="row"><button id="connectBtn" class="secondary">Connect Meteor Wallet</button><span id="walletState" class="muted"></span></div></div>
     <label class="check-row"><input type="checkbox" id="shareGps"> Share my exact location with this attempt (optional)</label>
     <div class="row"><button id="openBtn">Open file</button><a class="btn ghost" id="verifyLink" href="#">Verify on NEAR</a></div>
     <details><summary>Have a downloaded .sealed file?</summary><label for="sealedDoc">Use the encrypted copy from a .sealed file</label><input id="sealedDoc" type="file" accept=".sealed,application/json"><p class="field-note" id="docNote">The file stays locked until the same on-chain release; it only replaces the download.</p></details>

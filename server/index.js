@@ -11,9 +11,10 @@ import { createSealChain, sealChainConfig } from './sealChain.js';
 import { openSealStore, escrowKey, sealBox, openBox } from './sealStore.js';
 import { createAlerts, createGeo, createNotifier } from './alerts.js';
 import { unwrapPart } from '../lib/sealcrypto.js';
+import { createChallenges, verifyProof, validAccountId } from './nearAuth.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const dataDir = path.resolve(process.env.DATA_DIR || (process.env.VERCEL ? '/tmp/sealed-paper' : path.join(root, 'data')));
+const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, 'data'));
 fs.mkdirSync(dataDir, { recursive: true });
 
 const PORT = Number(process.env.PORT || 8787);
@@ -22,12 +23,14 @@ const MAX_JSON = 64 * 1024;
 const chain = createSealChain(sealChainConfig());
 const store = openSealStore(dataDir);
 const alerts = createAlerts({ store, chain, geo: createGeo(), notify: createNotifier() });
+const challenges = createChallenges();
 let escrow = null; try { escrow = escrowKey(); } catch { /* single mode disabled until configured */ }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json',
   '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.ics': 'text/calendar' };
 const RPC_HOSTS = 'https://test.rpc.fastnear.com https://rpc.testnet.near.org';
-const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; connect-src 'self' ${RPC_HOSTS}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`;
+const WALLET_HOSTS = 'https://wallet.meteorwallet.app https://testnet.meteorwallet.app';
+const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; connect-src 'self' ${RPC_HOSTS} ${WALLET_HOSTS}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' ${WALLET_HOSTS}`;
 
 function send(res, code, body, type = 'application/json', extra = {}) {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
@@ -49,7 +52,7 @@ function serveStatic(res, rel, as) {
   if (!file.startsWith(base + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, { error: 'not found' });
   send(res, 200, fs.readFileSync(file), as || TYPES[path.extname(file)] || 'application/octet-stream');
 }
-const clientIp = (req) => (process.env.VERCEL || process.env.TRUST_PROXY ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.socket.remoteAddress || '';
+const clientIp = (req) => (process.env.TRUST_PROXY ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.socket.remoteAddress || '';
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
 // ---------- rate limits ----------
@@ -61,7 +64,9 @@ function limited(key, max, windowMs) {
 }
 
 // ---------- seal validation ----------
-const ACCOUNT = /^[0-9a-f]{64}$/; // holder accounts are implicit accounts created for this seal
+// Holders are either app-created implicit accounts (64 hex) or the person's own NEAR account (e.g. kanth.testnet).
+const ACCOUNT = { test: (id) => validAccountId(id) };
+const MAX_VIEWERS = 50;
 const HEX64 = /^[0-9a-f]{64}$/;
 function cleanContact(c) {
   const out = {};
@@ -79,9 +84,13 @@ function validateMeta(m) {
   if (!Number.isSafeInteger(unlockAtMs) || unlockAtMs < Date.now() + 20_000) fail('Unlock time must be at least 20 seconds in the future');
   if (unlockAtMs > Date.now() + 366 * 86400_000) fail('Unlock time must be within a year');
   const owner = cleanContact(m.owner || {});
+  // Optional allow-list: only these NEAR accounts may open, after proving ownership with their wallet.
+  const viewers = Array.isArray(m.viewers) ? [...new Set(m.viewers.map((v) => String(v).trim().toLowerCase()).filter(Boolean))] : [];
+  if (viewers.length > MAX_VIEWERS) fail(`At most ${MAX_VIEWERS} viewer accounts`);
+  for (const v of viewers) if (!validAccountId(v)) fail(`"${v}" is not a valid NEAR account`);
   if (m.mode === 'single') {
     if (typeof m.fileKey !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(m.fileKey)) fail('Single mode needs the 32-byte file key');
-    return { label, unlockAtMs, mode: 'single', k: 0, n: 0, holders: [], owner };
+    return { label, unlockAtMs, mode: 'single', k: 0, n: 0, holders: [], owner, viewers };
   }
   if (m.mode !== 'split') fail('Mode must be single or split');
   if (typeof m.wrapKey !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(m.wrapKey)) fail('Split mode needs the 32-byte part wrap key');
@@ -92,24 +101,26 @@ function validateMeta(m) {
   const holders = m.holders.map((h, i) => {
     if (!ACCOUNT.test(h?.account || '')) fail(`Holder ${i + 1}: invalid account`);
     if (!HEX64.test(h?.commitment || '')) fail(`Holder ${i + 1}: invalid commitment`);
-    return { account: h.account, commitment: h.commitment, label: String(h.label || `Holder ${i + 1}`).trim().slice(0, 80), contact: cleanContact(h.contact || {}) };
+    return { account: h.account, own: h.own === true, commitment: h.commitment, label: String(h.label || `Holder ${i + 1}`).trim().slice(0, 80), contact: cleanContact(h.contact || {}) };
   });
   if (new Set(holders.map((h) => h.account)).size !== n) fail('Holder accounts must be unique');
-  return { label, unlockAtMs, mode: 'split', k, n, holders, owner };
+  for (const h of holders) if (!h.own && !/^[0-9a-f]{64}$/.test(h.account)) fail(`${h.account}: app-created holder accounts must be implicit`);
+  return { label, unlockAtMs, mode: 'split', k, n, holders, owner, viewers };
 }
 const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs,
   fileHash: meta.fileHash, size: meta.size, createdAt: meta.createdAt, createTx: meta.createTx, contract: chain.config.contract,
-  holders: meta.holders.map((h) => ({ label: h.label, account: h.account })), releasedParts: Object.keys(meta.parts || {}).length });
+  holders: meta.holders.map((h) => ({ label: h.label, account: h.account, own: Boolean(h.own) })), releasedParts: Object.keys(meta.parts || {}).length,
+  restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0 });
 
 // ---------- request handler ----------
-export async function handler(req, res) {
+async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname, ip = clientIp(req), ua = String(req.headers['user-agent'] || '').slice(0, 300);
   try {
     if (p.startsWith('/api/') && limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Try again in a minute.' });
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Cross-site writes refused' });
-      const proto = (process.env.VERCEL || process.env.TRUST_PROXY) && req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+      const proto = process.env.TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
       if (req.headers.origin && req.headers.origin !== (process.env.PUBLIC_ORIGIN || `${proto}://${req.headers.host}`)) return send(res, 403, { error: 'Unexpected request origin' });
     }
 
@@ -118,6 +129,13 @@ export async function handler(req, res) {
     if (p === '/api/chain') {
       try { return send(res, 200, { ok: true, config: await chain.getConfig(), at: new Date().toISOString() }); }
       catch (e) { return send(res, 503, { ok: false, error: e.message }); }
+    }
+
+    const acct = p.match(/^\/api\/accounts\/([^/]{2,64})$/);
+    if (acct && req.method === 'GET') {
+      const id = decodeURIComponent(acct[1]).toLowerCase();
+      if (!validAccountId(id)) return send(res, 400, { error: 'Not a valid NEAR account id' });
+      return send(res, 200, await chain.lookupAccount(id));
     }
 
     if (p === '/api/seals' && req.method === 'POST') {
@@ -133,20 +151,25 @@ export async function handler(req, res) {
       const bytes = await readBody(req, MAX_FILE);
       if (bytes.length < 16 || bytes.subarray(0, 8).toString() !== 'SEALPAP1') return send(res, 400, { error: 'Body must be a Sealed Paper encrypted file' });
       if (sha256(bytes) !== raw.fileHash) return send(res, 400, { error: 'File hash does not match the uploaded bytes' });
+      // Named accounts (holders and viewers) must exist on NEAR testnet.
+      for (const id of [...meta.holders.filter((h) => h.own).map((h) => h.account), ...meta.viewers]) {
+        const info = await chain.lookupAccount(id);
+        if (!info.exists) return send(res, 400, { error: `NEAR account ${id} does not exist on testnet` });
+      }
       const sealId = store.newId(), ownerToken = store.newToken();
-      const fundTxs = meta.mode === 'split' ? await chain.fundAccounts(meta.holders.map((h) => h.account)) : [];
+      const fundTxs = meta.mode === 'split' ? await chain.fundAccounts(meta.holders.filter((h) => !h.own).map((h) => h.account)) : [];
       const created = await chain.createSeal({ seal_id: sealId, file_hash: raw.fileHash, unlock_at_ms: String(meta.unlockAtMs), mode: meta.mode,
         holders: meta.holders.map((h) => h.account), commitments: meta.holders.map((h) => h.commitment), threshold_k: meta.k, total_n: meta.n, owner: meta.label.slice(0, 120) });
       store.saveFile(sealId, bytes);
       store.saveMeta(sealId, { sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, fileHash: raw.fileHash,
-        size: bytes.length, createdAt: new Date().toISOString(), createTx: created.txHash, fundTxs, holders: meta.holders, owner: meta.owner,
+        size: bytes.length, createdAt: new Date().toISOString(), createTx: created.txHash, fundTxs, holders: meta.holders, owner: meta.owner, viewers: meta.viewers,
         ownerTokenHash: store.tokenHash(ownerToken), escrowedKey: meta.mode === 'single' ? sealBox(escrow, Buffer.from(raw.fileKey, 'base64url')) : null,
         escrowedWrapKey: meta.mode === 'split' ? sealBox(escrow, Buffer.from(raw.wrapKey, 'base64url')) : null,
         alertContacts: [meta.owner, ...meta.holders.map((h) => h.contact)].filter((c) => c.email || c.phone), parts: {} });
       return send(res, 201, { sealId, ownerToken, createTx: created.txHash, explorer: chain.explorerTx(created.txHash), fundTxs });
     }
 
-    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts))?$/);
+    const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge))?$/);
     if (m) {
       const [, sealId, action] = m;
       const meta = store.readMeta(sealId);
@@ -162,19 +185,33 @@ export async function handler(req, res) {
       }
       if (action === 'log' && req.method === 'GET') return send(res, 200, { log: await chain.getLog(sealId, Number(url.searchParams.get('from') || 0), 100) });
 
+      if (action === 'challenge' && req.method === 'GET') return send(res, 200, challenges.issue(sealId, chain.config.contract));
+
       if (action === 'open' && req.method === 'POST') {
         const body = await readJson(req);
         if (limited(`open|${sealId}|${ip}`, 20, 60_000)) return send(res, 429, { error: 'Too many open attempts' });
+        let viewer = null;
+        if (meta.viewers?.length) {
+          // Allow-listed seal: the viewer proves their NEAR account with a wallet-signed, one-time challenge.
+          const challenge = challenges.take(String(body.proof?.nonce || ''), sealId);
+          const proof = challenge ? await verifyProof(body.proof, challenge, (a, k) => chain.viewAccessKey(a, k)) : { ok: false, reason: 'Missing or expired challenge' };
+          if (!proof.ok) return send(res, 401, { status: 'unverified', error: `Prove your NEAR account to open this file (${proof.reason})` });
+          viewer = proof.accountId;
+          if (!meta.viewers.includes(viewer)) {
+            const alert = await alerts.createAlert({ sealId, kind: 'not_allowed', ip, userAgent: ua, gps: body.gps, account: viewer });
+            return send(res, 403, { status: 'not_allowed', account: viewer, alertId: alert.id, message: `${viewer} is not allowed to open this file. The attempt was logged.` });
+          }
+        }
         const r = await chain.requestOpen(sealId);
         const status = r.value;
         if (status === 'early') {
-          const alert = await alerts.createAlert({ sealId, kind: 'early_open', ip, userAgent: ua, gps: body.gps, account: null });
+          const alert = await alerts.createAlert({ sealId, kind: 'early_open', ip, userAgent: ua, gps: body.gps, account: viewer });
           return send(res, 423, { status, unlockAtMs: meta.unlockAtMs, tx: r.txHash, alertId: alert.id, message: 'Locked. This attempt was refused by the contract and logged.' });
         }
         if (status === 'awaiting_parts') return send(res, 409, { status, tx: r.txHash, released: Object.keys(meta.parts || {}).length, k: meta.k, message: `Waiting for key holders: ${meta.k} parts are needed.` });
         if (status !== 'open') return send(res, 502, { error: 'Unexpected contract status' });
-        if (meta.mode === 'single') return send(res, 200, { status, tx: r.txHash, mode: 'single', key: openBox(escrow, meta.escrowedKey).toString('base64url') });
-        return send(res, 200, { status, tx: r.txHash, mode: 'split', parts: Object.values(meta.parts || {}) });
+        if (meta.mode === 'single') return send(res, 200, { status, tx: r.txHash, mode: 'single', viewer, key: openBox(escrow, meta.escrowedKey).toString('base64url') });
+        return send(res, 200, { status, tx: r.txHash, mode: 'split', viewer, parts: Object.values(meta.parts || {}) });
       }
 
       if (action === 'parts' && req.method === 'POST') {
@@ -231,7 +268,7 @@ export async function handler(req, res) {
   }
 }
 
-if (!process.env.VERCEL) {
+{
   const server = http.createServer(handler);
   server.requestTimeout = 300_000; server.headersTimeout = 15_000;
   server.listen(PORT, () => {

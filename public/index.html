@@ -56,12 +56,18 @@
           <div id="holders" class="holders"></div>
         </div>
 
-        <h2>3 · Unlock time</h2>
+        <h2>3 · Who can open</h2>
+        <label for="viewers">NEAR accounts allowed to open (optional)</label>
+        <input id="viewers" placeholder="kanth.testnet, principal.testnet" autocomplete="off" spellcheck="false">
+        <p class="field-note">Leave empty so anyone with the link can open after the unlock. If you list accounts, a viewer must prove their account with their NEAR wallet before the file is released; anyone else is refused and you get an alert.</p>
+        <div id="viewerCheck" class="resolve-list" aria-live="polite"></div>
+
+        <h2>4 · Unlock time</h2>
         <div class="grid"><div><label for="unlockAt">Date and time</label><input id="unlockAt" type="datetime-local" step="1" required></div><div><label for="tz">Time zone</label><select id="tz"><option value="local">This device</option><option value="Asia/Kolkata">India (IST)</option><option value="UTC">UTC</option></select></div></div>
         <div class="preset-row"><button type="button" class="secondary quick" data-min="2">+2 min</button><button type="button" class="secondary quick" data-min="10">+10 min</button><button type="button" class="secondary quick" data-min="60">+1 hour</button><button type="button" class="secondary quick" data-min="1440">+1 day</button></div>
         <p class="field-note" id="unlockPreview"></p>
 
-        <h2>4 · Alerts</h2>
+        <h2>5 · Alerts</h2>
         <div class="grid"><div><label for="ownerEmail">Your email (alerts)</label><input id="ownerEmail" type="email" autocomplete="email"></div><div><label for="ownerPhone">Your WhatsApp / phone</label><input id="ownerPhone" type="tel" placeholder="+91…" autocomplete="tel"></div></div>
         <label for="createToken" id="createTokenLabel" class="hidden">Seal creation token</label><input id="createToken" type="password" class="hidden" autocomplete="off">
         <div class="capture-footer"><button id="sealBtn" type="submit">Seal and lock on NEAR</button><span class="muted" id="sealStatus" role="status"></span></div>

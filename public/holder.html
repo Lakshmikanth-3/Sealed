@@ -20,6 +20,7 @@
   <div class="panel open-actions">
     <p>You hold one wrapped key part. You cannot read it, and it is useless alone. At the unlock time, release it so the file can open. Your release is signed with your own NEAR testnet key and recorded publicly.</p>
     <p class="notice" role="note">Release attempts are logged on NEAR, including early ones. Early attempts alert the owner.</p>
+    <div id="walletBox" class="wallet-box hidden"><p>This part belongs to <b id="ownAccount"></b>. Connect that account in Meteor Wallet to sign the release.</p><div class="row"><button id="connectBtn" class="secondary">Connect Meteor Wallet</button><span id="walletState" class="muted"></span></div></div>
     <div class="row"><button id="releaseBtn">Release my part</button><a class="btn ghost" id="openLink" href="#">Open page</a></div>
     <p id="status" class="muted" role="status"></p>
     <p class="field-note" id="account"></p>

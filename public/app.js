@@ -35,6 +35,32 @@ async function chainTick() {
 }
 chainTick(); setInterval(() => !document.hidden && chainTick(), 10000);
 
+// ---------- NEAR account lookup ----------
+const ACCOUNT_RE = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
+const validAccount = (id) => id.length >= 2 && id.length <= 64 && ACCOUNT_RE.test(id);
+const lookups = new Map();
+function lookup(id) {
+  if (!lookups.has(id)) lookups.set(id, api(`/api/accounts/${encodeURIComponent(id)}`).then((r) => (r.ok ? r.body : { accountId: id, error: r.body.error })).catch(() => ({ accountId: id, error: 'lookup failed' })));
+  return lookups.get(id);
+}
+function describe(info) {
+  if (info.error) return { ok: false, text: `${info.accountId}: ${info.error}` };
+  if (!info.exists) return { ok: false, text: `✕ ${info.accountId} does not exist on NEAR testnet` };
+  return { ok: true, text: `✓ ${info.accountId} · ${info.balanceNear} NEAR · ${info.fullAccessKeys} full-access key${info.fullAccessKeys === 1 ? '' : 's'}${info.hasContract ? ' · has a contract' : ''}` };
+}
+function debounce(fn, ms = 400) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+async function showLookup(target, id) {
+  if (!id) { target.textContent = ''; target.className = 'resolve'; return; }
+  if (!validAccount(id)) { target.textContent = `✕ "${id}" is not a valid NEAR account id`; target.className = 'resolve bad'; return; }
+  target.textContent = `Looking up ${id}…`; target.className = 'resolve';
+  const d = describe(await lookup(id)); target.textContent = d.text; target.className = 'resolve ' + (d.ok ? 'ok' : 'bad');
+}
+const viewerList = () => [...new Set($('viewers').value.split(/[\s,;]+/).map((v) => v.trim().toLowerCase()).filter(Boolean))];
+$('viewers').oninput = debounce(async () => {
+  const ids = viewerList();
+  $('viewerCheck').replaceChildren(...ids.map((id) => { const p = el('p', { class: 'resolve' }); void showLookup(p, id); return p; }));
+});
+
 // ---------- seal form ----------
 let mode = 'split';
 const pad = (n) => String(n).padStart(2, '0');
@@ -70,7 +96,15 @@ function renderHolders() {
     const row = el('fieldset', { class: 'holder-row' }, el('legend', { text: `Holder ${i + 1}` }),
       el('input', { 'aria-label': `Holder ${i + 1} name`, placeholder: 'Name or office', class: 'h-label', maxlength: 80, value: ['Controller', 'Principal', 'Invigilator', 'Trustee', 'Auditor', 'Registrar', 'Dean'][i] || `Holder ${i + 1}` }),
       el('input', { 'aria-label': `Holder ${i + 1} email`, placeholder: 'Email (optional)', type: 'email', class: 'h-email' }),
-      el('input', { 'aria-label': `Holder ${i + 1} phone`, placeholder: 'WhatsApp (optional)', type: 'tel', class: 'h-phone' }));
+      el('input', { 'aria-label': `Holder ${i + 1} phone`, placeholder: 'WhatsApp (optional)', type: 'tel', class: 'h-phone' }),
+      el('input', { 'aria-label': `Holder ${i + 1} own NEAR account`, placeholder: 'Own NEAR account, e.g. kanth.testnet', class: 'h-near', autocomplete: 'off', spellcheck: 'false' }),
+      el('p', { class: 'resolve', text: 'No NEAR account: the app creates a testnet account and puts its key in the holder link.' }));
+    const nearInput = row.querySelector('.h-near'), note = row.querySelector('.resolve');
+    nearInput.oninput = debounce(() => {
+      const id = nearInput.value.trim().toLowerCase();
+      if (!id) { note.className = 'resolve'; note.textContent = 'No NEAR account: the app creates a testnet account and puts its key in the holder link.'; return; }
+      void showLookup(note, id);
+    });
     $('holders').append(row); rows.push(row);
   }
   rows.forEach((r, i) => r.classList.toggle('hidden', i >= n));
@@ -98,7 +132,9 @@ $('sealForm').onsubmit = async (e) => {
     const label = $('label').value.trim() || f.name;
     status('Encrypting in your browser…');
     const { sealed, key, hash } = await encryptFile(new Uint8Array(await f.arrayBuffer()), { name: f.name, type: f.type });
-    const meta = { label, unlockAtMs, mode, fileHash: hash, owner: { email: $('ownerEmail').value, phone: $('ownerPhone').value } };
+    const viewers = viewerList();
+    for (const id of viewers) { const d = describe(await lookup(id)); if (!d.ok) throw new Error(`Who can open: ${d.text.replace(/^✕ /, '')}`); }
+    const meta = { label, unlockAtMs, mode, fileHash: hash, viewers, owner: { email: $('ownerEmail').value, phone: $('ownerPhone').value } };
     let holderSecrets = [];
     if (mode === 'single') meta.fileKey = toB64url(key);
     else {
@@ -107,14 +143,19 @@ $('sealForm').onsubmit = async (e) => {
       status(`Splitting the key into ${n} parts…`);
       const parts = await splitKey(key, n, k), wrapKey = randomBytes(32);
       const rows = [...$('holders').children].slice(0, n);
+      const own = rows.map((r) => r.querySelector('.h-near').value.trim().toLowerCase());
+      for (const id of own.filter(Boolean)) { const d = describe(await lookup(id)); if (!d.ok) throw new Error(`Holder account: ${d.text.replace(/^✕ /, '')}`); }
+      if (new Set(own.filter(Boolean)).size !== own.filter(Boolean).length) throw new Error('Each holder needs a different NEAR account');
       holderSecrets = await Promise.all(parts.map(async (p, i) => {
-        const hk = newHolderKey(), wrapped = await wrapPart(wrapKey, p.part, hk.account);
+        // Own account: the holder signs with their wallet. Otherwise the app creates a testnet account for them.
+        const hk = own[i] ? { account: own[i], secretKey: null, own: true } : { ...newHolderKey(), own: false };
+        const wrapped = await wrapPart(wrapKey, p.part, hk.account);
         const r = rows[i];
         return { ...hk, wrapped, label: r.querySelector('.h-label').value.trim() || `Holder ${i + 1}`, email: r.querySelector('.h-email').value.trim(), phone: r.querySelector('.h-phone').value.trim() };
       }));
       const { sha256Hex } = await import('/assets/sealed.js');
       meta.n = n; meta.k = k; meta.wrapKey = toB64url(wrapKey);
-      meta.holders = await Promise.all(holderSecrets.map(async (h) => ({ account: h.account, commitment: await sha256Hex(new TextEncoder().encode(h.wrapped)), label: h.label, contact: { email: h.email, phone: h.phone } })));
+      meta.holders = await Promise.all(holderSecrets.map(async (h) => ({ account: h.account, own: h.own, commitment: await sha256Hex(new TextEncoder().encode(h.wrapped)), label: h.label, contact: { email: h.email, phone: h.phone } })));
     }
     key.fill(0);
     status(`Uploading ${bytesText(sealed.length)} encrypted and locking on NEAR…`);
@@ -122,7 +163,7 @@ $('sealForm').onsubmit = async (e) => {
     if ($('createToken').value) headers['x-create-token'] = $('createToken').value;
     const r = await api('/api/seals', { method: 'POST', headers, body: sealed });
     if (!r.ok) throw new Error(r.body.error || 'Sealing failed');
-    const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now() };
+    const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now(), viewers };
     saveMine([seal, ...mine()]);
     showSealed(seal, holderSecrets);
     status(''); renderOverview();
@@ -131,7 +172,7 @@ $('sealForm').onsubmit = async (e) => {
 };
 
 function holderLink(seal, h) {
-  const secret = toB64url(new TextEncoder().encode(JSON.stringify({ a: h.account, s: h.secretKey, w: h.wrapped, l: h.label })));
+  const secret = toB64url(new TextEncoder().encode(JSON.stringify(h.own ? { a: h.account, w: h.wrapped, l: h.label, o: 1 } : { a: h.account, s: h.secretKey, w: h.wrapped, l: h.label })));
   return `${location.origin}/h/${seal.sealId}#${secret}`;
 }
 function showSealed(seal, holders) {
@@ -139,13 +180,14 @@ function showSealed(seal, holders) {
   $('sealedTitle').textContent = seal.label;
   $('sealedSummary').replaceChildren(`Locked until ${istText(seal.unlockAtMs)} (${utcText(seal.unlockAtMs)}). `,
     seal.mode === 'split' ? `${seal.k} of ${seal.n} key holders must release their parts after that time. ` : 'Opens by time alone. ',
+    seal.viewers?.length ? `Only ${seal.viewers.join(', ')} can open it, after proving their account. ` : 'Anyone with the link can open it after that. ',
     el('a', { href: `${EXPLORER}/txns/${seal.createTx}`, target: '_blank', rel: 'noopener' }, 'View on NEAR testnet →'));
   $('shareBox').replaceChildren(shareButtons(seal, { qr: qrSvg }));
   $('holderLinks').classList.toggle('hidden', !holders.length);
   $('holderList').replaceChildren(...holders.map((h) => {
     const link = holderLink(seal, h);
     const msg = `You hold key part for "${seal.label}". It can be released only after ${istText(seal.unlockAtMs)}. Keep this link private: ${link}`;
-    return el('li', {}, el('b', { text: h.label }), el('code', { class: 'link-preview', text: link.slice(0, 64) + '…' }),
+    return el('li', {}, el('b', { text: h.label }), el('p', { class: 'muted', text: h.own ? `Signs with their own NEAR account: ${h.account}` : 'App-created testnet account (key inside the link)' }), el('code', { class: 'link-preview', text: link.slice(0, 64) + '…' }),
       el('div', { class: 'share-row' }, el('button', { type: 'button', class: 'secondary', onclick: () => copy(link, 'Holder link') }, 'Copy'),
         el('a', { class: 'btn ghost', target: '_blank', rel: 'noopener', href: whatsappUrl(msg, h.phone) }, 'WhatsApp'),
         el('a', { class: 'btn ghost', href: mailtoUrl(h.email, `Your key part: ${seal.label}`, msg) }, 'Email'),

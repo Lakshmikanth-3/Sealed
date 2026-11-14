@@ -9,6 +9,7 @@ export const ALERT_KINDS = {
   wrong_key: 'A wrong key or key part was used (decryption authentication failed)',
   file_tampered: 'The stored encrypted file does not match the hash on NEAR',
   repeated_failures: 'Repeated failed attempts from the same source',
+  not_allowed: 'A NEAR account that is not on the allow-list tried to open the file',
 };
 
 // ---------- approximate location from IP ----------
