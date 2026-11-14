@@ -101,8 +101,9 @@ if (process.env.SEAL_PLANS_CONTRACT) {
   const refused = await lock(free.enc, free.meta);
   check('Free plan refuses 4 trusted people', refused.status === 402, refused.body.error);
   const buyerKey = KeyPair.fromRandom('ed25519'), buyer = implicit(buyerKey);
-  await chain.fundAccounts([buyer], 1_100_000_000_000_000_000_000_000n);
+  // Fund the buyer from the contract's current price, plus a little for gas.
   const price = BigInt((await (await get('/api/plan')).body).pricePerMonthYocto);
+  await chain.fundAccounts([buyer], price + 100_000_000_000_000_000_000_000n);
   const buyerAcct = new Account(buyer, provider, KeyPairSigner.fromSecretKey(buyerKey.toString()));
   const paid = await buyerAcct.callFunctionRaw({ contractId: plansContract, methodName: 'subscribe', args: { months: 1 }, gas: 30_000_000_000_000n, deposit: price, waitUntil: 'EXECUTED_OPTIMISTIC' });
   check('subscribe() paid on NEAR', Boolean(paid.status?.SuccessValue), `${process.env.NEAR_EXPLORER_URL}/txns/${paid.transaction.hash}`);
