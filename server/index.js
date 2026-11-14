@@ -12,15 +12,19 @@ import { contractReadiness } from './readiness.js';
 import { privateBrief, aiReadiness } from './privateBrief.js';
 import { publishingOptions } from '../lib/publishing.js';
 import { createLiveStatus } from './liveStatus.js';
+import { openRedisShares, redisConfig } from './redisShares.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, 'data'));
+// Serverless hosts (Vercel) only allow writes under /tmp, and it does not persist.
+const dataDir = path.resolve(process.env.DATA_DIR || (process.env.VERCEL ? '/tmp/appeal' : path.join(root, 'data')));
 fs.mkdirSync(dataDir, { recursive: true });
 
 const chain = createChain(process.env, dataDir);
 const liveStatus = createLiveStatus(chain);
 const relay = await createRelayService(process.env, dataDir);
-const shares = openShares(dataDir);
+const redis = redisConfig();
+if (process.env.VERCEL && !redis) console.error('Shared links need Upstash Redis on Vercel (KV_REST_API_URL / KV_REST_API_TOKEN). Publishing is disabled.');
+const shares = redis ? openRedisShares(redis) : process.env.VERCEL ? null : openShares(dataDir);
 const PORT = Number(process.env.PORT || 8787);
 const MAX_BODY = 15 * 1024 * 1024;
 
@@ -53,7 +57,7 @@ function serveStatic(res, base, rel) {
 let rateWindow = Date.now();
 const rates = new Map();
 let aiBusy = false;
-const server = http.createServer(async (req, res) => {
+export async function handler(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
@@ -66,7 +70,8 @@ const server = http.createServer(async (req, res) => {
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       if (!req.headers['content-type']?.startsWith('application/json')) return send(res, 415, { error: 'JSON content type required' });
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Cross-site writes refused' });
-      if (req.headers.origin && req.headers.origin !== (process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`)) return send(res, 403, { error: 'Unexpected request origin' });
+      const proto = process.env.VERCEL && req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+      if (req.headers.origin && req.headers.origin !== (process.env.PUBLIC_ORIGIN || `${proto}://${req.headers.host}`)) return send(res, 403, { error: 'Unexpected request origin' });
     }
     if (p === '/api/config') return send(res, 200, { network: chain.network, sender: chain.sender, contract: chain.contract, anchoringAvailable: false, walletSigning: true, ai: aiReadiness(), relay: relay.readiness() });
     if (p === '/api/chain' && req.method === 'GET') {
@@ -90,6 +95,7 @@ const server = http.createServer(async (req, res) => {
       const publishingToken = req.headers['x-publish-token'];
       const expectedToken = process.env.PUBLISH_ACCESS_TOKEN;
       if (!expectedToken) return send(res, 503, { error: 'Publishing is disabled until the operator configures PUBLISH_ACCESS_TOKEN' });
+      if (!shares) return send(res, 503, { error: 'Publishing is disabled until the operator connects shared storage' });
       if (typeof publishingToken !== 'string' || Buffer.byteLength(publishingToken) !== Buffer.byteLength(expectedToken)
         || !crypto.timingSafeEqual(Buffer.from(publishingToken), Buffer.from(expectedToken))) return send(res, 403, { error: 'Publishing access token required' });
       const body = await readJson(req);
@@ -111,16 +117,18 @@ const server = http.createServer(async (req, res) => {
         catch { return send(res, 503, { error: 'Verified AI generation failed. No unverified or local replacement was produced.' }); }
         finally { aiBusy = false; }
       }
-      return send(res, 201, shares.create(pack, options.ttlSeconds));
+      return send(res, 201, await shares.create(pack, options.ttlSeconds));
     }
     const m = p.match(/^\/api\/pack\/([\w-]{6,32})$/);
     if (m) {
       if (req.method === 'DELETE') {
         const token = req.headers.authorization?.replace(/^Bearer /, '');
-        return shares.revoke(m[1], token) ? send(res, 200, { deleted: true }) : send(res, 404, { error: 'Share not found or management token invalid' });
+        if (!shares) return send(res, 503, { error: 'Shared storage is not configured' });
+        return await shares.revoke(m[1], token) ? send(res, 200, { deleted: true }) : send(res, 404, { error: 'Share not found or management token invalid' });
       }
       if (req.method !== 'GET') return send(res, 405, { error: 'Method not allowed' });
-      const pack = shares.read(m[1]);
+      if (!shares) return send(res, 503, { error: 'Shared storage is not configured' });
+      const pack = await shares.read(m[1]);
       return pack ? send(res, 200, pack) : send(res, 404, { error: 'Share expired, revoked or unavailable' });
     }
 
@@ -132,24 +140,27 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     send(res, 400, { error: e.message });
   }
-});
-server.requestTimeout = 120000;
-server.headersTimeout = 15000;
-server.keepAliveTimeout = 5000;
-
-server.listen(PORT, () => {
-  const listeningPort = server.address().port;
-  console.log(`Appeal on http://localhost:${listeningPort}  (worker app)`);
-  console.log(`Verifier:          http://localhost:${listeningPort}/verify`);
-  console.log(`Anchoring network: ${chain.network}; contract: ${chain.contract || 'not configured'}`);
-});
-
-let shuttingDown = false;
-async function shutdown() {
-  if (shuttingDown) return; shuttingDown = true;
-  await new Promise((resolve) => server.close(resolve));
-  await relay.close();
-  shares.close();
 }
-process.on('SIGTERM', () => { void shutdown(); });
-process.on('SIGINT', () => { void shutdown(); });
+
+// Long-running server for local use, Docker and Render. On Vercel, api/index.js imports `handler`.
+if (!process.env.VERCEL) {
+  const server = http.createServer(handler);
+  server.requestTimeout = 120000;
+  server.headersTimeout = 15000;
+  server.keepAliveTimeout = 5000;
+  server.listen(PORT, () => {
+    const listeningPort = server.address().port;
+    console.log(`Appeal on http://localhost:${listeningPort}  (landing; worker app at /app)`);
+    console.log(`Verifier:          http://localhost:${listeningPort}/verify`);
+    console.log(`Anchoring network: ${chain.network}; contract: ${chain.contract || 'not configured'}`);
+  });
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return; shuttingDown = true;
+    await new Promise((resolve) => server.close(resolve));
+    await relay.close();
+    shares?.close();
+  };
+  process.on('SIGTERM', () => { void shutdown(); });
+  process.on('SIGINT', () => { void shutdown(); });
+}
