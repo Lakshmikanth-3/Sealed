@@ -136,6 +136,7 @@ export async function handler(req, res) {
     if (p === '/') return serveStatic(res, path.join(root, 'public'), 'landing.html');
     if (p === '/app') return serveStatic(res, path.join(root, 'public'), 'index.html');
     if (p === '/verify') return serveStatic(res, path.join(root, 'public'), 'verify.html');
+    if (p === '/simulator') return serveStatic(res, path.join(root, 'public'), 'simulator.html');
     return serveStatic(res, path.join(root, 'public'), p);
   } catch (e) {
     send(res, 400, { error: e.message });
