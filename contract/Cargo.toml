@@ -1,6 +1,6 @@
 [package]
-name = "appeal-anchors"
-version = "0.2.0"
+name = "sealed-paper"
+version = "1.0.0"
 edition = "2024"
 publish = false
 

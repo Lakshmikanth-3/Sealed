@@ -1,344 +1,354 @@
-//! Account-bound anchors (v2). Workers authorize their own calls; NEP-366 may
-//! sponsor their gas. Registration limits storage sponsorship, not evidence truth.
-use near_sdk::collections::LookupMap;
+//! Sealed Paper: time-locked seals on NEAR.
+//!
+//! The contract stores only hashes and commitments: the encrypted file's SHA-256, the
+//! SHA-256 of each Shamir key part, holder accounts, the unlock time and an access log.
+//! Policy refusals (early release, non-holder, duplicate, wrong commitment, early open)
+//! do not panic: they return a status and are written to the log, so the refusal itself
+//! becomes a permanent on-chain record.
+use near_sdk::store::{IterableSet, LookupMap};
 use near_sdk::{AccountId, PanicOnDefault, env, json_types::U64, near};
+
+const MAX_LOG_PER_SEAL: u32 = 300;
+const MAX_HOLDERS: u8 = 20;
 
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Debug, PartialEq)]
-pub struct Anchor {
-    pub v: u8,
-    pub network: String,
-    pub worker: AccountId,
-    pub day: String,
-    pub root: String,
-    pub count: u32,
-    pub revision: u32,
-    pub anchored_at_ns: U64,
+pub struct Seal {
+    pub seal_id: String,
+    pub owner: String,
+    pub file_hash: String,
+    pub unlock_at_ms: U64,
+    pub mode: String,
+    pub holders: Vec<AccountId>,
+    pub commitments: Vec<String>,
+    pub threshold_k: u8,
+    pub total_n: u8,
+    pub released: Vec<AccountId>,
+    pub created_at_ms: U64,
+    pub log_count: u32,
+    pub dropped_logs: u32,
+}
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq)]
+pub struct LogEntry {
+    pub index: u32,
+    pub at_ms: U64,
+    pub kind: String,
+    pub account: AccountId,
+    pub detail: String,
 }
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
-pub struct AppealAnchors {
+pub struct SealedPaper {
     owner: AccountId,
-    network: String,
-    workers: LookupMap<AccountId, u32>,
-    anchors: LookupMap<String, Anchor>,
-    worker_count: u32,
-    max_workers: u32,
-    max_days_per_worker: u32,
+    operators: IterableSet<AccountId>,
+    seals: LookupMap<String, Seal>,
+    logs: LookupMap<String, LogEntry>,
+    seal_count: u32,
+}
+
+fn is_hex64(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+fn valid_seal_id(value: &str) -> bool {
+    (6..=64).contains(&value.len()) && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
 #[near]
-impl AppealAnchors {
-    /// Deploy and initialize in one transaction signed by the contract account.
+impl SealedPaper {
     #[init]
     #[private]
-    pub fn new(
-        owner: AccountId,
-        network: String,
-        max_workers: u32,
-        max_days_per_worker: u32,
-    ) -> Self {
-        assert!(
-            network == "testnet" || network == "mainnet",
-            "Invalid network"
-        );
-        assert!(
-            max_workers > 0 && max_workers <= 100_000,
-            "Invalid worker capacity"
-        );
-        assert!(
-            max_days_per_worker > 0 && max_days_per_worker <= 36_600,
-            "Invalid day capacity"
-        );
-        Self {
-            owner,
-            network,
-            workers: LookupMap::new(b"w".to_vec()),
-            anchors: LookupMap::new(b"a".to_vec()),
-            worker_count: 0,
-            max_workers,
-            max_days_per_worker,
+    pub fn new(owner: AccountId, operators: Vec<AccountId>) -> Self {
+        let mut set = IterableSet::new(b"o");
+        for operator in operators {
+            set.insert(operator);
         }
+        Self { owner, operators: set, seals: LookupMap::new(b"s"), logs: LookupMap::new(b"l"), seal_count: 0 }
     }
 
-    /// Only the deployment owner can allocate sponsored storage to an account.
-    /// This never grants the owner authority to anchor as that worker.
-    pub fn register_worker(&mut self, worker: AccountId) -> bool {
-        assert_eq!(
-            env::predecessor_account_id(),
-            self.owner,
-            "Only owner may register workers"
-        );
-        if self.workers.contains_key(&worker) {
-            return false;
-        }
-        assert!(
-            self.worker_count < self.max_workers,
-            "Worker capacity reached"
-        );
-        self.workers.insert(&worker, &0);
-        self.worker_count += 1;
-        true
+    pub fn add_operator(&mut self, operator: AccountId) -> bool {
+        assert_eq!(env::predecessor_account_id(), self.owner, "Only owner may add operators");
+        self.operators.insert(operator)
     }
 
-    /// No deposit is accepted. Workers are registered before a sponsor relays
-    /// their signed anchor. The immediate predecessor must be the worker account.
-    pub fn anchor(
+    pub fn remove_operator(&mut self, operator: AccountId) -> bool {
+        assert_eq!(env::predecessor_account_id(), self.owner, "Only owner may remove operators");
+        self.operators.remove(&operator)
+    }
+
+    /// Create a seal. Only operators (the release service) may create seals, because the
+    /// contract account pays for storage. `owner` is a label for the person who sealed it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_seal(
         &mut self,
-        v: u8,
-        network: String,
-        worker: AccountId,
-        day: String,
-        root: String,
-        count: u32,
-    ) -> Anchor {
-        assert_eq!(v, 2, "Expected account-bound v2 anchor");
-        assert_eq!(network, self.network, "Wrong anchor network");
-        assert_eq!(
-            worker,
-            env::predecessor_account_id(),
-            "Worker must authorize this call"
-        );
-        assert!(valid_day(&day), "Invalid day");
-        assert!(
-            root.len() == 64
-                && root
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
-            "Invalid root"
-        );
-        assert!(count > 0 && count <= 10_000, "Invalid entry count");
-        let recorded_days = self.workers.get(&worker).expect("Worker is not registered");
-        let key = format!("{worker}:{day}");
-        let previous = self.anchors.get(&key);
-        if let Some(ref old) = previous {
-            if old.root == root && old.count == count {
-                return old.clone();
+        seal_id: String,
+        file_hash: String,
+        unlock_at_ms: U64,
+        mode: String,
+        holders: Vec<AccountId>,
+        commitments: Vec<String>,
+        threshold_k: u8,
+        total_n: u8,
+        owner: String,
+    ) -> Seal {
+        let caller = env::predecessor_account_id();
+        assert!(self.operators.contains(&caller), "Only operators may create seals");
+        assert!(valid_seal_id(&seal_id), "Invalid seal id");
+        assert!(!self.seals.contains_key(&seal_id), "Seal id already exists");
+        assert!(is_hex64(&file_hash), "file_hash must be lowercase SHA-256 hex");
+        assert!(owner.len() <= 128, "Owner label too long");
+        let now = env::block_timestamp_ms();
+        assert!(unlock_at_ms.0 > now, "Unlock time must be in the future");
+        match mode.as_str() {
+            "single" => {
+                assert!(holders.is_empty() && commitments.is_empty(), "Single mode has no holders");
+                assert!(threshold_k == 0 && total_n == 0, "Single mode uses K = N = 0");
             }
-            assert!(count > old.count, "New anchors must increase entry count");
-        } else {
-            assert!(
-                recorded_days < self.max_days_per_worker,
-                "Worker day capacity reached"
-            );
+            "split" => {
+                assert!((2..=MAX_HOLDERS).contains(&total_n), "N must be between 2 and 20");
+                assert!(threshold_k >= 1 && threshold_k <= total_n, "K must be between 1 and N");
+                assert_eq!(holders.len(), total_n as usize, "Need exactly N holders");
+                assert_eq!(commitments.len(), total_n as usize, "Need one commitment per holder");
+                for (i, holder) in holders.iter().enumerate() {
+                    assert!(!holders[..i].contains(holder), "Holders must be unique");
+                }
+                assert!(commitments.iter().all(|c| is_hex64(c)), "Commitments must be SHA-256 hex");
+            }
+            _ => env::panic_str("Mode must be single or split"),
         }
-        let record = Anchor {
-            v,
-            network,
-            worker: worker.clone(),
-            day,
-            root,
-            count,
-            revision: previous.as_ref().map_or(1, |a| a.revision + 1),
-            anchored_at_ns: U64(env::block_timestamp()),
+        let seal = Seal {
+            seal_id: seal_id.clone(), owner, file_hash, unlock_at_ms, mode, holders, commitments, threshold_k, total_n,
+            released: vec![], created_at_ms: U64(now), log_count: 0, dropped_logs: 0,
         };
-        self.anchors.insert(&key, &record);
-        if previous.is_none() {
-            self.workers.insert(&worker, &(recorded_days + 1));
+        self.seals.insert(seal_id.clone(), seal);
+        self.seal_count += 1;
+        self.log(&seal_id, "create", caller, String::new());
+        self.seals.get(&seal_id).unwrap().clone()
+    }
+
+    /// A holder releases their key part by committing to it. Returns a status; refusals are logged.
+    pub fn release_part(&mut self, seal_id: String, part_commitment: String) -> String {
+        let caller = env::predecessor_account_id();
+        let seal = self.seals.get(&seal_id).expect("Unknown seal").clone();
+        let now = env::block_timestamp_ms();
+        let status = if seal.mode != "split" {
+            "single_mode"
+        } else if now < seal.unlock_at_ms.0 {
+            "early"
+        } else if let Some(i) = seal.holders.iter().position(|h| *h == caller) {
+            if seal.released.contains(&caller) {
+                "already_released"
+            } else if seal.commitments[i] != part_commitment {
+                "bad_commitment"
+            } else {
+                "released"
+            }
+        } else {
+            "not_holder"
+        };
+        if status == "released" {
+            let mut updated = seal;
+            updated.released.push(caller.clone());
+            self.seals.insert(seal_id.clone(), updated);
         }
-        env::log_str(&format!(
-            "EVENT_JSON:{}",
-            near_sdk::serde_json::json!({
-                "standard": "appeal_record", "version": "2.0.0", "event": "anchor", "data": [&record]
-            })
-        ));
-        record
+        let detail = if is_hex64(&part_commitment) { part_commitment } else { String::from("invalid") };
+        self.log(&seal_id, &format!("release:{status}"), caller, detail);
+        status.to_string()
     }
 
-    pub fn get_anchor(&self, worker: AccountId, day: String) -> Option<Anchor> {
-        self.anchors.get(&format!("{worker}:{day}"))
+    /// Ask to open. Single mode opens by time alone; split mode also needs K released parts.
+    pub fn request_open(&mut self, seal_id: String) -> String {
+        let caller = env::predecessor_account_id();
+        let seal = self.seals.get(&seal_id).expect("Unknown seal").clone();
+        let status = if env::block_timestamp_ms() < seal.unlock_at_ms.0 {
+            "early"
+        } else if seal.mode == "split" && (seal.released.len() as u8) < seal.threshold_k {
+            "awaiting_parts"
+        } else {
+            "open"
+        };
+        self.log(&seal_id, &format!("open:{status}"), caller, String::new());
+        status.to_string()
     }
 
-    pub fn is_registered(&self, worker: AccountId) -> bool {
-        self.workers.contains_key(&worker)
+    /// Operators record the SHA-256 of an off-chain alert record (location stays off-chain).
+    pub fn record_alert(&mut self, seal_id: String, alert_hash: String, kind: String) -> u32 {
+        let caller = env::predecessor_account_id();
+        assert!(self.operators.contains(&caller), "Only operators may record alerts");
+        assert!(self.seals.contains_key(&seal_id), "Unknown seal");
+        assert!(is_hex64(&alert_hash), "alert_hash must be SHA-256 hex");
+        assert!(!kind.is_empty() && kind.len() <= 40 && kind.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'), "Invalid alert kind");
+        self.log(&seal_id, &format!("alert:{kind}"), caller, alert_hash)
+    }
+
+    pub fn get_seal(&self, seal_id: String) -> Option<Seal> {
+        self.seals.get(&seal_id).cloned()
+    }
+
+    pub fn get_log(&self, seal_id: String, from: u32, limit: u32) -> Vec<LogEntry> {
+        let Some(seal) = self.seals.get(&seal_id) else { return vec![] };
+        let end = seal.log_count.min(from.saturating_add(limit.min(100)));
+        (from..end).filter_map(|i| self.logs.get(&format!("{seal_id}:{i}")).cloned()).collect()
+    }
+
+    pub fn is_unlocked(&self, seal_id: String) -> bool {
+        let Some(seal) = self.seals.get(&seal_id) else { return false };
+        env::block_timestamp_ms() >= seal.unlock_at_ms.0
+            && (seal.mode == "single" || seal.released.len() as u8 >= seal.threshold_k)
     }
 
     pub fn get_config(&self) -> near_sdk::serde_json::Value {
-        near_sdk::serde_json::json!({ "protocol": 2, "network": self.network, "owner": self.owner, "max_workers": self.max_workers,
-            "max_days_per_worker": self.max_days_per_worker, "registered_workers": self.worker_count })
+        near_sdk::serde_json::json!({ "app": "sealed-paper", "version": 1, "owner": self.owner,
+            "operators": self.operators.iter().collect::<Vec<_>>(), "seal_count": self.seal_count,
+            "max_log_per_seal": MAX_LOG_PER_SEAL })
     }
-}
 
-fn valid_day(day: &str) -> bool {
-    let b = day.as_bytes();
-    if b.len() != 10
-        || b[4] != b'-'
-        || b[7] != b'-'
-        || b.iter()
-            .enumerate()
-            .any(|(i, c)| i != 4 && i != 7 && !c.is_ascii_digit())
-    {
-        return false;
+    fn log(&mut self, seal_id: &str, kind: &str, account: AccountId, detail: String) -> u32 {
+        let mut seal = self.seals.get(seal_id).unwrap().clone();
+        let index = seal.log_count;
+        let at_ms = env::block_timestamp_ms();
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"standard\":\"sealed-paper\",\"version\":\"1.0.0\",\"event\":\"{kind}\",\"data\":{{\"seal_id\":\"{seal_id}\",\"account\":\"{account}\",\"index\":{index},\"at_ms\":{at_ms}}}}}"
+        ));
+        if index >= MAX_LOG_PER_SEAL {
+            seal.dropped_logs += 1;
+        } else {
+            self.logs.insert(format!("{seal_id}:{index}"), LogEntry { index, at_ms: U64(at_ms), kind: kind.to_string(), account, detail });
+            seal.log_count += 1;
+        }
+        self.seals.insert(seal_id.to_string(), seal);
+        index
     }
-    let year = day[..4].parse::<u32>().unwrap();
-    let month = day[5..7].parse::<u32>().unwrap();
-    let date = day[8..].parse::<u32>().unwrap();
-    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-    let days = match month {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        2 if leap => 29,
-        2 => 28,
-        _ => 0,
-    };
-    date >= 1 && date <= days
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::{
-        test_utils::{VMContextBuilder, get_logs},
-        testing_env,
-    };
+    use near_sdk::{test_utils::VMContextBuilder, testing_env};
 
-    fn account(value: &str) -> AccountId {
-        value.parse().unwrap()
+    const H: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    fn acc(v: &str) -> AccountId { v.parse().unwrap() }
+    fn hex(n: u8) -> String { format!("{:02x}", n).repeat(32) }
+    fn at(caller: &str, ms: u64) {
+        testing_env!(VMContextBuilder::new().current_account_id(acc("sealed.testnet")).predecessor_account_id(acc(caller))
+            .block_timestamp(ms * 1_000_000).build());
     }
-    fn context(predecessor: &str) {
-        testing_env!(
-            VMContextBuilder::new()
-                .current_account_id(account("anchors.testnet"))
-                .signer_account_id(account("sponsor.testnet"))
-                .predecessor_account_id(account(predecessor))
-                .block_timestamp(1_000_000_000)
-                .build()
-        );
+    fn setup() -> SealedPaper {
+        at("sealed.testnet", 1_000);
+        SealedPaper::new(acc("owner.testnet"), vec![acc("ops.testnet")])
     }
-    fn setup(max_days: u32) -> AppealAnchors {
-        context("anchors.testnet");
-        let mut contract =
-            AppealAnchors::new(account("owner.testnet"), "testnet".into(), 2, max_days);
-        context("owner.testnet");
-        assert!(contract.register_worker(account("worker.testnet")));
-        contract
-    }
-    fn add(contract: &mut AppealAnchors, day: &str, root: &str, count: u32) -> Anchor {
-        contract.anchor(
-            2,
-            "testnet".into(),
-            account("worker.testnet"),
-            day.into(),
-            root.into(),
-            count,
-        )
+    fn split(c: &mut SealedPaper, k: u8, n: u8) {
+        at("ops.testnet", 1_000);
+        let holders = (0..n).map(|i| acc(&format!("h{i}.testnet"))).collect();
+        let commitments = (0..n).map(hex).collect();
+        c.create_seal("exam-paper-1".into(), H.into(), U64(10_000), "split".into(), holders, commitments, k, n, "controller".into());
     }
 
     #[test]
-    fn worker_call_stores_a_record_and_emits_evidence() {
-        let mut contract = setup(2);
-        context("worker.testnet");
-        let record = add(&mut contract, "2026-11-12", &"a".repeat(64), 1);
-        assert_eq!(record.worker, account("worker.testnet"));
-        assert_eq!(record.revision, 1);
-        assert_eq!(
-            contract.get_anchor(account("worker.testnet"), "2026-11-12".into()),
-            Some(record)
-        );
-        assert!(get_logs()[0].starts_with("EVENT_JSON:"));
+    fn early_release_refused_and_logged() {
+        let mut c = setup(); split(&mut c, 3, 5);
+        at("h0.testnet", 9_999);
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(0)), "early");
+        assert!(c.get_seal("exam-paper-1".into()).unwrap().released.is_empty());
+        let log = c.get_log("exam-paper-1".into(), 0, 10);
+        assert_eq!(log.len(), 2); assert_eq!(log[1].kind, "release:early"); assert_eq!(log[1].account, acc("h0.testnet"));
+        assert!(!c.is_unlocked("exam-paper-1".into()));
     }
+
     #[test]
-    #[should_panic(expected = "Worker must authorize this call")]
-    fn even_the_owner_cannot_impersonate_a_worker() {
-        let mut contract = setup(2);
-        context("owner.testnet");
-        add(&mut contract, "2026-11-12", &"a".repeat(64), 1);
+    fn non_holder_wrong_commitment_and_duplicate_refused() {
+        let mut c = setup(); split(&mut c, 2, 3);
+        at("mallory.testnet", 10_000);
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(0)), "not_holder");
+        at("h1.testnet", 10_000);
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(0)), "bad_commitment");
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(1)), "released");
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(1)), "already_released");
+        let kinds: Vec<String> = c.get_log("exam-paper-1".into(), 0, 10).into_iter().map(|e| e.kind).collect();
+        assert_eq!(kinds, ["create", "release:not_holder", "release:bad_commitment", "release:released", "release:already_released"]);
     }
+
     #[test]
-    #[should_panic(expected = "Only owner may register workers")]
-    fn unauthorized_registration_fails() {
-        let mut contract = setup(2);
-        context("attacker.testnet");
-        contract.register_worker(account("attacker.testnet"));
-    }
-    #[test]
-    #[should_panic(expected = "Worker is not registered")]
-    fn unregistered_worker_cannot_consume_storage() {
-        let mut contract = setup(2);
-        context("new.testnet");
-        contract.anchor(
-            2,
-            "testnet".into(),
-            account("new.testnet"),
-            "2026-11-12".into(),
-            "a".repeat(64),
-            1,
-        );
-    }
-    #[test]
-    fn identical_retry_is_idempotent_and_extension_retains_revision() {
-        let mut contract = setup(2);
-        context("worker.testnet");
-        let first = add(&mut contract, "2026-11-12", &"a".repeat(64), 1);
-        assert_eq!(first, add(&mut contract, "2026-11-12", &"a".repeat(64), 1));
-        let extended = add(&mut contract, "2026-11-12", &"b".repeat(64), 2);
-        assert_eq!(extended.revision, 2);
-    }
-    #[test]
-    #[should_panic(expected = "New anchors must increase entry count")]
-    fn same_count_cannot_rewrite_a_day() {
-        let mut contract = setup(2);
-        context("worker.testnet");
-        add(&mut contract, "2026-11-12", &"a".repeat(64), 1);
-        add(&mut contract, "2026-11-12", &"b".repeat(64), 1);
-    }
-    #[test]
-    #[should_panic(expected = "Worker day capacity reached")]
-    fn day_capacity_limits_new_days() {
-        let mut contract = setup(1);
-        context("worker.testnet");
-        add(&mut contract, "2026-11-12", &"a".repeat(64), 1);
-        add(&mut contract, "2026-11-13", &"b".repeat(64), 1);
-    }
-    #[test]
-    fn calendar_validation_rejects_normalized_invalid_dates() {
-        for day in [
-            "2026-02-29",
-            "2026-02-30",
-            "2026-13-01",
-            "2026-01-00",
-            "not-a-date",
-            "٢٠٢٦-01-01",
-        ] {
-            assert!(!valid_day(day));
+    fn unlocks_after_time_and_k_parts() {
+        let mut c = setup(); split(&mut c, 3, 5);
+        for i in [0u8, 2] {
+            at(&format!("h{i}.testnet"), 10_000);
+            assert_eq!(c.release_part("exam-paper-1".into(), hex(i)), "released");
         }
-        for day in ["2024-02-29", "2026-11-12", "2000-02-29"] {
-            assert!(valid_day(day));
+        assert!(!c.is_unlocked("exam-paper-1".into()));
+        assert_eq!(c.request_open("exam-paper-1".into()), "awaiting_parts");
+        at("h4.testnet", 10_001);
+        assert_eq!(c.release_part("exam-paper-1".into(), hex(4)), "released");
+        assert!(c.is_unlocked("exam-paper-1".into()));
+        assert_eq!(c.request_open("exam-paper-1".into()), "open");
+    }
+
+    #[test]
+    fn single_mode_opens_by_time_only() {
+        let mut c = setup();
+        at("ops.testnet", 1_000);
+        c.create_seal("capsule-01".into(), H.into(), U64(5_000), "single".into(), vec![], vec![], 0, 0, "me".into());
+        at("anyone.testnet", 4_999);
+        assert_eq!(c.request_open("capsule-01".into()), "early");
+        assert!(!c.is_unlocked("capsule-01".into()));
+        assert_eq!(c.release_part("capsule-01".into(), hex(0)), "single_mode");
+        at("anyone.testnet", 5_000);
+        assert!(c.is_unlocked("capsule-01".into()));
+        assert_eq!(c.request_open("capsule-01".into()), "open");
+    }
+
+    #[test]
+    fn alerts_are_operator_only_and_logged() {
+        let mut c = setup(); split(&mut c, 2, 2);
+        at("ops.testnet", 2_000);
+        assert_eq!(c.record_alert("exam-paper-1".into(), hex(9), "early_open".into()), 1);
+        let entry = &c.get_log("exam-paper-1".into(), 1, 1)[0];
+        assert_eq!(entry.kind, "alert:early_open"); assert_eq!(entry.detail, hex(9));
+    }
+
+    #[test]
+    #[should_panic(expected = "Only operators may record alerts")]
+    fn non_operator_cannot_record_alert() {
+        let mut c = setup(); split(&mut c, 2, 2);
+        at("h0.testnet", 2_000);
+        c.record_alert("exam-paper-1".into(), hex(9), "early_open".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "Only operators may create seals")]
+    fn non_operator_cannot_create() {
+        let mut c = setup();
+        at("random.testnet", 1_000);
+        c.create_seal("capsule-01".into(), H.into(), U64(5_000), "single".into(), vec![], vec![], 0, 0, "me".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "K must be between 1 and N")]
+    fn rejects_bad_threshold() {
+        let mut c = setup();
+        at("ops.testnet", 1_000);
+        c.create_seal("exam-paper-2".into(), H.into(), U64(5_000), "split".into(), vec![acc("a.testnet"), acc("b.testnet")], vec![hex(1), hex(2)], 3, 2, "x".into());
+    }
+
+    #[test]
+    #[should_panic(expected = "Unlock time must be in the future")]
+    fn rejects_past_unlock() {
+        let mut c = setup();
+        at("ops.testnet", 9_000);
+        c.create_seal("capsule-02".into(), H.into(), U64(5_000), "single".into(), vec![], vec![], 0, 0, "x".into());
+    }
+
+    #[test]
+    fn log_is_capped_but_calls_still_answer() {
+        let mut c = setup(); split(&mut c, 2, 2);
+        for _ in 0..(MAX_LOG_PER_SEAL + 5) {
+            at("mallory.testnet", 2_000); // each call is its own transaction on-chain
+            assert_eq!(c.request_open("exam-paper-1".into()), "early");
         }
-    }
-    #[test]
-    #[should_panic(expected = "Wrong anchor network")]
-    fn signed_call_cannot_cross_networks() {
-        let mut contract = setup(2);
-        context("worker.testnet");
-        contract.anchor(
-            2,
-            "mainnet".into(),
-            account("worker.testnet"),
-            "2026-11-12".into(),
-            "a".repeat(64),
-            1,
-        );
-    }
-    #[test]
-    #[should_panic(expected = "Worker capacity reached")]
-    fn registration_capacity_limits_sponsored_accounts() {
-        let mut contract = setup(2);
-        contract.register_worker(account("second.testnet"));
-        contract.register_worker(account("third.testnet"));
-    }
-    #[test]
-    #[should_panic(expected = "Invalid entry count")]
-    fn raw_contract_call_cannot_exceed_entry_limit() {
-        let mut contract = setup(2);
-        context("worker.testnet");
-        add(&mut contract, "2026-11-12", &"a".repeat(64), 10_001);
-    }
-    #[test]
-    fn repeated_registration_does_not_consume_capacity() {
-        let mut contract = setup(2);
-        assert!(!contract.register_worker(account("worker.testnet")));
-        assert!(contract.register_worker(account("second.testnet")));
+        let seal = c.get_seal("exam-paper-1".into()).unwrap();
+        assert_eq!(seal.log_count, MAX_LOG_PER_SEAL); assert_eq!(seal.dropped_logs, 6);
+        assert_eq!(c.get_log("exam-paper-1".into(), 0, 500).len(), 100, "page size is capped at 100");
     }
 }

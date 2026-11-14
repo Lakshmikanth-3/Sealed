@@ -24,12 +24,12 @@ const result = spawnSync(command, args, { cwd: path.join(root, 'contract'), env,
 if (result.error) { console.error('Install Rust and cargo-near using the contract setup instructions. ' + result.error.message); process.exit(1); }
 if (result.status !== 0) process.exit(result.status || 1);
 if (mode === 'build') {
-  const file = path.join(root, 'contract/build/appeal_anchors.wasm');
+  const file = path.join(root, 'contract/build/sealed_paper.wasm');
   const bytes = readFileSync(file);
   const exports = WebAssembly.Module.exports(new WebAssembly.Module(bytes)).map((item) => item.name);
-  for (const name of ['new', 'register_worker', 'anchor', 'get_anchor', 'is_registered', 'get_config']) {
+  for (const name of ['new', 'add_operator', 'remove_operator', 'create_seal', 'release_part', 'request_open', 'record_alert', 'get_seal', 'get_log', 'is_unlocked', 'get_config']) {
     if (!exports.includes(name)) throw new Error('Missing contract export: ' + name);
   }
-  console.log(JSON.stringify({ artifact: 'contract/build/appeal_anchors.wasm', bytes: bytes.length,
+  console.log(JSON.stringify({ artifact: 'contract/build/sealed_paper.wasm', bytes: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex'), exports }, null, 2));
 }
