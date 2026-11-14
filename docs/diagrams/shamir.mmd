@@ -1,0 +1,12 @@
+flowchart LR
+  K["32-byte file key"] --> S["Shamir split, K = 3, N = 5"]
+  S --> P1["Part 1 → Person 1"]
+  S --> P2["Part 2 → Person 2"]
+  S --> P3["Part 3 → Person 3"]
+  S --> P4["Part 4 → Person 4"]
+  S --> P5["Part 5 → Person 5"]
+  P1 --> R{"Released on NEAR<br/>and commitment matches?"}
+  P3 --> R
+  P5 --> R
+  R -->|"3 valid releases"| C["Combine any 3 parts → file key"]
+  R -->|"2 or fewer"| N["Not enough: key cannot be rebuilt"]

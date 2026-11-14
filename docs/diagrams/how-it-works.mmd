@@ -1,0 +1,12 @@
+flowchart LR
+  O[Owner's browser] -->|encrypt AES-256-GCM, split key K-of-N, wrap pieces| O
+  O -->|ciphertext only| B[(Vercel Blob)]
+  O -->|hashes + settings| S[Release service on Vercel]
+  S -->|create_seal: file hash, people, time| N[NEAR contract]
+  P[Trusted person] -->|release_part signed by them; refused before the time| N
+  P -->|wrapped key piece| S
+  S -->|checks the release on NEAR, then unwraps| R[(Upstash Redis)]
+  V[Viewer's browser] -->|open → request_open, logged; refused before the time| S
+  S -->|key pieces only after NEAR says open| V
+  V -->|check hash against NEAR, rebuild key, decrypt| V
+  S -->|alert fingerprint| N
