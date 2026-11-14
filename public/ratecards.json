@@ -1,0 +1,4 @@
+{
+  "DemoEats": { "baseFare": 20, "perKm": 6, "minFare": 25, "note": "Illustrative demo rate card, not a real platform's published rates" },
+  "DemoRide": { "baseFare": 30, "perKm": 11, "minFare": 40, "note": "Illustrative demo rate card, not a real platform's published rates" }
+}
