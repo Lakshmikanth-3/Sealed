@@ -83,9 +83,10 @@ export function deviceFrom(ua = '') {
  * Alert service. createAlert records, hashes, anchors and notifies; repeated failures from
  * one source within 2 minutes escalate once per window.
  */
-export function createAlerts({ store, chain, geo, notify, now = () => new Date(), windowMs = 120_000, escalateAt = 5 }) {
+export function createAlerts({ store, chain, geo, notify, kv = null, now = () => new Date(), windowMs = 120_000, escalateAt = 5, awaitBackground = false }) {
   const failures = new Map();
-  function countFailure(key) {
+  async function countFailure(key) {
+    if (kv) return kv.incr(`fail:${key}:${Math.floor(now().getTime() / windowMs)}`, Math.ceil(windowMs / 1000) + 1);
     const t = now().getTime(); const list = (failures.get(key) || []).filter((x) => t - x < windowMs);
     list.push(t); failures.set(key, list);
     if (failures.size > 5000) failures.clear();
@@ -93,7 +94,7 @@ export function createAlerts({ store, chain, geo, notify, now = () => new Date()
   }
   async function createAlert({ sealId, kind, ip, userAgent, account = null, gps = null, detail = null, escalated = false }) {
     if (!ALERT_KINDS[kind]) throw new Error('Unknown alert kind');
-    const meta = store.readMeta(sealId);
+    const meta = await store.readMeta(sealId);
     if (!meta) throw new Error('Unknown seal');
     const at = now();
     const location = gps && Number.isFinite(gps.lat) && Number.isFinite(gps.lon)
@@ -102,9 +103,10 @@ export function createAlerts({ store, chain, geo, notify, now = () => new Date()
     const record = { id: randomBytes(9).toString('base64url'), sealId, kind, summary: ALERT_KINDS[kind], at: at.toISOString(), atIst: istTime(at),
       account, device: deviceFrom(userAgent), location, detail: detail ? String(detail).slice(0, 300) : null };
     const hash = alertHash(record);
-    store.appendAlert(sealId, { ...record, hash, chain: { status: 'pending' }, notified: [] });
-    // Anchor and notify without blocking the response.
-    void (async () => {
+    await store.appendAlert(sealId, { ...record, hash, chain: { status: 'pending' }, notified: [] });
+    // Anchor and notify. Locally this runs after the response; serverless functions may be
+    // frozen once they respond, so there it is awaited.
+    const background = (async () => {
       let chainState;
       try { const r = await chain.recordAlert(sealId, hash, kind); chainState = { status: 'recorded', tx: r.txHash, index: r.value }; }
       catch (e) { chainState = { status: 'failed', error: e.message.slice(0, 200) }; }
@@ -112,10 +114,11 @@ export function createAlerts({ store, chain, geo, notify, now = () => new Date()
       const text = [`${record.summary}.`, `Seal: ${meta.label} (${sealId})`, `Time: ${record.atIst} / ${record.at} UTC`,
         `Account: ${account || 'none'}`, `Device: ${record.device.browser} on ${record.device.os}`, `Approximate location: ${where}`].join('\n');
       const notified = await notify(meta.alertContacts || [], `Sealed Paper alert: ${kind.replace('_', ' ')}`, text).catch(() => []);
-      store.updateAlert(sealId, record.id, { chain: chainState, notified });
+      await store.updateAlert(sealId, record.id, { chain: chainState, notified });
     })();
+    if (awaitBackground) await background;
     const key = `${sealId}|${ip || account || 'unknown'}`;
-    if (!escalated && countFailure(key) === escalateAt) {
+    if (!escalated && (await countFailure(key)) === escalateAt) {
       await createAlert({ sealId, kind: 'repeated_failures', ip, userAgent, account, detail: `${escalateAt} failed attempts within ${windowMs / 60000} minutes`, escalated: true });
     }
     return { ...record, hash };

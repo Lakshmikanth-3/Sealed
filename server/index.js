@@ -8,29 +8,37 @@ import path from 'node:path';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createSealChain, sealChainConfig } from './sealChain.js';
-import { openSealStore, escrowKey, sealBox, openBox } from './sealStore.js';
+import { openSealStore, openCloudStore, escrowKey, sealBox, openBox } from './sealStore.js';
+import { createKv, limited as kvLimited } from './kv.js';
+import { handleUpload } from '@vercel/blob/client';
 import { createAlerts, createGeo, createNotifier } from './alerts.js';
 import { unwrapPart } from '../lib/sealcrypto.js';
 import { createChallenges, verifyProof, validAccountId } from './nearAuth.js';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, 'data'));
+const ON_VERCEL = Boolean(process.env.VERCEL);
+const dataDir = path.resolve(process.env.DATA_DIR || (ON_VERCEL ? '/tmp/sealed-paper' : path.join(root, 'data')));
 fs.mkdirSync(dataDir, { recursive: true });
 
 const PORT = Number(process.env.PORT || 8787);
 const MAX_FILE = 100 * 1024 * 1024 + 2 * 1024 * 1024; // 100 MB plus container overhead
 const MAX_JSON = 64 * 1024;
 const chain = createSealChain(sealChainConfig());
-const store = openSealStore(dataDir);
-const alerts = createAlerts({ store, chain, geo: createGeo(), notify: createNotifier() });
-const challenges = createChallenges();
+const kv = createKv();
+// Vercel: ciphertext in Blob, records in Redis. Locally: disk (and memory for rate limits).
+const CLOUD = Boolean(process.env.BLOB_READ_WRITE_TOKEN) && kv.kind === 'upstash';
+if (ON_VERCEL && !CLOUD) console.error('On Vercel, connect Blob and Upstash Redis storage; sealing is disabled until then.');
+const store = CLOUD ? openCloudStore(kv) : openSealStore(dataDir);
+const alerts = createAlerts({ store, chain, kv, geo: createGeo(), notify: createNotifier(), awaitBackground: ON_VERCEL });
+const challenges = createChallenges({ kv });
 let escrow = null; try { escrow = escrowKey(); } catch { /* single mode disabled until configured */ }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json',
   '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.ics': 'text/calendar' };
 const RPC_HOSTS = 'https://test.rpc.fastnear.com https://rpc.testnet.near.org';
 const WALLET_HOSTS = 'https://wallet.meteorwallet.app https://testnet.meteorwallet.app';
-const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; connect-src 'self' ${RPC_HOSTS} ${WALLET_HOSTS}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' ${WALLET_HOSTS}`;
+const BLOB_HOSTS = 'https://vercel.com https://*.blob.vercel-storage.com'; // browser uploads ciphertext directly to Vercel Blob
+const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; connect-src 'self' ${RPC_HOSTS} ${WALLET_HOSTS} ${BLOB_HOSTS}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' ${WALLET_HOSTS}`;
 
 function send(res, code, body, type = 'application/json', extra = {}) {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
@@ -55,13 +63,9 @@ function serveStatic(res, rel, as) {
 const clientIp = (req) => (process.env.TRUST_PROXY ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.socket.remoteAddress || '';
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 
-// ---------- rate limits ----------
-const buckets = new Map();
-function limited(key, max, windowMs) {
-  const now = Date.now(), b = buckets.get(key);
-  if (!b || now - b.start > windowMs) { buckets.set(key, { start: now, n: 1 }); if (buckets.size > 20000) buckets.clear(); return false; }
-  return ++b.n > max;
-}
+// ---------- rate limits (shared across instances when Redis is configured) ----------
+const limited = (key, max, windowMs) => kvLimited(kv, key, max, windowMs);
+const MAX_UPLOAD = Number(process.env.SEAL_MAX_FILE_MB || 100) * 1024 * 1024;
 
 // ---------- seal validation ----------
 // Holders are either app-created implicit accounts (64 hex) or the person's own NEAR account (e.g. kanth.testnet).
@@ -113,11 +117,11 @@ const publicMeta = (meta) => ({ sealId: meta.sealId, label: meta.label, mode: me
   restricted: Boolean(meta.viewers?.length), viewerCount: meta.viewers?.length || 0 });
 
 // ---------- request handler ----------
-async function handler(req, res) {
+export async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname, ip = clientIp(req), ua = String(req.headers['user-agent'] || '').slice(0, 300);
   try {
-    if (p.startsWith('/api/') && limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Try again in a minute.' });
+    if (p.startsWith('/api/') && await limited('api|' + ip, 120, 60_000)) return send(res, 429, { error: 'Too many requests. Try again in a minute.' });
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(res, 403, { error: 'Cross-site writes refused' });
       const proto = process.env.TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
@@ -125,7 +129,24 @@ async function handler(req, res) {
     }
 
     if (p === '/api/config') return send(res, 200, { network: chain.config.network, contract: chain.config.contract, operator: chain.config.ops,
-      rpc: chain.config.rpcUrls[0], explorer: 'https://testnet.nearblocks.io', singleModeAvailable: Boolean(escrow), createTokenRequired: Boolean(process.env.SEAL_CREATE_TOKEN) });
+      rpc: chain.config.rpcUrls[0], explorer: 'https://testnet.nearblocks.io', singleModeAvailable: Boolean(escrow), createTokenRequired: Boolean(process.env.SEAL_CREATE_TOKEN),
+      upload: CLOUD ? 'blob' : 'direct', maxFileMb: MAX_UPLOAD / 1048576, storageReady: !ON_VERCEL || CLOUD });
+
+    // Vercel Blob client upload: issues a one-time token so the browser uploads ciphertext
+    // straight to Blob; file bytes never pass through this function.
+    if (p === '/api/upload' && req.method === 'POST') {
+      if (!CLOUD) return send(res, 404, { error: 'Direct uploads are used on this server' });
+      if (await limited('upload|' + ip, Number(process.env.SEAL_CREATE_PER_HOUR || 20) * 2, 3600_000)) return send(res, 429, { error: 'Upload limit reached for this hour' });
+      const body = await readJson(req);
+      const request = new Request(`https://${req.headers.host}${req.url}`, { method: 'POST', headers: Object.entries(req.headers).filter(([, v]) => typeof v === 'string') });
+      const result = await handleUpload({ body, request,
+        onBeforeGenerateToken: async (pathname) => {
+          if (!/^seals\/[A-Za-z0-9_-]{16,64}\.sealedfile$/.test(pathname)) throw new Error('Invalid upload name');
+          return { allowedContentTypes: ['application/octet-stream'], maximumSizeInBytes: MAX_UPLOAD + 2 * 1048576, addRandomSuffix: true };
+        },
+        onUploadCompleted: async () => {} });
+      return send(res, 200, result);
+    }
     if (p === '/api/chain') {
       try { return send(res, 200, { ok: true, config: await chain.getConfig(), at: new Date().toISOString() }); }
       catch (e) { return send(res, 503, { ok: false, error: e.message }); }
@@ -143,12 +164,23 @@ async function handler(req, res) {
         const t = String(req.headers['x-create-token'] || ''), want = process.env.SEAL_CREATE_TOKEN;
         if (t.length !== want.length || !timingSafeEqual(Buffer.from(t), Buffer.from(want))) return send(res, 403, { error: 'Seal creation token required' });
       }
-      if (limited('create|' + ip, Number(process.env.SEAL_CREATE_PER_HOUR || 20), 3600_000)) return send(res, 429, { error: 'Seal limit reached for this hour' });
-      if (!req.headers['content-type']?.startsWith('application/octet-stream')) return send(res, 415, { error: 'Send the encrypted file as application/octet-stream' });
+      if (await limited('create|' + ip, Number(process.env.SEAL_CREATE_PER_HOUR || 20), 3600_000)) return send(res, 429, { error: 'Seal limit reached for this hour' });
+      const viaBlob = CLOUD && req.headers['content-type']?.startsWith('application/json');
+      if (!viaBlob && !req.headers['content-type']?.startsWith('application/octet-stream')) return send(res, 415, { error: 'Send the encrypted file as application/octet-stream' });
+      if (ON_VERCEL && !CLOUD) return send(res, 503, { error: 'Storage is not connected on this deployment yet' });
       let raw; try { raw = JSON.parse(Buffer.from(String(req.headers['x-seal-meta'] || ''), 'base64url').toString('utf8')); } catch { return send(res, 400, { error: 'Invalid x-seal-meta header' }); }
       const meta = validateMeta(raw);
       if (!escrow) return send(res, 503, { error: 'Key escrow is not configured on this server (SEAL_ESCROW_SECRET)' });
-      const bytes = await readBody(req, MAX_FILE);
+      let bytes, blobUrl = null;
+      if (viaBlob) {
+        // The browser already uploaded the ciphertext to Blob; fetch it once to verify magic and hash.
+        const { blobUrl: url } = await readJson(req);
+        if (typeof url !== 'string' || !/^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/seals\//.test(url)) return send(res, 400, { error: 'Invalid upload reference' });
+        const r = await fetch(url, { cache: 'no-store' });
+        if (!r.ok) return send(res, 400, { error: 'Uploaded file not found' });
+        bytes = Buffer.from(await r.arrayBuffer()); blobUrl = url;
+      } else bytes = await readBody(req, MAX_FILE);
+      if (bytes.length > MAX_UPLOAD + 2 * 1048576) return send(res, 413, { error: `Files are limited to ${MAX_UPLOAD / 1048576} MB` });
       if (bytes.length < 16 || bytes.subarray(0, 8).toString() !== 'SEALPAP1') return send(res, 400, { error: 'Body must be a Sealed Paper encrypted file' });
       if (sha256(bytes) !== raw.fileHash) return send(res, 400, { error: 'File hash does not match the uploaded bytes' });
       // Named accounts (holders and viewers) must exist on NEAR testnet.
@@ -160,8 +192,8 @@ async function handler(req, res) {
       const fundTxs = meta.mode === 'split' ? await chain.fundAccounts(meta.holders.filter((h) => !h.own).map((h) => h.account)) : [];
       const created = await chain.createSeal({ seal_id: sealId, file_hash: raw.fileHash, unlock_at_ms: String(meta.unlockAtMs), mode: meta.mode,
         holders: meta.holders.map((h) => h.account), commitments: meta.holders.map((h) => h.commitment), threshold_k: meta.k, total_n: meta.n, owner: meta.label.slice(0, 120) });
-      store.saveFile(sealId, bytes);
-      store.saveMeta(sealId, { sealId, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, fileHash: raw.fileHash,
+      if (!blobUrl) await store.saveFile(sealId, bytes);
+      await store.saveMeta(sealId, { sealId, blobUrl, label: meta.label, mode: meta.mode, k: meta.k, n: meta.n, unlockAtMs: meta.unlockAtMs, fileHash: raw.fileHash,
         size: bytes.length, createdAt: new Date().toISOString(), createTx: created.txHash, fundTxs, holders: meta.holders, owner: meta.owner, viewers: meta.viewers,
         ownerTokenHash: store.tokenHash(ownerToken), escrowedKey: meta.mode === 'single' ? sealBox(escrow, Buffer.from(raw.fileKey, 'base64url')) : null,
         escrowedWrapKey: meta.mode === 'split' ? sealBox(escrow, Buffer.from(raw.wrapKey, 'base64url')) : null,
@@ -172,7 +204,7 @@ async function handler(req, res) {
     const m = p.match(/^\/api\/seals\/([A-Za-z0-9_-]{6,64})(?:\/(file|log|open|parts|alerts|challenge|exam-report))?$/);
     if (m) {
       const [, sealId, action] = m;
-      const meta = store.readMeta(sealId);
+      const meta = await store.readMeta(sealId);
       if (!meta) return send(res, 404, { error: 'Seal not found' });
       if (!action && req.method === 'GET') {
         const onChain = await chain.getSeal(sealId).catch(() => null);
@@ -180,7 +212,7 @@ async function handler(req, res) {
           releasedAccounts: onChain.released, threshold: onChain.threshold_k, fileHash: onChain.file_hash, logCount: onChain.log_count }, now: Date.now() });
       }
       if (action === 'file' && req.method === 'GET') {
-        const bytes = store.readFile(sealId);
+        const bytes = await store.readFile(sealId);
         return bytes ? send(res, 200, bytes, 'application/octet-stream', { 'content-disposition': `attachment; filename="${sealId}.sealedfile"` }) : send(res, 404, { error: 'File missing' });
       }
       if (action === 'log' && req.method === 'GET') return send(res, 200, { log: await chain.getLog(sealId, Number(url.searchParams.get('from') || 0), 100) });
@@ -193,15 +225,15 @@ async function handler(req, res) {
         const r = await chain.recordAlert(sealId, body.reportHash, body.kind);
         return send(res, 201, { tx: r.txHash, explorer: chain.explorerTx(r.txHash), index: r.value });
       }
-      if (action === 'challenge' && req.method === 'GET') return send(res, 200, challenges.issue(sealId, chain.config.contract));
+      if (action === 'challenge' && req.method === 'GET') return send(res, 200, await challenges.issue(sealId, chain.config.contract));
 
       if (action === 'open' && req.method === 'POST') {
         const body = await readJson(req);
-        if (limited(`open|${sealId}|${ip}`, 20, 60_000)) return send(res, 429, { error: 'Too many open attempts' });
+        if (await limited(`open|${sealId}|${ip}`, 20, 60_000)) return send(res, 429, { error: 'Too many open attempts' });
         let viewer = null;
         if (meta.viewers?.length) {
           // Allow-listed seal: the viewer proves their NEAR account with a wallet-signed, one-time challenge.
-          const challenge = challenges.take(String(body.proof?.nonce || ''), sealId);
+          const challenge = await challenges.take(String(body.proof?.nonce || ''), sealId);
           const proof = challenge ? await verifyProof(body.proof, challenge, (a, k) => chain.viewAccessKey(a, k)) : { ok: false, reason: 'Missing or expired challenge' };
           if (!proof.ok) return send(res, 401, { status: 'unverified', error: `Prove your NEAR account to open this file (${proof.reason})` });
           viewer = proof.accountId;
@@ -232,7 +264,7 @@ async function handler(req, res) {
         if (sha256(Buffer.from(body.part, 'utf8')) !== onChain.commitments[i]) return send(res, 400, { error: 'Part does not match the on-chain commitment' });
         // Only now, after the contract recorded this holder's release, is the part unwrapped.
         const plain = await unwrapPart(new Uint8Array(openBox(escrow, meta.escrowedWrapKey)), body.part, body.account);
-        const next = store.updateMeta(sealId, (x) => { x.parts = { ...(x.parts || {}), [body.account]: plain }; });
+        const next = await store.updateMeta(sealId, (x) => { x.parts = { ...(x.parts || {}), [body.account]: plain }; });
         return send(res, 200, { stored: true, released: Object.keys(next.parts).length, k: meta.k });
       }
 
@@ -240,10 +272,10 @@ async function handler(req, res) {
         const body = await readJson(req);
         const allowed = ['wrong_key', 'file_tampered', 'early_release', 'not_holder'];
         if (!allowed.includes(body.kind)) return send(res, 400, { error: 'Unsupported alert kind' });
-        if (limited(`alert|${sealId}|${ip}`, 15, 60_000)) return send(res, 429, { error: 'Too many alerts' });
+        if (await limited(`alert|${sealId}|${ip}`, 15, 60_000)) return send(res, 429, { error: 'Too many alerts' });
         let detail = typeof body.detail === 'string' ? body.detail : null;
         if (body.kind === 'file_tampered') {
-          const stored = store.readFile(sealId), onChain = await chain.getSeal(sealId).catch(() => null);
+          const stored = await store.readFile(sealId), onChain = await chain.getSeal(sealId).catch(() => null);
           detail = `Reported by viewer. Server copy ${stored && onChain && sha256(stored) === onChain.file_hash ? 'matches' : 'does NOT match'} the on-chain hash.`;
         }
         const account = typeof body.account === 'string' && /^[a-z0-9._-]{2,64}$/.test(body.account) ? body.account : null;
@@ -252,7 +284,7 @@ async function handler(req, res) {
       }
       if (action === 'alerts' && req.method === 'GET') {
         if (!store.checkToken(meta, url.searchParams.get('token'))) return send(res, 403, { error: 'Owner token required' });
-        return send(res, 200, { alerts: store.readAlerts(sealId).reverse() });
+        return send(res, 200, { alerts: (await store.readAlerts(sealId)).reverse() });
       }
       return send(res, 405, { error: 'Method not allowed' });
     }
@@ -276,7 +308,7 @@ async function handler(req, res) {
   }
 }
 
-{
+if (!ON_VERCEL) {
   const server = http.createServer(handler);
   server.requestTimeout = 300_000; server.headersTimeout = 15_000;
   server.listen(PORT, () => {

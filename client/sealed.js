@@ -25,3 +25,12 @@ export function qrSvg(text, cell = 4) {
   const q = qrcode(0, 'M'); q.addData(text); q.make();
   return q.createSvgTag({ cellSize: cell, margin: 2, scalable: true });
 }
+
+/** Vercel Blob client upload of ciphertext (one-time token issued by /api/upload). */
+export async function uploadToBlob(bytes, sealName, onProgress) {
+  const { upload } = await import('@vercel/blob/client');
+  const blob = await upload(`seals/${sealName}.sealedfile`, new Blob([bytes], { type: 'application/octet-stream' }),
+    { access: 'public', handleUploadUrl: '/api/upload', contentType: 'application/octet-stream', multipart: bytes.length > 8 * 1024 * 1024,
+      onUploadProgress: onProgress ? (e) => onProgress(e.percentage) : undefined });
+  return blob.url;
+}

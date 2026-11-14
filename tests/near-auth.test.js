@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { KeyPair } from 'near-api-js';
 import { nep413Hash, createChallenges, verifyProof, validAccountId } from '../server/nearAuth.js';
+import { memoryKv } from '../server/kv.js';
+const challenges = (opts = {}) => createChallenges({ kv: memoryKv(opts), ...opts });
 
 const kp = KeyPair.fromRandom('ed25519');
 const pub = kp.getPublicKey().toString();
@@ -12,14 +14,14 @@ function sign(challenge, keyPair = kp) {
 const onChain = (permission = 'FullAccess') => async (account, key) => (account === 'kanth.testnet' && key === pub ? { permission } : null);
 
 test('a wallet-signed challenge proves the account', async () => {
-  const ch = createChallenges().issue('seal-abc123', 'sealed.kanth_s.testnet');
+  const ch = await challenges().issue('seal-abc123', 'sealed.kanth_s.testnet');
   assert.match(ch.message, /seal-abc123/);
   const r = await verifyProof(sign(ch), ch, onChain());
   assert.deepEqual(r, { ok: true, accountId: 'kanth.testnet' });
 });
 
 test('rejects a bad signature, a foreign key, a function-call key and a malformed proof', async () => {
-  const ch = createChallenges().issue('seal-abc123', 'sealed.kanth_s.testnet');
+  const ch = await challenges().issue('seal-abc123', 'sealed.kanth_s.testnet');
   const good = sign(ch);
   assert.equal((await verifyProof({ ...good, signature: Buffer.alloc(64).toString('base64') }, ch, onChain())).reason, 'Signature does not verify');
   assert.equal((await verifyProof({ ...good, message: 'x' }, { ...ch, message: 'Open something else' }, onChain())).reason, 'Signature does not verify');
@@ -30,14 +32,14 @@ test('rejects a bad signature, a foreign key, a function-call key and a malforme
   assert.equal((await verifyProof({ ...good, accountId: 'someone.testnet' }, ch, onChain())).reason, 'Key is not on this account');
 });
 
-test('challenges are one-time, bound to the seal and expire', () => {
-  let t = 0; const c = createChallenges({ ttlMs: 1000, now: () => t });
-  const a = c.issue('seal-abc123', 'r');
-  assert.equal(c.take(a.nonce, 'seal-other1'), null, 'wrong seal');
-  assert.equal(c.take(a.nonce, 'seal-abc123'), null, 'consumed by the failed attempt');
-  const b = c.issue('seal-abc123', 'r'); assert.ok(c.take(b.nonce, 'seal-abc123'));
-  assert.equal(c.take(b.nonce, 'seal-abc123'), null, 'no replay');
-  const d = c.issue('seal-abc123', 'r'); t = 2000; assert.equal(c.take(d.nonce, 'seal-abc123'), null, 'expired');
+test('challenges are one-time, bound to the seal and expire', async () => {
+  let t = 0; const c = challenges({ ttlMs: 1000, now: () => t });
+  const a = await c.issue('seal-abc123', 'r');
+  assert.equal(await c.take(a.nonce, 'seal-other1'), null, 'wrong seal');
+  assert.equal(await c.take(a.nonce, 'seal-abc123'), null, 'consumed by the failed attempt');
+  const b = await c.issue('seal-abc123', 'r'); assert.ok(await c.take(b.nonce, 'seal-abc123'));
+  assert.equal(await c.take(b.nonce, 'seal-abc123'), null, 'no replay');
+  const d = await c.issue('seal-abc123', 'r'); t = 2000; assert.equal(await c.take(d.nonce, 'seal-abc123'), null, 'expired');
 });
 
 test('account id validation', () => {

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+data/
+node_modules/
+contract/target/
+playwright-report/
+test-results/
+public/assets/
+.vercel-static/
+IMPLEMENTATION-PLAN.md
+validation-data/

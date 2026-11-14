@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build && node -e \"require('fs').mkdirSync('.vercel-static',{recursive:true});require('fs').writeFileSync('.vercel-static/.keep','')\"",
+  "outputDirectory": ".vercel-static",
+  "functions": {
+    "api/index.js": { "includeFiles": "{public,lib,docs}/**", "maxDuration": 60, "memory": 1024 }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+}

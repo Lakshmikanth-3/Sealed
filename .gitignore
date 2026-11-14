@@ -8,3 +8,5 @@ contract/target/
 contract/build/
 playwright-report/
 test-results/
+.vercel
+.vercel-static/

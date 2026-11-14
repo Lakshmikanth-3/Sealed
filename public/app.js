@@ -126,7 +126,10 @@ $('sealForm').onsubmit = async (e) => {
   try {
     const f = $('file').files[0];
     if (!f) throw new Error('Choose a file to seal');
-    if (f.size > MAX_FILE_BYTES) throw new Error('Files are limited to 100 MB');
+    cfg ||= await config();
+    if (cfg.storageReady === false) throw new Error('This deployment is still being set up (storage not connected). Try again later.');
+    const limitMb = cfg.maxFileMb || 100;
+    if (f.size > Math.min(MAX_FILE_BYTES, limitMb * 1048576)) throw new Error(`File is too large: ${(f.size / 1048576).toFixed(1)} MB. The limit is ${limitMb} MB.`);
     const unlockAtMs = unlockMs();
     if (!Number.isFinite(unlockAtMs) || unlockAtMs < Date.now() + 30_000) throw new Error('Choose an unlock time at least 30 seconds ahead');
     const label = $('label').value.trim() || f.name;
@@ -161,7 +164,15 @@ $('sealForm').onsubmit = async (e) => {
     status(`Uploading ${bytesText(sealed.length)} encrypted and locking on NEAR…`);
     const headers = { 'content-type': 'application/octet-stream', 'x-seal-meta': toB64url(new TextEncoder().encode(JSON.stringify(meta))) };
     if ($('createToken').value) headers['x-create-token'] = $('createToken').value;
-    const r = await api('/api/seals', { method: 'POST', headers, body: sealed });
+    let r;
+    if (cfg?.upload === 'blob') {
+      // Vercel: the ciphertext goes straight to Blob storage; the server only gets its address.
+      const { uploadToBlob } = await import('/assets/sealed.js');
+      const name = toB64url(randomBytes(18));
+      const blobUrl = await uploadToBlob(sealed, name, (pct) => status(`Uploading encrypted file… ${Math.round(pct)}%`));
+      status('Locking on NEAR…');
+      r = await api('/api/seals', { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ blobUrl }) });
+    } else r = await api('/api/seals', { method: 'POST', headers, body: sealed });
     if (!r.ok) throw new Error(r.body.error || 'Sealing failed');
     const seal = { sealId: r.body.sealId, ownerToken: r.body.ownerToken, label, unlockAtMs, mode, k: meta.k || 0, n: meta.n || 0, createTx: r.body.createTx, fileName: f.name, size: f.size, createdAt: Date.now(), viewers };
     saveMine([seal, ...mine()]);

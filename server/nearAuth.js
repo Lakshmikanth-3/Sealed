@@ -18,19 +18,19 @@ export function nep413Hash({ message, nonce, recipient, callbackUrl = null }) {
   return createHash('sha256').update(Buffer.concat([tag, str(message), Buffer.from(nonce), str(recipient), cb])).digest();
 }
 
-export function createChallenges({ ttlMs = 5 * 60_000, now = Date.now } = {}) {
-  const live = new Map();
+/** One-time challenges, kept in the shared KV store so any server instance can verify them. */
+export function createChallenges({ kv, ttlMs = 5 * 60_000, now = Date.now }) {
   return {
-    issue(sealId, recipient) {
-      if (live.size > 10_000) for (const [k, v] of live) if (v.expires < now()) live.delete(k);
+    async issue(sealId, recipient) {
       const nonce = randomBytes(32).toString('base64');
       const message = `Open Sealed Paper seal ${sealId}`;
-      live.set(nonce, { sealId, message, recipient, expires: now() + ttlMs });
+      await kv.set(`ch:${nonce}`, { sealId, message, recipient, expires: now() + ttlMs }, Math.ceil(ttlMs / 1000));
       return { nonce, message, recipient };
     },
     /** One-time use: a challenge is consumed whether or not the proof verifies. */
-    take(nonce, sealId) {
-      const c = live.get(nonce); live.delete(nonce);
+    async take(nonce, sealId) {
+      if (typeof nonce !== 'string' || !nonce) return null;
+      const c = await kv.take(`ch:${nonce}`);
       if (!c || c.sealId !== sealId || c.expires < now()) return null;
       return c;
     },

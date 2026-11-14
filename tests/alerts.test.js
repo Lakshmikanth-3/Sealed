@@ -10,7 +10,7 @@ const UA = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/131.0 Mobi
 function setup({ chainFails = false } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-alerts-'));
   const store = openSealStore(dir);
-  store.saveMeta('seal-abc123', { sealId: 'seal-abc123', label: 'Exam paper', alertContacts: [{ email: 'owner@example.com' }, { phone: '+919800000000' }] });
+  void store.saveMeta('seal-abc123', { sealId: 'seal-abc123', label: 'Exam paper', alertContacts: [{ email: 'owner@example.com' }, { phone: '+919800000000' }] });
   const anchored = [], sent = [];
   const chain = { recordAlert: async (id, hash, kind) => { if (chainFails) throw new Error('rpc down'); anchored.push({ id, hash, kind }); return { txHash: 'TX' + anchored.length, value: anchored.length }; } };
   const notify = createNotifier({}, { log: (line) => sent.push(line) });
@@ -32,7 +32,7 @@ test('every trigger creates an alert with mocked location, device, IST/UTC time 
   await settle();
   assert.equal(anchored.length, 6, '5 alerts plus one escalation (5 failures from one IP)');
   assert.equal(anchored.filter((x) => x.kind === 'repeated_failures').length, 1);
-  const stored = store.readAlerts('seal-abc123');
+  const stored = await store.readAlerts('seal-abc123');
   assert.ok(stored.every((a) => a.chain.status === 'recorded' && a.chain.tx));
   assert.ok(stored.every((a) => a.notified.some((n) => n.channel === 'email') && a.notified.some((n) => n.channel === 'whatsapp')));
   assert.ok(sent.some((l) => l.includes('owner@example.com')));
@@ -51,7 +51,7 @@ test('five failures from one source in two minutes escalate once', async () => {
   const a = createAlerts({ store, chain: { recordAlert: async () => ({ txHash: 'x', value: 0 }) }, geo: async () => ({ source: 'mock' }), notify: async () => [], now: () => new Date(1_700_000_000_000 + t) });
   for (let i = 0; i < 6; i++) { await a.createAlert({ sealId: 'seal-abc123', kind: 'wrong_key', ip: '198.51.100.7', userAgent: UA }); t += 1000; }
   await settle();
-  const kinds = store.readAlerts('seal-abc123').map((x) => x.kind);
+  const kinds = (await store.readAlerts('seal-abc123')).map((x) => x.kind);
   assert.equal(kinds.filter((k) => k === 'repeated_failures').length, 1);
   assert.equal(kinds.filter((k) => k === 'wrong_key').length, 6);
   void make;
@@ -61,7 +61,7 @@ test('a failed on-chain write is recorded as failed, not hidden', async () => {
   const { store, alerts } = setup({ chainFails: true });
   await alerts.createAlert({ sealId: 'seal-abc123', kind: 'early_open', ip: '203.0.113.9', userAgent: UA });
   await settle();
-  assert.equal(store.readAlerts('seal-abc123')[0].chain.status, 'failed');
+  assert.equal((await store.readAlerts('seal-abc123'))[0].chain.status, 'failed');
 });
 
 test('private addresses get no location; unknown kinds and seals are rejected', async () => {
@@ -74,15 +74,15 @@ test('private addresses get no location; unknown kinds and seals are rejected', 
   assert.equal(deviceFrom('').browser, 'Unknown browser');
 });
 
-test('escrow boxes are authenticated and the store rejects bad IDs', () => {
+test('escrow boxes are authenticated and the store rejects bad IDs', async () => {
   const key = escrowKey({ SEAL_ESCROW_SECRET: 'test-secret' });
   const box = sealBox(key, Buffer.from('file key bytes'));
   assert.equal(openBox(key, box).toString(), 'file key bytes');
   assert.throws(() => openBox(escrowKey({ SEAL_ESCROW_SECRET: 'other' }), box));
   assert.throws(() => escrowKey({}), /SEAL_ESCROW_SECRET/);
   const store = openSealStore(fs.mkdtempSync(path.join(os.tmpdir(), 'sp-store-')));
-  assert.throws(() => store.saveFile('../etc', Buffer.from('x')), /Invalid seal id/);
-  store.saveMeta('seal-xyz789', { ownerTokenHash: store.tokenHash('tok') });
-  assert.equal(store.checkToken(store.readMeta('seal-xyz789'), 'tok'), true);
-  assert.equal(store.checkToken(store.readMeta('seal-xyz789'), 'nope'), false);
+  await assert.rejects(store.saveFile('../etc', Buffer.from('x')), /Invalid seal id/);
+  await store.saveMeta('seal-xyz789', { ownerTokenHash: store.tokenHash('tok') });
+  assert.equal(store.checkToken(await store.readMeta('seal-xyz789'), 'tok'), true);
+  assert.equal(store.checkToken(await store.readMeta('seal-xyz789'), 'nope'), false);
 });
