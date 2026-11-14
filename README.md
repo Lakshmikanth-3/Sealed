@@ -1,4 +1,6 @@
-# Sealed
+<p align="center"><img src="docs/brand/banner.png" alt="Sealed: files that open on time. Contracts, government orders, company results and more, locked until the right moment on NEAR." width="100%"></p>
+
+# <img src="public/logo.svg" alt="" width="40" align="top"> Sealed
 
 **Lock a file so nobody can open it before the time you choose. Not even you.**
 
