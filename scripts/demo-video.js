@@ -48,6 +48,7 @@ const LINES = {
   a_early: 'The receiver opens the link before the time. There is a live countdown. Let\'s try to open it anyway.',
   a_refused: 'Refused by the contract. The attempt is recorded in public with the time and the device, and the owner is alerted. This record can never be deleted.',
   skip: 'Let\'s skip ahead to the unlock time.',
+  a_count: 'Here are the last seconds of the countdown. Watch it reach zero.',
   a_open: 'The time has come. NEAR allows it, the key is released, and the results decrypt on their own. The check confirms this is exactly the file that was locked.',
   b_intro: 'The second flow: open only when parts are merged. A merger agreement is split between the CEO, the CFO, and the head of legal.',
   b_merge: 'There is no date. Two of the three must merge their parts to open it.',
@@ -56,8 +57,10 @@ const LINES = {
   b_page: 'The agreement\'s page shows a parts counter instead of a countdown. None merged so far.',
   b_h1: 'The CEO opens their link, and merges their part. It is checked against its fingerprint on NEAR.',
   b_h1done: 'Merged, and recorded on NEAR.',
+  b_count1: 'Back on the agreement page, the counter now shows one of two. It is still locked.',
   b_h2: 'Now the CFO merges theirs.',
   b_h2done: 'Two parts are merged. That is enough.',
+  b_count2: 'The counter shows two of two. Now the agreement can be opened.',
   b_open: 'Back on the agreement\'s page, the key is rebuilt from the two parts, and the document is decrypted right here.',
   b_opened: 'Here is the merger agreement, verified against the fingerprint recorded on NEAR.',
   c_intro: 'The third flow: a private live chat, like WhatsApp. On the left, Asha from the legal team. On the right, Bala, the client.',
@@ -152,7 +155,8 @@ async function waitCut(promise, label = '') {
   if (end - start > 2500) cuts.push([start - vStart + 600, end - vStart - 700]);
   return res;
 }
-const go = async (p) => { await finishSpeech(); await page.goto(BASE + p, { waitUntil: 'domcontentloaded' }); await sleep(900); };
+const go = async (p) => { await finishSpeech(); await page.goto(BASE + p, { waitUntil: 'domcontentloaded' }); await sleep(900);
+  if (p.startsWith('/app')) await page.waitForFunction(() => !/CHECKING|CONNECTING/i.test(document.body.innerText.slice(0, 4000)), null, { timeout: 20000 }).catch(() => {}); };
 const scrollTo = (sel, block = 'start', pg = page) => pg.evaluate(([s, b]) => document.querySelector(s)?.scrollIntoView({ behavior: 'smooth', block: b }), [sel, block]);
 const scrollTop = (sel, offset = 0) => page.evaluate(([s, o]) => { const r = document.querySelector(s).getBoundingClientRect(); window.scrollTo({ top: window.scrollY + r.top - o, behavior: 'smooth' }); }, [sel, offset]);
 const setUnlockIn = (sec) => page.evaluate((s) => {
@@ -247,7 +251,8 @@ for (const [i, id] of ['s_write', 's_seal', 's_choose', 's_timeA', 's_openA', 's
 await page.evaluate(() => document.getElementById('__demoHideNav')?.remove());
 await scrollTop('#features', 100); await sleep(1200);
 await say('caps', 'Capabilities', 'Lock until a time · split between people · private chat · leak tracing · every attempt on record', { hold: 0 });
-await sleep(4000); await page.mouse.wheel(0, 700); await sleep(3500); await page.mouse.wheel(0, 700); await finishSpeech();
+for (const n of [2, 3, 4, 5]) { await sleep(2600); await scrollTo(`.cap-list li:nth-child(${n})`, 'center'); }
+await finishSpeech();
 await scrollTop('#how', 0); await sleep(1500);
 await say('how', 'How it works', 'A legal team shares a merger agreement, locked until 09:00.', { hold: 9000 });
 await scrollTop('#proof', 100); await sleep(1200);
@@ -291,17 +296,23 @@ ok(/still locked|too early/i.test(await page.textContent('#result')), 'early ope
 await scrollTo('#result', 'center');
 await say('a_refused', 'Refused and recorded on NEAR', 'Time and device logged. The owner is alerted.');
 await scrollTo('#log', 'center'); await sleep(2000);
-await say('skip', '⏩ Skipping ahead', 'to the unlock time.');
-await waitCut((async () => {
-  const left = sealA.unlockAtMs - Date.now(); if (left > 0) await sleep(left + 2000);
-  let opened = false;
-  for (let i = 0; i < 25 && !opened; i++) { opened = (await page.textContent('body')).includes('revenue up 18%'); if (!opened) await sleep(2500); }
-  if (!opened) { await page.click('#openBtn'); await page.waitForSelector('#result:not(.hidden)', { timeout: 120000 }); }
-})());
-const openedA = (await page.textContent('#result')).includes('revenue up 18%');
+await say('skip', '⏩ Skipping ahead', 'to the last seconds before the unlock time.');
+await waitCut(sleep(Math.max(0, sealA.unlockAtMs - Date.now() - 12000)));
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+await say('a_count', 'Countdown to the unlock time', 'Opens by itself at 00:00:00.', { hold: 0 });
+let openedA = false;
+for (let i = 0; i < 40 && !openedA; i++) { openedA = (await page.textContent('#result').catch(() => '')).includes('revenue up 18%'); if (!openedA) await sleep(1000); }
+if (!openedA) {
+  await waitCut((async () => {
+    for (let i = 0; i < 25 && !openedA; i++) { openedA = (await page.textContent('#result').catch(() => '')).includes('revenue up 18%'); if (!openedA) await sleep(2500); }
+    if (!openedA) { await page.click('#openBtn'); await page.waitForSelector('#result:not(.hidden)', { timeout: 120000 }); openedA = (await page.textContent('#result')).includes('revenue up 18%'); }
+  })());
+}
 ok(openedA, 'time-locked file opened automatically at its time');
-await scrollTo('#result', 'center');
-await say('a_open', 'Opened on time', 'Key released by NEAR. Same file that was locked ✓');
+await finishSpeech();
+await scrollTo('#result', 'start'); await sleep(800);
+await page.evaluate(() => window.scrollBy({ top: -90, behavior: 'smooth' }));
+await say('a_open', 'Opened on time', 'Key released by NEAR. Same file that was locked ✓', { hold: 8000 });
 
 // ================= 3b. Flow two: open only when parts are merged =================
 await go('/app#seal');
@@ -344,9 +355,14 @@ for (const [i, link] of holderLinks.slice(0, 2).entries()) {
   ok(/merged/i.test(res), `${i === 0 ? 'CEO' : 'CFO'} merged their part (${res})`);
   await scrollTo('#result', 'center');
   await say(i === 0 ? 'b_h1done' : 'b_h2done', res, 'Recorded on NEAR.');
+  await go(`/s/${sealB.sealId}`);
+  await waitCut(page.waitForFunction((n) => (document.getElementById('count')?.textContent || '').includes(`${n} / 2`), i + 1, { timeout: 60000 }));
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  ok(true, `agreement page shows ${i + 1} / 2 parts merged`);
+  await say(i === 0 ? 'b_count1' : 'b_count2', `${i + 1} of 2 parts merged`, i === 0 ? 'Still locked: one more part is needed.' : 'Enough parts: it can be opened now.', { hold: 5000 });
 }
-await go(`/s/${sealB.sealId}`);
 await waitCut(page.waitForFunction(() => !document.getElementById('openBtn').disabled, null, { timeout: 60000 }));
+await scrollTo('#openBtn', 'center'); await sleep(600);
 await say('b_open', '2 of 3 parts merged', 'The key is rebuilt and the document decrypted in this browser.', { hold: 0 });
 const openedB = await waitCut((async () => {
   for (let i = 0; i < 6; i++) {
@@ -357,8 +373,10 @@ const openedB = await waitCut((async () => {
   return false;
 })());
 ok(openedB, 'merged file opened and decrypted to the original text');
-await scrollTo('#result', 'center');
-await say('b_opened', 'Opened by merging', 'Verified against the fingerprint on NEAR ✓');
+await finishSpeech();
+await scrollTo('#result', 'start'); await sleep(800);
+await page.evaluate(() => window.scrollBy({ top: -90, behavior: 'smooth' }));
+await say('b_opened', 'Opened by merging', 'Verified against the fingerprint on NEAR ✓', { hold: 8000 });
 
 // ================= 3c. Flow three: private live chat, side by side =================
 await finishSpeech();
