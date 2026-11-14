@@ -870,3 +870,14 @@ button.danger { color: var(--bad); border-color: #f1c4bf; }
 @media (prefers-reduced-motion: reduce) {
   .story * { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
+
+/* audit fixes */
+h1, .lp-h2, .lp-display-2 { text-wrap: balance; }
+.card.empty { text-align: center; padding: 48px 24px; } .card.empty .btn { margin-top: 8px; }
+.land-top > .badge, .land-top > #state { justify-self: end; width: auto; }
+@media (max-width: 760px) {
+  .app-shell { background: none; }
+  .workspace-nav .nav-number { display: none; }
+  .workspace-nav button { font-size: .62rem; line-height: 1.15; padding: 4px 2px; text-align: center; }
+  .start-row .btn { flex: 1 1 100%; }
+}
