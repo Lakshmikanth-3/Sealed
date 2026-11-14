@@ -20,6 +20,7 @@
     "contract:upgrade": "node --env-file-if-exists=.env scripts/upgrade-sealed.js",
     "test:chat": "node scripts/chat-smoke.js",
     "demo:video": "node scripts/demo-video.js",
+    "plans:price": "node --env-file-if-exists=.env scripts/set-plan-price.js",
     "test:access": "node --env-file-if-exists=.env scripts/access-smoke.js",
     "plans:test": "cd contract-plans && cargo test --locked",
     "plans:build": "cd contract-plans && cargo near build non-reproducible-wasm --no-abi --locked --out-dir build",
