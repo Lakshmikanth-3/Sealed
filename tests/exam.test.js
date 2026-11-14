@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseExam, setVersions, renderVersion, answerKey, audit, investigate } from '../lib/exam.js';
 
-export const SAMPLE = `Q: A train travels 120 km in 2 hours. What is its average speed?
+export const PAPER = `Q: A train travels 120 km in 2 hours. What is its average speed?
 A) 60 km/h *
 B) 40 km/h
 C) 80 km/h
@@ -51,17 +51,17 @@ C) New Delhi *
 D) Chennai`;
 
 test('parses questions, options and the marked answer', () => {
-  const q = parseExam(SAMPLE);
+  const q = parseExam(PAPER);
   assert.equal(q.length, 8); assert.equal(q[1].options[q[1].correct], '29'); assert.equal(q[0].stem, 'A train travels 120 km in 2 hours. What is its average speed?');
   assert.throws(() => parseExam('Q: x\nA) a\nB) b'), /mark the correct option/);
   assert.throws(() => parseExam('Q: x\nA) a *'), /at least two options/);
 });
 
 test('setter gives every centre a distinct version; auditor finds them equivalent', () => {
-  const q = parseExam(SAMPLE), v = setVersions(q, 10, 'mock-1');
+  const q = parseExam(PAPER), v = setVersions(q, 10, 'exam-1');
   assert.equal(v.length, 10);
   assert.equal(new Set(v.map((x) => renderVersion(x))).size, 10, 'all versions differ');
-  assert.deepEqual(setVersions(q, 10, 'mock-1'), v, 'deterministic');
+  assert.deepEqual(setVersions(q, 10, 'exam-1'), v, 'deterministic');
   const report = audit(q, v); assert.ok(report.ok, JSON.stringify(report.rows.filter((r) => !r.ok)));
   assert.match(answerKey(v[0]), /^1[A-D] 2[A-D]/);
   const broken = structuredClone(v); broken[0].items[0].correct = (broken[0].items[0].correct + 1) % 4;
@@ -69,15 +69,15 @@ test('setter gives every centre a distinct version; auditor finds them equivalen
 });
 
 test('investigator traces a retyped, partial leak to its centre', () => {
-  const q = parseExam(SAMPLE), v = setVersions(q, 5, 'mock-2');
+  const q = parseExam(PAPER), v = setVersions(q, 5, 'exam-2');
   const leaked = renderVersion(v[2]).toUpperCase().replace(/\)/g, '.').split('\n').slice(0, 26).join(' ');
   const r = investigate(leaked, q, v);
   assert.equal(r.centre, 3); assert.ok(r.confidence >= 60, r.verdict); assert.match(r.verdict, /^Centre 3, \d+% confidence$/);
   assert.throws(() => investigate('too short', q, v), /more of the leaked text/);
 });
 
-test('accuracy over 20 simulated leaks: at least 18 traced correctly', () => {
-  const q = parseExam(SAMPLE), v = setVersions(q, 8, 'mock-3');
+test('accuracy over 20 leaked copies: at least 18 traced correctly', () => {
+  const q = parseExam(PAPER), v = setVersions(q, 8, 'exam-3');
   let correct = 0;
   for (let i = 0; i < 20; i++) {
     const c = (i * 5) % 8; // spread over centres

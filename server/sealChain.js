@@ -9,7 +9,7 @@ const GAS = 60_000_000_000_000n;
 export function sealChainConfig(env = process.env) {
   const network = env.NEAR_NETWORK || 'testnet';
   if (network !== 'testnet') throw new Error('Sealed Paper runs on testnet only');
-  // NEAR_RPC_URLS: comma-separated HTTPS endpoints, tried in order. No built-in endpoints.
+  // NEAR_RPC_URLS: comma-separated HTTPS endpoints, used in order. No built-in endpoints.
   const rpcUrls = [...new Set(String(env.NEAR_RPC_URLS || '').split(',').map((u) => u.trim()).filter((u) => /^https:\/\/\S+$/.test(u)))];
   if (!rpcUrls.length) throw new Error('Set NEAR_RPC_URLS (comma-separated HTTPS RPC endpoints) in .env');
   const explorer = String(env.NEAR_EXPLORER_URL || '').replace(/\/+$/, '');
@@ -34,7 +34,7 @@ export function createSealChain(config = sealChainConfig()) {
   let queue = Promise.resolve();
   // Each write has a deadline so one slow RPC call cannot stall every later write.
   const WRITE_TIMEOUT_MS = Number(process.env.SEAL_WRITE_TIMEOUT_MS || 30_000);
-  const withDeadline = (fn) => () => Promise.race([fn(), new Promise((_, reject) => setTimeout(() => reject(new Error('NEAR is responding slowly; try again in a moment')), WRITE_TIMEOUT_MS))]);
+  const withDeadline = (fn) => () => Promise.race([fn(), new Promise((_, reject) => setTimeout(() => reject(new Error('NEAR is responding slowly; please wait a moment and tap again')), WRITE_TIMEOUT_MS))]);
   const serial = (fn) => { const run = queue.then(withDeadline(fn), withDeadline(fn)); queue = run.catch(() => {}); return run; };
   async function call(methodName, args) {
     requireWrite();

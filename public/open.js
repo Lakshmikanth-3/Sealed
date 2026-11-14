@@ -83,11 +83,11 @@ async function openFile(auto = false) {
     }
     const txLink = r.body.tx ? el('a', { href: `${EXPLORER}/txns/${r.body.tx}`, target: '_blank', rel: 'noopener' }, 'See the public record →') : null;
     if (r.status === 423) {
-      showResult('locked', el('h2', { text: 'Still locked' }), el('p', { text: `It is too early. This file opens on ${istText(seal.unlockAtMs)}. Your try has been recorded and the owner has been told.` }), txLink);
+      showResult('locked', el('h2', { text: 'Still locked' }), el('p', { text: `It is too early. This file opens on ${istText(seal.unlockAtMs)}. Your attempt has been recorded and the owner has been told.` }), txLink);
       $('statusLine').textContent = ''; return renderLog();
     }
     if (r.status === 409) {
-      showResult('waiting', el('h2', { text: 'Almost ready' }), el('p', { text: `The time has come. Now ${r.body.k} trusted people must say yes. So far ${r.body.released} have. Try again in a little while.` }));
+      showResult('waiting', el('h2', { text: 'Almost ready' }), el('p', { text: `The time has come. Now ${r.body.k} trusted people must say yes. So far ${r.body.released} have. Please check again in a little while.` }));
       $('statusLine').textContent = ''; return renderLog();
     }
     if (!r.ok) throw new Error(r.body.error || 'Open failed');

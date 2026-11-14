@@ -2,7 +2,7 @@
 
 **Lock a file so nobody can open it before the time you choose. Not even you.**
 
-Pick a file (an exam paper, results, a tender, a will, a surprise video) and the exact date and time it may open. Before that time, every try to open it is **blocked, recorded in public and reported to you**. For extra safety you can name a few trusted people, and a set number of them must say yes before it opens.
+Pick a file (an exam paper, results, a tender, a will, a surprise video) and the exact date and time it may open. Before that time, every attempt to open it is **blocked, recorded in public and reported to you**. For extra safety you can name a few trusted people, and a set number of them must say yes before it opens.
 
 The rules are enforced by a small program on the NEAR blockchain (test network), not by us, so nobody can quietly change them.
 
@@ -17,7 +17,7 @@ Sensitive files keep leaking before their release time, because whoever holds th
 | **UK Budget report, 2025:** opened about 40 minutes early by changing a web address, 24,000+ times | [Ross Martin](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs) |
 | **US Supreme Court draft, 2022:** leaked; nearly 100 staff questioned and the leaker never found | [ABA Journal](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing) |
 
-## Try it in 3 minutes
+## Run it in 3 minutes
 
 Hosted version: not online yet (deployment pending). Run it on your computer:
 
@@ -31,10 +31,10 @@ npm run dev:all          # then open http://localhost:8787
 |---|---|
 | Open the site and tap **Lock a file now** | A 3-step page: choose file, choose time, choose who must agree |
 | Choose any PDF, tap **In 2 minutes**, choose **Some trusted people → 2 of 3 people**, tap **Lock my file** | "Done: your file is locked", share buttons (link, WhatsApp, email, calendar, QR code) and one private link per trusted person |
-| Open the share link and tap **Open file** right away | **Still locked**: the try is blocked, recorded in public, and you get an alert |
+| Open the share link and tap **Open file** right away | **Still locked**: the attempt is blocked, recorded in public, and you get an alert |
 | Open one trusted person's link and tap **Say yes** right away | **Too early**: also blocked and recorded |
 | Wait for the countdown, tap **Say yes** on 2 of the 3 links, then **Open file** | The file opens with "✓ Checked: this is the same file that was locked" |
-| Go to **My locked files** | Countdown, who said yes, every alert (time, device, rough location) and the public record of every try |
+| Go to **My locked files** | Countdown, who said yes, every alert (time, device, rough location) and the public record of every attempt |
 | Open **Check a locked file** and paste the share link | The public record read straight from the blockchain, so you don't have to trust us |
 | Go to **Exam papers**, paste questions, choose 3 centres, tap **Make one paper per centre** | One different paper per centre, a fairness check, and **Find which centre** for a pasted leak |
 
@@ -45,7 +45,7 @@ npm run dev:all          # then open http://localhost:8787
 | Lock a file | Scramble it on your device and register the opening time on the blockchain |
 | Trusted people | People who each hold one piece of the key |
 | Say yes | A trusted person agrees to open it (only allowed after the time) |
-| Public record | The blockchain log of every try, which nobody can delete or edit |
+| Public record | The blockchain log of every attempt, which nobody can delete or edit |
 | Check a locked file | Read that record yourself |
 
 ## Proof it is live (NEAR test network)
@@ -60,7 +60,7 @@ npm run dev:all          # then open http://localhost:8787
 |---|---|
 | Nobody can open it before the chosen time | If our service **and** enough of your trusted people all work together, they could open it early |
 | Only your trusted people can help, once each | For "just the time" files, our service keeps the key until then |
-| Every try, even blocked ones, is in the public record | The person who locks the file already has the original |
+| Every attempt, even blocked ones, is in the public record | The person who locks the file already has the original |
 | A changed file will not open, and you are told | Once it opens, someone can still take a photo of it |
 | Your exact location is only shared if the visitor agrees | Rough location (when turned on) comes from the internet connection and can be wrong |
 
@@ -107,7 +107,7 @@ Three rule-based agents run in the browser (`lib/exam.js`):
 
 The owner can write the SHA-256 of a report on-chain against a seal (`record_alert` with kind `leak_report` or `exam_audit`).
 
-Measured in the unit tests on simulated leaks (30–90% of a test paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
+Measured in the unit tests on leaked copies (30–90% of a test paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
 
 ### Alerts
 
@@ -158,7 +158,7 @@ Notifications go by email (Resend) and WhatsApp/SMS (Twilio) only when those are
 ## Tests
 
 ```sh
-npm test               # 26 unit tests (incl. exam mode: 20 simulated leaks, at least 18 must trace): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
+npm test               # 26 unit tests (incl. exam mode: 20 leaked copies, at least 18 must be traced): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
                        # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow,
                        # NEP-413 proofs (forged key, function-call key, replay, expiry)
 npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { memoryKv, upstashKv, kvConfig, limited } from '../server/kv.js';
 import { openCloudStore } from '../server/sealStore.js';
 
-// A tiny fake of the Upstash REST API (one Redis shared by every "instance").
-function fakeUpstash() {
+// A small in-process stand-in for the Upstash REST API (one Redis shared by every "instance").
+function testRedis() {
   const data = new Map(), lists = new Map(), calls = [];
   const fetcher = async (_url, init) => {
     const [cmd, k, ...rest] = JSON.parse(init.body); calls.push(cmd);
@@ -32,7 +32,7 @@ test('config accepts Vercel KV and Upstash variable names', () => {
 });
 
 test('rate limits are shared across two server instances', async () => {
-  const redis = fakeUpstash();
+  const redis = testRedis();
   const a = upstashKv({ url: 'https://r', token: 't' }, { fetcher: redis.fetcher });
   const b = upstashKv({ url: 'https://r', token: 't' }, { fetcher: redis.fetcher });
   const results = [];
@@ -42,7 +42,7 @@ test('rate limits are shared across two server instances', async () => {
 });
 
 test('one-time take, JSON values and lists behave the same in memory and Upstash', async () => {
-  for (const kv of [memoryKv(), upstashKv({ url: 'https://r', token: 't' }, { fetcher: fakeUpstash().fetcher })]) {
+  for (const kv of [memoryKv(), upstashKv({ url: 'https://r', token: 't' }, { fetcher: testRedis().fetcher })]) {
     await kv.set('ch:1', { sealId: 'abc' }, 300);
     assert.deepEqual(await kv.get('ch:1'), { sealId: 'abc' });
     assert.deepEqual(await kv.take('ch:1'), { sealId: 'abc' });
@@ -59,7 +59,7 @@ test('memory entries expire', async () => {
 });
 
 test('cloud seal store keeps metadata and alerts in Redis and reads ciphertext from Blob', async () => {
-  const kv = upstashKv({ url: 'https://r', token: 't' }, { fetcher: fakeUpstash().fetcher });
+  const kv = upstashKv({ url: 'https://r', token: 't' }, { fetcher: testRedis().fetcher });
   const blob = Buffer.from('SEALPAP1 ciphertext');
   const store = openCloudStore(kv, { fetcher: async (url) => ({ ok: url === 'https://s.public.blob.vercel-storage.com/seals/a.sealedfile', arrayBuffer: async () => blob }) });
   await store.saveMeta('seal-abc123', { sealId: 'seal-abc123', blobUrl: 'https://s.public.blob.vercel-storage.com/seals/a.sealedfile', parts: {} });

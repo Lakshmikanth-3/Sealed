@@ -127,7 +127,7 @@ $('sealForm').onsubmit = async (e) => {
     const f = $('file').files[0];
     if (!f) throw new Error('Please choose a file first (step 1)');
     cfg ||= await config();
-    if (cfg.storageReady === false) throw new Error('The service is still being set up. Please try again later.');
+    if (cfg.storageReady === false) throw new Error('The service is still being set up. Please come back later.');
     const limitMb = cfg.maxFileMb || 100;
     if (f.size > Math.min(MAX_FILE_BYTES, limitMb * 1048576)) throw new Error(`File is too large: ${(f.size / 1048576).toFixed(1)} MB. The limit is ${limitMb} MB.`);
     const unlockAtMs = unlockMs();
@@ -221,8 +221,8 @@ async function renderSeals() {
       shareButtons(seal, { qr: qrSvg }),
       el('div', { class: 'row' }, el('a', { class: 'btn', href: `/s/${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Open the share page'), el('a', { class: 'btn ghost', href: `/verify?id=${seal.sealId}`, target: '_blank', rel: 'noopener' }, 'Check it'),
         el('a', { class: 'btn ghost', href: `${EXPLORER}/txns/${seal.createTx}`, target: '_blank', rel: 'noopener' }, 'Public record')),
-      el('details', {}, el('summary', { text: 'Alerts (who tried to open it)' }), el('ol', { class: 'activity', 'data-alerts': '' }, el('li', { class: 'muted', text: 'Loading…' }))),
-      el('details', {}, el('summary', { text: 'Public record of every try' }), el('ol', { class: 'activity', 'data-log': '' }, el('li', { class: 'muted', text: 'Loading…' }))));
+      el('details', {}, el('summary', { text: 'Alerts (who attempted to open it)' }), el('ol', { class: 'activity', 'data-alerts': '' }, el('li', { class: 'muted', text: 'Loading…' }))),
+      el('details', {}, el('summary', { text: 'Public record of every attempt' }), el('ol', { class: 'activity', 'data-log': '' }, el('li', { class: 'muted', text: 'Loading…' }))));
     void fillSeal(card, seal);
     return card;
   }));
@@ -230,7 +230,7 @@ async function renderSeals() {
 async function fillSeal(card, seal) {
   const [s, a, l] = await Promise.all([api(`/api/seals/${seal.sealId}`), api(`/api/seals/${seal.sealId}/alerts?token=${encodeURIComponent(seal.ownerToken)}`), api(`/api/seals/${seal.sealId}/log`)]);
   if (s.ok && seal.mode === 'split') card.querySelector('[data-progress]').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < (s.body.chain?.released || 0) ? ' on' : ''), title: `part ${i + 1}` })), el('small', { text: ` ${s.body.chain?.released || 0} of ${seal.k} people have said yes` }));
-  card.querySelector('[data-alerts]').replaceChildren(...(a.ok && a.body.alerts.length ? a.body.alerts.map(alertItem) : [el('li', { class: 'muted', text: 'No alerts. Nobody has tried to open it early.' })]));
+  card.querySelector('[data-alerts]').replaceChildren(...(a.ok && a.body.alerts.length ? a.body.alerts.map(alertItem) : [el('li', { class: 'muted', text: 'No alerts. Nobody has attempted to open it early.' })]));
   card.querySelector('[data-log]').replaceChildren(...(l.ok && l.body.log.length ? l.body.log.slice().reverse().map((e) => el('li', {}, el('time', { text: utcText(Number(e.at_ms)) }), el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
 }
 function alertItem(a) {
@@ -260,8 +260,8 @@ async function renderOverview() {
     .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
   $('oAlerts').replaceChildren(...(alerts.length ? alerts.map((a) => el('li', {}, el('time', { text: a.atIst }), el('p', {}, el('span', { class: 'accent', text: plainAlert(a.kind) }), ` · ${a.label}`))) : [el('li', { class: 'muted', text: 'No alerts yet.' })]));
   const kinds = (k) => alerts.filter((a) => a.kind === k).length;
-  $('oInfo').replaceChildren(...[['Blocked tries', 'head'], ['Tried to open too early', kinds('early_open')], ['Trusted person tried too early', kinds('early_release')], ['Stranger tried to unlock', kinds('not_holder') + kinds('not_allowed')],
-    ['Warnings', 'bad'], ['Wrong key used', kinds('wrong_key')], ['File was changed', kinds('file_tampered')], ['Many tries in a row', kinds('repeated_failures')]].map(([k, v]) => {
+  $('oInfo').replaceChildren(...[['Blocked attempts', 'head'], ['Attempted to open too early', kinds('early_open')], ['Trusted person attempted too early', kinds('early_release')], ['Stranger attempted to unlock', kinds('not_holder') + kinds('not_allowed')],
+    ['Warnings', 'bad'], ['Wrong key used', kinds('wrong_key')], ['File was changed', kinds('file_tampered')], ['Many attempts in a row', kinds('repeated_failures')]].map(([k, v]) => {
     if (v === 'head' || v === 'bad') return el('p', { class: 'info-head' + (v === 'bad' ? ' bad' : '') }, el('span', { class: 'dot' }), ' ' + k);
     return el('p', {}, el('span', { text: k }), el('b', { text: String(v) }));
   }));

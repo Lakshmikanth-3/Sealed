@@ -38,11 +38,11 @@ async function check() {
     }
     const early = log.filter((e) => /early|not_holder/.test(e.kind)).length;
     $('verdict').className = 'verdict ' + (bad ? 'bad' : 'ok');
-    $('verdict').textContent = bad ? 'FILE TAMPERED: this copy was changed after it was locked' : `✓ Real locked file · ${unlocked ? 'open now' : 'still locked'} · ${early} early tr${early === 1 ? 'y' : 'ies'} blocked`;
+    $('verdict').textContent = bad ? 'FILE TAMPERED: this copy was changed after it was locked' : `✓ Real locked file · ${unlocked ? 'open now' : 'still locked'} · ${early} early attempt${early === 1 ? '' : 's'} blocked`;
     $('fields').replaceChildren(row('Opens on', istText(Number(seal.unlock_at_ms))), row('Locked on', istText(Number(seal.created_at_ms))),
       row('Who must agree', seal.mode === 'split' ? `${seal.threshold_k} of ${seal.total_n} trusted people` : 'Nobody, it opens on time'),
       row('People who said yes', seal.mode === 'split' ? `${seal.released.length} of ${seal.threshold_k} needed` : '—'), row('Can it be opened now?', unlocked ? 'Yes' : 'No'),
-      row('Downloaded copy unchanged?', fileLine), row('Tries recorded', String(seal.log_count)));
+      row('Downloaded copy unchanged?', fileLine), row('Attempts recorded', String(seal.log_count)));
     $('fields').append(el('details', { class: 'tech' }, el('summary', { text: 'Technical details' }), row('Contract', contract), row('File ID', id), row('File fingerprint (SHA-256)', short(seal.file_hash, 12))));
     $('log').replaceChildren(...log.slice().reverse().map((e) => el('li', {}, el('time', { text: `${istText(Number(e.at_ms))} · ${utcText(Number(e.at_ms))}` }),
       el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))));

@@ -71,7 +71,7 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   const card = page.locator(`.seal-card[data-id="${split.sealId}"]`);
   await card.locator('details').first().click();
   const alerts = card.locator('[data-alerts]');
-  await expect(alerts).toContainText(/Trusted person tried too early/i); await expect(alerts).toContainText(/Tried to open too early/i);
+  await expect(alerts).toContainText(/Trusted person attempted too early/i); await expect(alerts).toContainText(/Attempted to open too early/i);
   await expect(alerts).toContainText(/File was changed/i); await expect(alerts).toContainText(/approx\. location/i);
   expect(await alerts.locator('a', { hasText: 'Saved in the public record' }).count()).toBeGreaterThanOrEqual(2);
 

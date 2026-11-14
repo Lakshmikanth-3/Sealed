@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { encryptFile, decryptFile, splitKey, combineKey, partCommitment, sha256Hex, AuthFailure, randomBytes } from '../lib/sealcrypto.js';
 
-const sample = (header, size) => { const b = randomBytes(size); b.set(new TextEncoder().encode(header)); return b; };
+const fileBytes = (header, size) => { const b = randomBytes(size); b.set(new TextEncoder().encode(header)); return b; };
 const FILES = {
-  'paper.pdf': ['application/pdf', sample('%PDF-1.7\n', 40_000)],
-  'photo.png': ['image/png', sample('\x89PNG\r\n\x1a\n', 25_000)],
-  'clip.mp4': ['video/mp4', sample('\0\0\0\x18ftypmp42', 150_000)],
+  'paper.pdf': ['application/pdf', fileBytes('%PDF-1.7\n', 40_000)],
+  'photo.png': ['image/png', fileBytes('\x89PNG\r\n\x1a\n', 25_000)],
+  'clip.mp4': ['video/mp4', fileBytes('\0\0\0\x18ftypmp42', 150_000)],
   'note.txt': ['text/plain', new TextEncoder().encode('Question 1: What is 2 + 2?\n'.repeat(100))],
 };
 

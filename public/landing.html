@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a">
-  <meta name="description" content="Sealed Paper: lock a file so nobody can open it before the time you choose. Every early try is blocked and recorded in public.">
+  <meta name="description" content="Sealed Paper: lock a file so nobody can open it before the time you choose. Every early attempt is blocked and recorded in public.">
   <title>Sealed Paper — Files that open on time</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing">
 <header class="land-top">
   <a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">files that open on time</span></a>
-  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#why">Why</a><a href="/verify">Check a file</a><a class="btn" href="/app#seal">Lock a file</a></nav>
+  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#why">Why</a><a href="/verify">Check a file</a><a href="/proof">Proof</a><a class="btn" href="/app#seal">Lock a file</a></nav>
 </header>
 <main>
   <section class="hero">
     <div class="hero-copy">
       <p class="eyebrow"><span class="dot live"></span> Working now on the NEAR test network</p>
       <h1>Lock a file.<br><span class="accent">Nobody opens it early.</span><br>Not even you.</h1>
-      <p class="lede">Exam papers, results, tenders, wills or a surprise video: pick a file and the exact time it may open. Before that time, every try is blocked, recorded in public, and you get an alert. For extra safety, choose a few trusted people who must all agree.</p>
+      <p class="lede">Exam papers, results, tenders, wills or a surprise video: pick a file and the exact time it may open. Before that time, every attempt is blocked, recorded in public, and you get an alert. For extra safety, choose a few trusted people who must all agree.</p>
       <div class="hero-cta"><a class="btn big-btn" href="/app#seal">Lock a file now →</a><a class="btn ghost big-btn" href="/verify">Check a file I received</a></div>
     </div>
     <div class="panel terminal" aria-label="Live status">
@@ -57,14 +57,14 @@
 
   <section class="split">
     <div class="panel"><h2 class="section-title">// What is guaranteed</h2>
-      <ul class="tick"><li>Nobody can open it before the chosen time</li><li>Only the trusted people you chose can help open it, once each</li><li>Every try, even blocked ones, is recorded in public and cannot be deleted</li><li>If the file is changed, it will not open and you are told</li><li>Your exact location is never taken without your OK</li></ul></div>
+      <ul class="tick"><li>Nobody can open it before the chosen time</li><li>Only the trusted people you chose can help open it, once each</li><li>Every attempt, even blocked ones, is recorded in public and cannot be deleted</li><li>If the file is changed, it will not open and you are told</li><li>Your exact location is never taken without your OK</li></ul></div>
     <div class="panel"><h2 class="section-title">// Honest limits</h2>
       <ul class="cross"><li>If our service and enough of your trusted people all work together, they could open it early</li><li>For "just the time" files, our service keeps the key until then</li><li>The person who locks the file already has the original</li><li>Once it opens, someone can still take a photo of it</li><li>Rough location from the internet connection can be wrong</li></ul></div>
   </section>
 
   <section class="panel deploy"><h2 class="section-title">// Proof it is live</h2>
     <p>The program that enforces the time runs on the NEAR test network. Anyone can look it up: <span id="sContract" class="mono">—</span> <span id="sOwner" class="muted"></span></p>
-    <div class="deploy-links" id="deployLinks"></div></section>
+    <div class="deploy-links" id="deployLinks"></div><p><a class="btn" href="/proof">See every real transaction →</a></p></section>
 </main>
 <footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source code</a><span>Locked until the second. Recorded forever.</span></footer>
 <script type="module" src="/landing.js"></script>

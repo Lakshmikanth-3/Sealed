@@ -20,7 +20,7 @@ function setup({ chainFails = false } = {}) {
 }
 const settle = () => new Promise((r) => setTimeout(r, 50));
 
-test('every trigger creates an alert with mocked location, device, IST/UTC time and an on-chain hash', async () => {
+test('every trigger creates an alert with a location lookup, device, IST/UTC time and an on-chain hash', async () => {
   const { store, alerts, anchored, sent } = setup();
   for (const kind of ['early_open', 'early_release', 'not_holder', 'wrong_key', 'file_tampered']) {
     const a = await alerts.createAlert({ sealId: 'seal-abc123', kind, ip: '203.0.113.9', userAgent: UA, account: kind === 'not_holder' ? 'mallory.testnet' : null });
@@ -49,7 +49,7 @@ test('GPS is used only when the visitor shared it, rounded', async () => {
 test('five failures from one source in two minutes escalate once', async () => {
   let t = 0; const { store, alerts } = setup();
   const make = () => alerts.createAlert({ sealId: 'seal-abc123', kind: 'early_open', ip: '198.51.100.7', userAgent: UA });
-  const a = createAlerts({ store, chain: { recordAlert: async () => ({ txHash: 'x', value: 0 }) }, geo: async () => ({ source: 'mock' }), notify: async () => [], now: () => new Date(1_700_000_000_000 + t) });
+  const a = createAlerts({ store, chain: { recordAlert: async () => ({ txHash: 'x', value: 0 }) }, geo: async () => ({ source: 'disabled' }), notify: async () => [], now: () => new Date(1_700_000_000_000 + t) });
   for (let i = 0; i < 6; i++) { await a.createAlert({ sealId: 'seal-abc123', kind: 'wrong_key', ip: '198.51.100.7', userAgent: UA }); t += 1000; }
   await settle();
   const kinds = (await store.readAlerts('seal-abc123')).map((x) => x.kind);

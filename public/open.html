@@ -18,7 +18,7 @@
     <div class="progress center" id="progress"></div>
     <p class="center muted" id="statusLine" role="status"></p>
   </div>
-  <p class="notice" role="note"><b>Please note:</b> every try to open this file is recorded, with the time, your device and your rough location (from your internet connection). Your exact location is shared only if you tick the box below.</p>
+  <p class="notice" role="note"><b>Please note:</b> every attempt to open this file is recorded, with the time, your device and your rough location (from your internet connection). Your exact location is shared only if you tick the box below.</p>
   <div class="panel open-actions">
     <div id="accessBox" class="wallet-box hidden"><p><b>Only <span id="viewerCount"></span> chosen people can open this file.</b> Connect your NEAR wallet app to show it is you. It is free and takes a few seconds.</p><div class="row"><button id="connectBtn" class="secondary">Connect my wallet</button><span id="walletState" class="muted"></span></div></div>
     <label class="check-row"><input type="checkbox" id="shareGps"> Share my exact location (optional)</label>
@@ -26,7 +26,7 @@
     <details><summary>I have a downloaded locked copy</summary><label for="sealedDoc">Choose the locked copy you downloaded</label><input id="sealedDoc" type="file" accept=".sealed,application/json"><p class="field-note" id="docNote">It still opens only at the right time.</p></details>
   </div>
   <section id="result" class="result hidden" aria-live="polite"></section>
-  <section class="panel"><h2 class="panel-title">Public record of every try</h2><ol id="log" class="activity"><li class="muted">Loading…</li></ol></section>
+  <section class="panel"><h2 class="panel-title">Public record of every attempt</h2><ol id="log" class="activity"><li class="muted">Loading…</li></ol></section>
 </main>
 <footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="/app">Lock your own file</a><span>Test network</span></footer>
 <script type="module" src="/open.js"></script>
