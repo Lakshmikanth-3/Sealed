@@ -2,49 +2,13 @@ import { $, api, el, toast, download } from '/common.js';
 import { parseExam, setVersions, renderVersion, answerKey, audit, investigate } from '/lib/exam.js';
 import { sha256Hex } from '/assets/sealed.js';
 
-const SAMPLE = `Q: A train travels 120 km in 2 hours. What is its average speed?
-A) 60 km/h *
-B) 40 km/h
-C) 80 km/h
-D) 240 km/h
-
-Q: Which of the following is a prime number?
-A) 21
-B) 27
-C) 29 *
-D) 33
-
-Q: Calculate the total cost of 3 pens at Rs 15 each.
-A) Rs 30
-B) Rs 45 *
-C) Rs 50
-D) Rs 18
-
-Q: What is the value of 7 squared?
-A) 14
-B) 42
-C) 49 *
-D) 77
-
-Q: Which of the following gases do plants absorb for photosynthesis?
-A) Oxygen
-B) Nitrogen
-C) Carbon dioxide *
-D) Hydrogen
-
-Q: Determine the area of a rectangle 8 m long and 5 m wide.
-A) 13 square metres
-B) 26 square metres
-C) 40 square metres *
-D) 45 square metres`;
-
 let questions, versions, lastReport;
-$('loadSample').onclick = () => { $('examText').value = SAMPLE; };
 
 $('genVersions').onclick = () => {
   try {
     questions = parseExam($('examText').value);
-    const centres = Number($('centres').value), title = $('examTitleIn').value.trim() || 'Exam';
+    const centres = Number($('centres').value), title = $('examTitleIn').value.trim();
+    if (!title) throw new Error('Enter the exam name');
     versions = setVersions(questions, centres, title);
     $('versions').replaceChildren(...versions.map((v) => {
       const text = renderVersion(v, title);
@@ -70,15 +34,6 @@ function sealVersion(title, v, text) {
   location.hash = 'seal';
   toast(`Centre ${v.centre} paper loaded into the Seal form`);
 }
-
-$('simLeak').onclick = () => {
-  if (!versions) return toast('Generate versions first');
-  const v = versions[Math.floor(Math.random() * versions.length)];
-  const lines = renderVersion(v).split('\n').slice(1);
-  // A leaker retypes part of the paper: lowercase, no brackets, the first 40-80% of it.
-  $('leakText').value = lines.slice(0, Math.ceil(lines.length * (0.4 + Math.random() * 0.4))).join('\n').toLowerCase().replace(/[()]/g, '');
-  toast('Simulated leak pasted. The source centre is hidden until you trace it.');
-};
 
 $('trace').onclick = async () => {
   if (!versions) return toast('Generate versions first');

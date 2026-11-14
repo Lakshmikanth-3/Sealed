@@ -72,7 +72,7 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   await card.locator('details').first().click();
   const alerts = card.locator('[data-alerts]');
   await expect(alerts).toContainText(/EARLY RELEASE/i); await expect(alerts).toContainText(/EARLY OPEN/i);
-  await expect(alerts).toContainText(/FILE TAMPERED/i); await expect(alerts).toContainText('Chennai');
+  await expect(alerts).toContainText(/FILE TAMPERED/i); await expect(alerts).toContainText(/approx\. location/i);
   expect(await alerts.locator('a[href*="nearblocks"]').count()).toBeGreaterThanOrEqual(2);
 
   await page.goto(`/verify?id=${split.sealId}`);

@@ -1,7 +1,8 @@
-import { $, api, el, toast, utcText, istText, countdown, bytesText, short, EXPLORER, imageData, visualShares, animateReveal } from '/common.js';
+import { $, api, el, toast, utcText, istText, countdown, bytesText, short, explorer } from '/common.js';
 import { decryptFile, combineKey, fromB64url, sha256Hex, AuthFailure } from '/assets/sealed.js';
 
 const sealId = location.pathname.split('/').pop();
+const EXPLORER = await explorer();
 let seal, skew = 0, localCopy = null, opening = false, autoOpened = false;
 $('verifyLink').href = `/verify?id=${sealId}`;
 
@@ -125,17 +126,13 @@ async function renderFile({ bytes, meta }, hash, auto) {
     el('p', { class: 'verified', text: `Verified: matches the hash on NEAR (${hash.slice(0, 16)}…) · ${bytesText(meta.size)}` })];
   const dl = el('a', { class: 'btn', href: url, download: meta.name }, 'Download');
   let view;
-  if (t.startsWith('image/')) view = el('div', { class: 'reveal-stage', id: 'stage' });
+  if (t.startsWith('image/')) view = el('img', { src: url, alt: meta.name, class: 'media-view' });
   else if (t === 'application/pdf') view = el('iframe', { class: 'pdf-view', src: url, title: meta.name });
   else if (t.startsWith('video/')) view = el('video', { src: url, controls: true, class: 'media-view' });
   else if (t.startsWith('audio/')) view = el('audio', { src: url, controls: true });
   else if (t.startsWith('text/') || /\.(txt|md|csv|json)$/i.test(meta.name)) view = el('pre', { class: 'text-view', text: new TextDecoder().decode(bytes.subarray(0, 200_000)) });
   else view = el('p', { class: 'muted', text: 'Preview is not available for this file type. Download it to open.' });
   showResult('open', ...head, view, el('div', { class: 'row' }, dl));
-  if (t.startsWith('image/')) {
-    const img = await imageData(blob);
-    animateReveal($('stage'), visualShares(img, seal.mode === 'split' ? Math.min(seal.k, 7) || 3 : 3), 'Shares combined · image revealed');
-  }
 }
 
 $('sealedDoc').onchange = async () => {

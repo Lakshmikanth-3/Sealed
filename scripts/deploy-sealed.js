@@ -24,7 +24,9 @@ const plan = { network: 'testnet', signer: parent, wasmSha256: createHash('sha25
 console.log(JSON.stringify(plan, null, 2));
 if (!process.argv.includes('--broadcast')) { console.log('Plan only. Run with --broadcast to sign.'); process.exit(0); }
 
-const provider = new JsonRpcProvider({ url: process.env.NEAR_RPC_URL || 'https://test.rpc.fastnear.com' });
+const rpc = String(process.env.NEAR_RPC_URLS || '').split(',')[0].trim();
+if (!rpc) throw new Error('Set NEAR_RPC_URLS in .env');
+const provider = new JsonRpcProvider({ url: rpc });
 if ((await provider.viewNodeStatus()).chain_id !== 'testnet') throw new Error('RPC network mismatch');
 const exists = async (id) => provider.viewAccount({ accountId: id, blockQuery: { finality: 'final' } }).then(() => true, () => false);
 for (const id of [ops, contract]) if (await exists(id)) throw new Error(`${id} already exists; refusing to overwrite`);
@@ -65,6 +67,6 @@ const deploy = await contractAccount.signAndSendTransaction({ receiverId: contra
 console.log(`Deployed ${contract}: ${deploy.transaction.hash}`);
 const record = { network: 'testnet', contract, owner: parent, operator: ops, wasmSha256: plan.wasmSha256,
   createOperatorTx: opsTx, createContractTx: contractCreateTx, deployTx: deploy.transaction.hash, deployedAt: new Date().toISOString(),
-  explorer: { contract: `https://testnet.nearblocks.io/address/${contract}`, deployTx: `https://testnet.nearblocks.io/txns/${deploy.transaction.hash}` } };
+  explorer: { contract: `${process.env.NEAR_EXPLORER_URL}/address/${contract}`, deployTx: `${process.env.NEAR_EXPLORER_URL}/txns/${deploy.transaction.hash}` } };
 fs.writeFileSync('docs/SEALED-DEPLOYMENT.json', JSON.stringify(record, null, 2) + '\n');
 console.log(JSON.stringify(record.explorer, null, 2));

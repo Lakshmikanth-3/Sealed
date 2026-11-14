@@ -1,10 +1,10 @@
-import { $, config, el, toast, utcText, istText, short, EXPLORER } from '/common.js';
+import { $, config, el, toast, utcText, istText, short } from '/common.js';
 import { sha256Hex } from '/assets/sealed.js';
 
-const RPCS = ['https://test.rpc.fastnear.com', 'https://rpc.testnet.near.org'];
+// Reads go straight from this browser to the NEAR RPC endpoints the deployment publishes.
 async function view(contract, method, args) {
   let last;
-  for (const url of RPCS) {
+  for (const url of (await config()).rpcUrls) {
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(10000),
         body: JSON.stringify({ jsonrpc: '2.0', id: 'verify', method: 'query', params: { request_type: 'call_function', finality: 'final', account_id: contract, method_name: method, args_base64: btoa(JSON.stringify(args)) } }) });
@@ -25,7 +25,7 @@ async function check() {
   if (!id) return toast('Enter a seal ID or link, or choose a .sealed file');
   $('check').disabled = true;
   try {
-    const { contract } = await config();
+    const { contract, explorer: EXPLORER } = await config();
     const [seal, unlocked] = await Promise.all([view(contract, 'get_seal', { seal_id: id }), view(contract, 'is_unlocked', { seal_id: id })]);
     if (!seal) { $('verdict').className = 'verdict bad'; $('verdict').textContent = `No seal "${id}" on ${contract}`; return; }
     const log = await view(contract, 'get_log', { seal_id: id, from: Math.max(0, seal.log_count - 100), limit: 100 });

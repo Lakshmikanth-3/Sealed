@@ -1,7 +1,8 @@
-import { $, api, config, el, toast, utcText, istText, countdown, short, EXPLORER } from '/common.js';
+import { $, api, config, el, toast, utcText, istText, countdown, short, explorer } from '/common.js';
 import { releasePart, sha256Hex, fromB64url } from '/assets/sealed.js';
 
 const sealId = location.pathname.split('/').pop();
+const EXPLORER = await explorer();
 let secret, seal, skew = 0, busy = false;
 $('openLink').href = `/s/${sealId}`;
 try {
@@ -64,7 +65,7 @@ $('releaseBtn').onclick = async () => {
     $('status').textContent = 'Signing release_part on NEAR testnet…';
     const commitment = await sha256Hex(new TextEncoder().encode(secret.w));
     let status, txHash;
-    if (secret.s) ({ status, txHash } = await releasePart({ rpcUrls: [cfg.rpc, 'https://rpc.testnet.near.org'], contract: cfg.contract, sealId, account: secret.a, secretKey: secret.s, commitment }));
+    if (secret.s) ({ status, txHash } = await releasePart({ rpcUrls: cfg.rpcUrls, contract: cfg.contract, sealId, account: secret.a, secretKey: secret.s, commitment }));
     else {
       const who = await refreshWallet();
       if (who !== secret.a) throw new Error(`Connect ${secret.a} in Meteor Wallet first`);

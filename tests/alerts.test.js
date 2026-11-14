@@ -13,8 +13,9 @@ function setup({ chainFails = false } = {}) {
   void store.saveMeta('seal-abc123', { sealId: 'seal-abc123', label: 'Exam paper', alertContacts: [{ email: 'owner@example.com' }, { phone: '+919800000000' }] });
   const anchored = [], sent = [];
   const chain = { recordAlert: async (id, hash, kind) => { if (chainFails) throw new Error('rpc down'); anchored.push({ id, hash, kind }); return { txHash: 'TX' + anchored.length, value: anchored.length }; } };
-  const notify = createNotifier({}, { log: (line) => sent.push(line) });
-  const alerts = createAlerts({ store, chain, geo: createGeo({ GEOIP_PROVIDER: 'mock' }), notify });
+  // Test-only location lookup: the app itself has no built-in location data.
+  const geo = createGeo({ GEOIP_URL: 'https://geo.test/{ip}' }, { fetcher: async (url) => { sent.push(url); return { json: async () => ({ country_name: 'India', region: 'Tamil Nadu', city: 'Chennai' }) }; } });
+  const alerts = createAlerts({ store, chain, geo, notify: createNotifier({}) });
   return { store, alerts, anchored, sent };
 }
 const settle = () => new Promise((r) => setTimeout(r, 50));
@@ -34,8 +35,8 @@ test('every trigger creates an alert with mocked location, device, IST/UTC time 
   assert.equal(anchored.filter((x) => x.kind === 'repeated_failures').length, 1);
   const stored = await store.readAlerts('seal-abc123');
   assert.ok(stored.every((a) => a.chain.status === 'recorded' && a.chain.tx));
-  assert.ok(stored.every((a) => a.notified.some((n) => n.channel === 'email') && a.notified.some((n) => n.channel === 'whatsapp')));
-  assert.ok(sent.some((l) => l.includes('owner@example.com')));
+  assert.ok(stored.every((a) => a.notified.some((n) => n.channel === 'email' && n.status === 'not_configured')), 'nothing is sent without provider keys');
+  assert.ok(sent.some((u) => u === 'https://geo.test/203.0.113.9'), 'location looked up via the configured URL');
   assert.ok(!JSON.stringify(anchored).includes('Chennai'), 'location never goes on-chain');
 });
 
@@ -65,9 +66,10 @@ test('a failed on-chain write is recorded as failed, not hidden', async () => {
 });
 
 test('private addresses get no location; unknown kinds and seals are rejected', async () => {
-  const geo = createGeo({ GEOIP_PROVIDER: 'ipapi' }, { fetcher: () => { throw new Error('must not call'); } });
+  const geo = createGeo({ GEOIP_URL: 'https://geo.test/{ip}' }, { fetcher: () => { throw new Error('must not call'); } });
   assert.equal((await geo('127.0.0.1')).source, 'private-network');
   assert.equal((await geo('192.168.1.4')).source, 'private-network');
+  assert.equal((await createGeo({})('203.0.113.9')).source, 'disabled', 'no lookup URL configured means no location');
   const { alerts } = setup();
   await assert.rejects(alerts.createAlert({ sealId: 'seal-abc123', kind: 'made_up', ip: '1.1.1.1' }), /Unknown alert kind/);
   await assert.rejects(alerts.createAlert({ sealId: 'nope-999999', kind: 'early_open', ip: '1.1.1.1' }), /Unknown seal/);

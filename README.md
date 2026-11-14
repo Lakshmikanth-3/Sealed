@@ -40,10 +40,9 @@ npm run dev:all           # builds the browser bundle and starts http://localhos
 | Change any byte of `data/seals/<id>.sealed`, then open | **FILE TAMPERED**, nothing decrypted, alert created |
 | **My seals** | Countdown, release progress, alert feed (with on-chain hash links) and the on-chain access log |
 | `/verify?id=<id>` | Seal record and full access log read directly from NEAR RPC in your browser |
-| **Visual shares** | An image split into N noise images that reveal it only when all are combined |
 | Type `kanth.testnet` in a holder's **Own NEAR account** field | The account is looked up on NEAR (✓ balance, full-access keys; ✕ if it does not exist). That holder signs the release with their own Meteor Wallet instead of an app-created account |
-| **Exam mode** → **Load sample paper**, 3 centres, **Generate versions** | One version per centre (same questions, options and answers; different question order, option order and wording) and an Auditor verdict |
-| **Simulate a leak from a random centre** → **Trace the leak** | "Centre N, NN% confidence", ranking of centres, downloadable report; **Record on NEAR** writes the report's hash to one of your seals |
+| **Exam mode** → paste your questions (`Q: …`, options `A) …`, `*` after the correct one), choose centres, **Generate versions** | One version per centre (same questions, options and answers; different question order, option order and wording) and an Auditor verdict |
+| Paste a leaked copy → **Trace the leak** | "Centre N, NN% confidence", ranking of centres, downloadable report; **Record on NEAR** writes the report's hash to one of your seals |
 | **Seal this version** on any centre's paper | That centre's paper is loaded into the Seal form, ready to time-lock |
 | List accounts in **Who can open**, e.g. `kanth.testnet, principal.testnet` | Only those accounts can open. On the open page the viewer connects Meteor Wallet and signs a one-time message (NEP-413, no transaction, no gas); anyone else gets "Not allowed" and the owner an alert |
 
@@ -99,7 +98,7 @@ Three rule-based agents run in the browser (`lib/exam.js`):
 
 The owner can write the SHA-256 of a report on-chain against a seal (`record_alert` with kind `leak_report` or `exam_audit`).
 
-Measured on simulated leaks (30–90% of a sample paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
+Measured in the unit tests on simulated leaks (30–90% of a test paper, retyped in lowercase without brackets), it traced 100 of 100 leaks correctly for 3, 8 and 20 centres, with median confidence 94%, 86% and 80%. Real leaks that paraphrase heavily, photograph pages, or mix versions would be harder. OCR of photos and AI rewording are not implemented.
 
 ### Alerts
 
@@ -109,13 +108,13 @@ Each alert records:
 - the event and the time in IST and UTC
 - the NEAR account, if any
 - device and browser
-- approximate location from the IP address (ipapi.co by default; configurable, with a mock for tests)
+- approximate location from the IP address, if `GEOIP_URL` is configured
 
 Exact GPS is included only when the visitor ticks "Share my exact location". Every open page shows the notice: "attempts to open this file are logged, including approximate location".
 
 The full record stays off-chain. Its SHA-256 is written on-chain with `record_alert`.
 
-Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are configured. Otherwise they go to a console provider. Every alert also appears in the owner's in-app feed.
+Notifications go by email (Resend) and WhatsApp/SMS (Twilio) only when those are configured; otherwise nothing is sent and the alert is marked "not configured". Every alert also appears in the owner's in-app feed.
 
 ## Trust model (what is enforced, what is trusted)
 
@@ -136,25 +135,25 @@ Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are conf
 - **After opening**, nothing stops someone photographing or copying the file.
 - **App-created holder accounts** carry their key inside the private holder link, so anyone with that link can act as that holder. Holders who enter their own NEAR account sign with their wallet, and their link alone cannot release anything. There is no passkey or FastAuth login.
 
-## Real vs simulated
+## Real vs not built
 
-| Real | Simulated or not built |
+| Real | Not built or needs configuration |
 |---|---|
 | Contract on NEAR testnet; all seals, releases, refusals and alert hashes in this README are real testnet transactions | Email/WhatsApp/SMS send only when Resend/Twilio keys are configured; otherwise they print to the console |
-| Browser encryption, Shamir split, wrapped parts, hash checks | IP location uses ipapi.co by default; tests use a fixed mock (Chennai) |
+| Browser encryption, Shamir split, wrapped parts, hash checks | IP location only when `GEOIP_URL` points to a lookup service |
 | Holder signing with app-created accounts or the holder's own Meteor Wallet; NEP-413 viewer proofs | The Meteor Wallet popup itself is tested by hand; automated tests sign the same messages with near-api-js |
-| Share link, WhatsApp link, email (mailto) with .ics invite, Web Share, printable QR, downloadable `.sealed` file | Visual shares are an XOR-based demonstration of splitting an image, not the mechanism that protects the key |
+| Share link, WhatsApp link, email (mailto) with .ics invite, Web Share, printable QR, downloadable `.sealed` file | |
 | Exam-mode Setter, Auditor and Investigator (rule-based, in the browser); report hashes on NEAR | Exam mode uses no AI: no NEAR AI agents, no OCR of photographed leaks, no attested reports |
 | | No mainnet, no payments, no hosted deployment yet |
 
 ## Tests
 
 ```sh
-npm test               # 21 unit tests (incl. exam mode: 20 simulated leaks, at least 18 must trace): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
+npm test               # 26 unit tests (incl. exam mode: 20 simulated leaks, at least 18 must trace): crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
                        # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow,
                        # NEP-413 proofs (forged key, function-call key, replay, expiry)
 npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap
-npm run test:browser   # 4 offline browser tests (no keys, no chain writes), incl. exam mode
+npm run test:browser   # 3 offline browser tests (no keys, no chain writes), incl. exam mode
 npm run test:chain     # live testnet: early refusal, non-holder refusal, 2-of-3 unlock
 npm run test:access    # live testnet, against a running server: account lookup, own-account holder,
                        # allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts)
@@ -178,7 +177,7 @@ Plain browser ES modules and a Node `http` server, deliberately reusing the earl
 | esbuild, Playwright | Build and browser tests (dev only) |
 | WebCrypto | AES-256-GCM, SHA-256 (built into browsers and Node) |
 
-External services: NEAR testnet RPC (FastNEAR, rpc.testnet.near.org), ipapi.co (optional), Resend and Twilio (optional).
+External services, all configured in `.env`: NEAR testnet RPC endpoints (`NEAR_RPC_URLS`), block explorer (`NEAR_EXPLORER_URL`), IP location (`GEOIP_URL`, optional), Resend and Twilio (optional), Vercel Blob and Upstash Redis (on Vercel).
 
 ## Hackathon history and AI assistance
 

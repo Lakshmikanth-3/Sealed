@@ -15,16 +15,16 @@ export const ALERT_KINDS = {
 // ---------- approximate location from IP ----------
 const PRIVATE_IP = /^(::1|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::ffff:127\.|::ffff:10\.|::ffff:192\.168\.|fc|fd|fe80)/i;
 export function createGeo(env = process.env, { fetcher = fetch } = {}) {
-  const provider = env.GEOIP_PROVIDER || 'ipapi';
+  // GEOIP_URL: HTTPS lookup template containing {ip}, returning country/region/city JSON. Unset means no IP location.
+  const template = env.GEOIP_URL || '';
   const cache = new Map();
   return async function locate(ip) {
     if (!ip) return { source: 'none' };
-    if (provider === 'mock') return { source: 'mock', country: 'India', region: 'Tamil Nadu', city: 'Chennai', approximate: true };
     if (PRIVATE_IP.test(ip)) return { source: 'private-network', note: 'Local or private network address; no public location', approximate: true };
-    if (provider === 'off') return { source: 'disabled' };
+    if (!/^https:\/\/\S*\{ip\}/.test(template)) return { source: 'disabled' };
     if (cache.has(ip)) return cache.get(ip);
     try {
-      const url = (env.GEOIP_URL || 'https://ipapi.co/{ip}/json/').replace('{ip}', encodeURIComponent(ip));
+      const url = template.replace('{ip}', encodeURIComponent(ip));
       const r = await fetcher(url, { signal: AbortSignal.timeout(4000), headers: { 'user-agent': 'sealed-paper-alerts' } });
       const j = await r.json();
       const out = j.error || j.status === 'fail' ? { source: 'lookup-failed' }
@@ -37,15 +37,16 @@ export function createGeo(env = process.env, { fetcher = fetch } = {}) {
 }
 
 // ---------- notification providers ----------
-export function createNotifier(env = process.env, { fetcher = fetch, log = console.log } = {}) {
+export function createNotifier(env = process.env, { fetcher = fetch } = {}) {
+  // Without provider keys nothing is sent; the alert still appears in the owner's feed.
   async function email(to, subject, text) {
-    if (!env.RESEND_API_KEY || !env.ALERT_EMAIL_FROM) { log(`[alert email → ${to}] ${subject}`); return { channel: 'email', to, provider: 'console' }; }
+    if (!env.RESEND_API_KEY || !env.ALERT_EMAIL_FROM) return { channel: 'email', to, status: 'not_configured' };
     const r = await fetcher('https://api.resend.com/emails', { method: 'POST', signal: AbortSignal.timeout(8000),
       headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
       body: JSON.stringify({ from: env.ALERT_EMAIL_FROM, to: [to], subject, text }) });
     return { channel: 'email', to, provider: 'resend', ok: r.ok };
   }
-  // WhatsApp / SMS: pluggable. Twilio when configured; otherwise a console provider.
+  // WhatsApp / SMS via Twilio when configured.
   async function message(channel, to, text) {
     if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM) {
       const from = channel === 'whatsapp' ? `whatsapp:${env.TWILIO_FROM}` : env.TWILIO_FROM;
@@ -55,8 +56,7 @@ export function createNotifier(env = process.env, { fetcher = fetch, log = conso
         body: new URLSearchParams({ From: from, To: dest, Body: text }) });
       return { channel, to, provider: 'twilio', ok: r.ok };
     }
-    log(`[alert ${channel} → ${to}] ${text.split('\n')[0]}`);
-    return { channel, to, provider: 'console' };
+    return { channel, to, status: 'not_configured' };
   }
   return async function notify(contacts, subject, text) {
     const sent = [];

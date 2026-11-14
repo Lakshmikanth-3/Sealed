@@ -1,4 +1,4 @@
-// Meteor Wallet for people who use their own NEAR account (e.g. kanth.testnet):
+// Meteor Wallet for people who use their own named NEAR account:
 // key holders sign release_part, and viewers on an allow-list sign a NEP-413 message.
 import { setupWalletSelector, actionCreators } from '@near-wallet-selector/core';
 import { setupMeteorWallet } from '@near-wallet-selector/meteor-wallet';

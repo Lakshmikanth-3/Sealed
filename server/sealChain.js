@@ -3,15 +3,20 @@
 // final state. Nothing here ever handles file content or key parts.
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPairSigner, actions } from 'near-api-js';
 
-export const DEFAULT_RPCS = { testnet: ['https://test.rpc.fastnear.com', 'https://rpc.testnet.near.org'] };
+
 const GAS = 60_000_000_000_000n;
-const NEAR = 10n ** 24n;
 
 export function sealChainConfig(env = process.env) {
   const network = env.NEAR_NETWORK || 'testnet';
   if (network !== 'testnet') throw new Error('Sealed Paper runs on testnet only');
-  const urls = [env.NEAR_RPC_URL, ...DEFAULT_RPCS.testnet].filter(Boolean);
-  return { network, contract: env.SEAL_CONTRACT || null, ops: env.SEAL_OPS_ACCOUNT || null, opsKey: env.SEAL_OPS_PRIVATE_KEY || null, rpcUrls: [...new Set(urls)] };
+  // NEAR_RPC_URLS: comma-separated HTTPS endpoints, tried in order. No built-in endpoints.
+  const rpcUrls = [...new Set(String(env.NEAR_RPC_URLS || '').split(',').map((u) => u.trim()).filter((u) => /^https:\/\/\S+$/.test(u)))];
+  if (!rpcUrls.length) throw new Error('Set NEAR_RPC_URLS (comma-separated HTTPS RPC endpoints) in .env');
+  const explorer = String(env.NEAR_EXPLORER_URL || '').replace(/\/+$/, '');
+  if (!/^https:\/\/\S+$/.test(explorer)) throw new Error('Set NEAR_EXPLORER_URL in .env');
+  const funding = Number(env.SEAL_HOLDER_FUNDING_NEAR);
+  return { network, contract: env.SEAL_CONTRACT || null, ops: env.SEAL_OPS_ACCOUNT || null, opsKey: env.SEAL_OPS_PRIVATE_KEY || null, rpcUrls, explorer,
+    holderFundingYocto: Number.isFinite(funding) && funding > 0 ? BigInt(Math.round(funding * 1e6)) * 10n ** 18n : null };
 }
 
 export function createSealChain(config = sealChainConfig()) {
@@ -60,7 +65,7 @@ export function createSealChain(config = sealChainConfig()) {
   }
   return {
     config,
-    explorerTx: (hash) => `https://testnet.nearblocks.io/txns/${hash}`,
+    explorerTx: (hash) => `${config.explorer}/txns/${hash}`,
     /** Resolve a NEAR account: existence, balance and key counts. */
     async lookupAccount(accountId) {
       const acct = await rawQuery({ request_type: 'view_account', account_id: accountId, finality: 'final' });
@@ -82,8 +87,9 @@ export function createSealChain(config = sealChainConfig()) {
     requestOpen: (sealId) => call('request_open', { seal_id: sealId }),
     recordAlert: (sealId, alertHash, kind) => call('record_alert', { seal_id: sealId, alert_hash: alertHash, kind }),
     /** Fund new holder accounts (implicit accounts derived from keys the owner's browser generated). */
-    fundAccounts: (accountIds, yocto = NEAR / 20n) => {
+    fundAccounts: (accountIds, yocto = config.holderFundingYocto) => {
       requireWrite();
+      if (!yocto) throw new Error('Set SEAL_HOLDER_FUNDING_NEAR in .env to fund app-created holder accounts');
       return (async () => {
         const hashes = [];
         for (const id of accountIds) { // one queued job (and deadline) per transfer

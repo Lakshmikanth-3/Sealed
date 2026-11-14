@@ -1,9 +1,9 @@
-import { $, api, config, el, toast, utcText, istText, localText, countdown, bytesText, short, shareButtons, whatsappUrl, mailtoUrl, copy, EXPLORER,
-  imageData, visualShares, animateReveal, canvasOf } from '/common.js';
+import { $, api, config, el, toast, utcText, istText, localText, countdown, bytesText, short, shareButtons, whatsappUrl, mailtoUrl, copy } from '/common.js';
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, newHolderKey, qrSvg, MAX_FILE_BYTES } from '/assets/sealed.js';
 
 // ---------- navigation ----------
-const VIEWS = { overview: 'COMMAND CENTER', seal: 'SEAL A FILE', seals: 'MY SEALS', visual: 'VISUAL SHARES', exam: 'EXAM MODE' };
+const VIEWS = { overview: 'COMMAND CENTER', seal: 'SEAL A FILE', seals: 'MY SEALS', exam: 'EXAM MODE' };
+const EXPLORER = (await config()).explorer;
 function showView(view, focus = false) {
   if (!VIEWS[view]) view = 'overview';
   for (const name of Object.keys(VIEWS)) $('view-' + name).classList.toggle('hidden', name !== view);
@@ -94,10 +94,10 @@ function renderHolders() {
   while (rows.length < n) {
     const i = rows.length;
     const row = el('fieldset', { class: 'holder-row' }, el('legend', { text: `Holder ${i + 1}` }),
-      el('input', { 'aria-label': `Holder ${i + 1} name`, placeholder: 'Name or office', class: 'h-label', maxlength: 80, value: ['Controller', 'Principal', 'Invigilator', 'Trustee', 'Auditor', 'Registrar', 'Dean'][i] || `Holder ${i + 1}` }),
+      el('input', { 'aria-label': `Holder ${i + 1} name`, placeholder: 'Name or office', class: 'h-label', maxlength: 80, value: '' }),
       el('input', { 'aria-label': `Holder ${i + 1} email`, placeholder: 'Email (optional)', type: 'email', class: 'h-email' }),
       el('input', { 'aria-label': `Holder ${i + 1} phone`, placeholder: 'WhatsApp (optional)', type: 'tel', class: 'h-phone' }),
-      el('input', { 'aria-label': `Holder ${i + 1} own NEAR account`, placeholder: 'Own NEAR account, e.g. kanth.testnet', class: 'h-near', autocomplete: 'off', spellcheck: 'false' }),
+      el('input', { 'aria-label': `Holder ${i + 1} own NEAR account`, placeholder: 'Own NEAR account (optional)', class: 'h-near', autocomplete: 'off', spellcheck: 'false' }),
       el('p', { class: 'resolve', text: 'No NEAR account: the app creates a testnet account and puts its key in the holder link.' }));
     const nearInput = row.querySelector('.h-near'), note = row.querySelector('.resolve');
     nearInput.oninput = debounce(() => {
@@ -272,18 +272,6 @@ function tickNext() {
   $('oNextLabel').textContent = next ? `${next.label} · ${istText(next.unlockAtMs)}` : 'Nothing scheduled';
 }
 renderOverview(); tickNext(); setInterval(tickNext, 1000); setInterval(() => !document.hidden && renderOverview(), 15000);
-
-// ---------- visual shares demo ----------
-let visual;
-$('visualFile').onchange = () => { $('visualSplit').disabled = !$('visualFile').files[0]; $('visualMerge').disabled = true; };
-$('visualSplit').onclick = async () => {
-  const img = await imageData($('visualFile').files[0]);
-  const n = Math.min(Math.max(Number($('visualN').value) || 3, 2), 7);
-  visual = visualShares(img, n);
-  $('visualStage').replaceChildren(el('div', { class: 'share-grid-v' }, ...visual.map((s, i) => el('figure', {}, canvasOf(s), el('figcaption', { text: `Share ${i + 1}` })))));
-  $('visualMerge').disabled = false;
-};
-$('visualMerge').onclick = () => visual && animateReveal($('visualStage'), visual, `All ${visual.length} shares combined`);
 
 // Initial view last, after every module-level binding above exists.
 showView(location.hash.slice(1));

@@ -35,9 +35,10 @@ let escrow = null; try { escrow = escrowKey(); } catch { /* single mode disabled
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json',
   '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ttf': 'font/ttf', '.woff2': 'font/woff2', '.ics': 'text/calendar' };
-const RPC_HOSTS = 'https://test.rpc.fastnear.com https://rpc.testnet.near.org';
+
 const WALLET_HOSTS = 'https://wallet.meteorwallet.app https://testnet.meteorwallet.app';
 const BLOB_HOSTS = 'https://vercel.com https://*.blob.vercel-storage.com'; // browser uploads ciphertext directly to Vercel Blob
+const RPC_HOSTS = chain.config.rpcUrls.map((u) => new URL(u).origin).join(' ');
 const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' blob:; object-src 'none'; connect-src 'self' ${RPC_HOSTS} ${WALLET_HOSTS} ${BLOB_HOSTS}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' ${WALLET_HOSTS}`;
 
 function send(res, code, body, type = 'application/json', extra = {}) {
@@ -68,7 +69,7 @@ const limited = (key, max, windowMs) => kvLimited(kv, key, max, windowMs);
 const MAX_UPLOAD = Number(process.env.SEAL_MAX_FILE_MB || 100) * 1024 * 1024;
 
 // ---------- seal validation ----------
-// Holders are either app-created implicit accounts (64 hex) or the person's own NEAR account (e.g. kanth.testnet).
+// Holders are either app-created implicit accounts (64 hex) or the person's own named NEAR account.
 const ACCOUNT = { test: (id) => validAccountId(id) };
 const MAX_VIEWERS = 50;
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -129,7 +130,7 @@ export async function handler(req, res) {
     }
 
     if (p === '/api/config') return send(res, 200, { network: chain.config.network, contract: chain.config.contract, operator: chain.config.ops,
-      rpc: chain.config.rpcUrls[0], explorer: 'https://testnet.nearblocks.io', singleModeAvailable: Boolean(escrow), createTokenRequired: Boolean(process.env.SEAL_CREATE_TOKEN),
+      rpcUrls: chain.config.rpcUrls, explorer: chain.config.explorer, singleModeAvailable: Boolean(escrow), createTokenRequired: Boolean(process.env.SEAL_CREATE_TOKEN),
       upload: CLOUD ? 'blob' : 'direct', maxFileMb: MAX_UPLOAD / 1048576, storageReady: !ON_VERCEL || CLOUD });
 
     // Vercel Blob client upload: issues a one-time token so the browser uploads ciphertext
@@ -304,6 +305,8 @@ export async function handler(req, res) {
     }
     return serveStatic(res, p);
   } catch (e) {
+    if (/NotEnoughBalance|Not enough balance/i.test(`${e.name} ${e.message}`)) return send(res, 503, { error: 'The release service account is out of testnet NEAR. The operator needs to top it up before new seals can be created.' });
+    if (/responding slowly|timeout|fetch failed/i.test(e.message)) return send(res, 503, { error: 'NEAR testnet is responding slowly. Please try again in a moment.' });
     send(res, e.code === 413 ? 413 : 400, { error: e.message });
   }
 }

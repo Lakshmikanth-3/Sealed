@@ -12,8 +12,8 @@ const sha = (v) => createHash('sha256').update(v).digest('hex');
 const checkId = (id) => { if (!ID.test(id)) throw new Error('Invalid seal id'); return id; };
 
 export function escrowKey(env = process.env) {
-  const secret = env.SEAL_ESCROW_SECRET || env.SEAL_OPS_PRIVATE_KEY;
-  if (!secret) throw new Error('SEAL_ESCROW_SECRET (or SEAL_OPS_PRIVATE_KEY) is required for single-mode seals');
+  const secret = env.SEAL_ESCROW_SECRET;
+  if (!secret) throw new Error('SEAL_ESCROW_SECRET is required');
   return createHash('sha256').update('sealed-paper-escrow-v1:' + secret).digest();
 }
 export function sealBox(key, plaintext) {

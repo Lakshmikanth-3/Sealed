@@ -30,24 +30,19 @@ test('open page for an unknown seal and the API refuse safely', async ({ page, r
   await expect(page.locator('#title')).toHaveText('This holder link is incomplete');
 });
 
-test('visual shares: each share is noise, all shares together reveal the image', async ({ page }) => {
-  await page.goto('/app#visual');
-  const png = await page.screenshot({ clip: { x: 0, y: 0, width: 120, height: 90 } });
-  await page.setInputFiles('#visualFile', { name: 'shot.png', mimeType: 'image/png', buffer: png });
-  await page.fill('#visualN', '3'); await page.click('#visualSplit');
-  await expect(page.locator('.share-grid-v canvas')).toHaveCount(3);
-  await page.click('#visualMerge');
-  await expect(page.locator('canvas.revealed')).toBeVisible({ timeout: 5000 });
-});
-
 test('exam mode: setter, auditor and investigator in the browser', async ({ page }) => {
   await page.goto('/app#exam');
-  await page.click('#loadSample'); await page.fill('#centres', '4'); await page.click('#genVersions');
+  const paper = ['Q: Which of the following is a prime number?\nA) 21\nB) 29 *\nC) 33\nD) 39',
+    'Q: What is the value of 7 squared?\nA) 14\nB) 42\nC) 49 *\nD) 77',
+    'Q: Calculate the total cost of 3 pens at Rs 15 each.\nA) Rs 30\nB) Rs 45 *\nC) Rs 50\nD) Rs 18'].join('\n\n');
+  await page.fill('#examText', paper); await page.fill('#examTitleIn', 'Unit test'); await page.fill('#centres', '4'); await page.click('#genVersions');
   await expect(page.locator('#versions article')).toHaveCount(4);
   await expect(page.locator('#auditVerdict')).toContainText('Passed');
-  await page.click('#simLeak'); await page.click('#trace');
-  await expect(page.locator('.trace-big')).toContainText(/Centre [1-4]/);
+  const centre2 = await page.locator('#versions article').nth(1).locator('pre').innerText();
+  await page.fill('#leakText', centre2.split('\n').slice(1).join('\n').toLowerCase());
+  await page.click('#trace');
+  await expect(page.locator('.trace-big')).toContainText(/Centre 2/);
   await page.locator('#versions article button', { hasText: 'Seal this version' }).first().click();
   await expect(page.locator('#view-seal')).toBeVisible();
-  await expect(page.locator('#fileInfo')).toContainText('centre 1.txt');
+  await expect(page.locator('#fileInfo')).toContainText('Unit test - centre 1.txt');
 });
