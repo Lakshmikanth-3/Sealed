@@ -2,6 +2,9 @@
 // locked on NEAR until a time, optionally view-once and limited to one NEAR account.
 import { $, api, config, el, toast, istText, shareButtons } from '/common.js';
 import { encryptFile, toB64url, randomBytes, qrSvg } from '/assets/sealed.js';
+import { startChatAnimation } from '/chat-anim.js';
+
+if ($('chat')) startChatAnimation($('chat'));
 
 export const MESSAGE_TYPE = 'application/vnd.sealed.message+json';
 const ACCOUNT_RE = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
