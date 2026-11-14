@@ -3,6 +3,28 @@
 // final state. Nothing here ever handles file content or key parts.
 import { Account, FailoverRpcProvider, JsonRpcProvider, KeyPairSigner, actions } from 'near-api-js';
 
+// Several server instances (e.g. Vercel functions) sign with the same operator key, so a
+// cached nonce can go stale. near-api-js retries an InvalidNonceError with a fresh nonce, but
+// FailoverRpcProvider swallows it and moves on to the next endpoint with the same stale nonce.
+// This provider passes nonce errors straight back (an invalid-nonce transaction never runs, so
+// the retry is safe) and reports the real last error instead of "Exceeded N providers".
+export class WriteFailoverProvider extends FailoverRpcProvider {
+  async withBackoff(getResult) {
+    let last;
+    for (let i = 0; i < this.providers.length; i++) {
+      try {
+        const result = await getResult(this.currentProvider);
+        if (typeof result === 'undefined') continue;
+        return result;
+      } catch (e) {
+        if (e?.constructor?.name === 'InvalidNonceError') throw e;
+        last = e;
+        this.switchToNextProvider();
+      }
+    }
+    throw last || new Error(`All ${this.providers.length} NEAR endpoints failed`);
+  }
+}
 
 const GAS = 60_000_000_000_000n;
 
@@ -20,7 +42,7 @@ export function sealChainConfig(env = process.env) {
 }
 
 export function createSealChain(config = sealChainConfig()) {
-  const provider = new FailoverRpcProvider(config.rpcUrls.map((url) => new JsonRpcProvider({ url })));
+  const provider = new WriteFailoverProvider(config.rpcUrls.map((url) => new JsonRpcProvider({ url })));
   const account = config.ops && config.opsKey ? new Account(config.ops, provider, KeyPairSigner.fromSecretKey(config.opsKey)) : null;
   const requireWrite = () => {
     if (!config.contract) throw new Error('SEAL_CONTRACT is not configured');
