@@ -59,14 +59,22 @@ impl SealedPlans {
         near_sdk::serde_json::json!({ "owner": self.owner, "price_per_month_yocto": self.price_per_month.as_yoctonear().to_string(), "subscriptions": self.subscriptions })
     }
 
+    /// The owner, or this contract's own account. Whoever holds the contract account's key can
+    /// already redeploy its code, so allowing it here adds no new power; it keeps the plans
+    /// manageable if the owner's key is unavailable.
+    fn is_admin(&self) -> bool {
+        let caller = env::predecessor_account_id();
+        caller == self.owner || caller == env::current_account_id()
+    }
+
     pub fn set_price(&mut self, price_per_month: NearToken) {
-        assert_eq!(env::predecessor_account_id(), self.owner, "Only the owner can change the price");
+        assert!(self.is_admin(), "Only the owner can change the price");
         assert!(price_per_month.as_yoctonear() > 0, "Price must be positive");
         self.price_per_month = price_per_month;
     }
 
     pub fn withdraw(&mut self, amount: NearToken) -> Promise {
-        assert_eq!(env::predecessor_account_id(), self.owner, "Only the owner can withdraw");
+        assert!(self.is_admin(), "Only the owner can withdraw");
         Promise::new(self.owner.clone()).transfer(amount)
     }
 }
@@ -128,6 +136,18 @@ mod tests {
         let mut c = setup();
         ctx("alice.testnet", NearToken::from_yoctonear(0), 1_000);
         c.set_price(NearToken::from_near(5));
+    }
+
+    #[test]
+    fn owner_or_contract_account_sets_price() {
+        let mut c = setup();
+        ctx("owner.testnet", NearToken::from_yoctonear(0), 1_000);
+        c.set_price(NearToken::from_near(5));
+        ctx("plans.testnet", NearToken::from_yoctonear(0), 1_000);
+        c.set_price(NearToken::from_near(10));
+        assert_eq!(c.get_config()["price_per_month_yocto"], NearToken::from_near(10).as_yoctonear().to_string());
+        ctx("alice.testnet", NearToken::from_near(10), 1_000);
+        assert!(c.subscribe(1).active, "subscribing needs exactly the new price");
     }
 
     #[test]
