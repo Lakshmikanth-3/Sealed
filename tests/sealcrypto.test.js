@@ -77,3 +77,16 @@ test('commitments are per part and K = 1 hands every holder the whole key', asyn
 test('rejects files over 100 MB', async () => {
   await assert.rejects(encryptFile({ length: 101 * 1024 * 1024, subarray() {} , __proto__: Uint8Array.prototype }, {}), /100 MB/);
 });
+
+test('wrapped parts: holders cannot read them; only the right seal and holder unwrap', async () => {
+  const { wrapPart, unwrapPart } = await import('../lib/sealcrypto.js');
+  const key = randomBytes(32), wrapKey = randomBytes(32);
+  const parts = await splitKey(key, 3, 2);
+  const wrapped = await Promise.all(parts.map((p, i) => wrapPart(wrapKey, p.part, 'holder' + i)));
+  assert.ok(wrapped.every((w, i) => w.startsWith('w.') && !w.includes(parts[i].part.slice(2, 20))));
+  await assert.rejects(combineKey(wrapped.slice(0, 2)), /Invalid key part/, 'holders cannot combine wrapped parts');
+  const plain = await Promise.all([0, 2].map((i) => unwrapPart(wrapKey, wrapped[i], 'holder' + i)));
+  assert.ok(Buffer.from(await combineKey(plain)).equals(Buffer.from(key)));
+  await assert.rejects(unwrapPart(wrapKey, wrapped[0], 'holder1'), AuthFailure, 'bound to the holder account');
+  await assert.rejects(unwrapPart(randomBytes(32), wrapped[0], 'holder0'), AuthFailure, 'bound to the seal wrap key');
+});
