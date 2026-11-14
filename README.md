@@ -8,9 +8,11 @@ Exam papers, results, tenders, wills, embargoed reports: pick a file and the exa
 |---|---|
 | **Live app** | **https://sealedfiles.vercel.app** |
 | **Proof page** (every real transaction, clickable) | https://sealedfiles.vercel.app/proof |
-| **Smart contract** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) |
-| **Tracks** | Privacy & Private AI (main) · Open Innovation |
-| **Tests** | 26 unit · 10 contract · 3 offline browser · 3 live testnet suites: all passing |
+| **Smart contracts** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) (locks, attempts, alerts) · [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet) (Premium payments) |
+| **Tracks** | Privacy & Private AI (main) · Real-World Money · Open Innovation |
+| **Tests** | 30 unit · 17 contract (10 + 7) · 3 offline browser · 3 live testnet suites (22 live checks): all passing |
+
+**What you can do:** lock any file until a time · require K of N trusted people · cancel or replace a locked file · send **secret messages** (text, photo or file; view once; open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
 
 ---
 
@@ -29,6 +31,9 @@ Every row below is a real transaction. Click it to see it on the public explorer
 | 7 | Opened after 2 of 3 said yes | `"open"` | [`4qrZWQoQ…oB8iMK`](https://testnet.nearblocks.io/txns/4qrZWQoQvdudw8UdQrttPKXRnpHSaNvDSSdBYXoB8iMK) |
 | 8 | The stored file was altered: it was not opened, alert recorded | logged | [`DEQauyof…hXF3pj`](https://testnet.nearblocks.io/txns/DEQauyofi7hdNV59RH91fxbNmxAtW97V7X774jhXF3pj) |
 | 9 | A real account that was not on the allow-list tried to open another file | logged | [`5sVF43Ce…Ykene`](https://testnet.nearblocks.io/txns/5sVF43CenY4oxyR6yj5nSze6z5a77MuQBaPvZH9kYene) |
+| 10 | The owner cancelled a file: key destroyed, later opening refused | logged | [`H8R7Y2Hh…h9VKe`](https://testnet.nearblocks.io/txns/H8R7Y2HhGYtd7b25SWaWznDSv9CmhiQFBgfY1aah9VKe) |
+| 11 | A view-once secret message was opened; its key destroyed | logged | [`EQX82xWM…XBbE1`](https://testnet.nearblocks.io/txns/EQX82xWM5tUzHNSx6ibwTJ3XPYGFiBU3g2mBrgfXBbE1) |
+| 12 | Premium bought: `subscribe(1)` with exactly 1 NEAR attached | Premium active | [`ELhmFabL…DBMe`](https://testnet.nearblocks.io/txns/ELhmFabLuo7E3D8uYDx73JNK71Z2PY4ARuzkwof1DBMe) |
 
 **Also verified on the hosted app** (https://sealedfiles.vercel.app, a browser locking a text file on Vercel; encrypted file in Vercel Blob, records in Upstash Redis):
 
@@ -77,6 +82,9 @@ Open **https://sealedfiles.vercel.app**, or run it locally (below).
 | **Check a locked file** (`/verify`) → paste the link | The record read directly from NEAR in your browser |
 | **Proof** (`/proof`) | Every recent transaction with a link to the explorer |
 | **Exam papers** → paste questions → 3 centres → **Make one paper per centre** → paste a leaked copy → **Find which centre** | One distinct paper per centre, a fairness check, and "Centre N, NN% confidence"; the report can be saved on NEAR |
+| **My locked files** → **Replace with a new version** or **Cancel this file** | Cancelling destroys the key (nobody can ever open it) and records it on NEAR; replacing cancels the old one once the new version is locked |
+| **Secret messages** → write a message, add a photo → **View once** → **Send secret message** | A link that opens at the chosen time, shows the message and photo once, then says **Already opened** forever |
+| **Plans** → **Connect my NEAR wallet** → **Upgrade with NEAR** | Your wallet pays the plans contract; one signature turns Premium on (more files, 100 MB, up to 20 people) |
 
 Words in the app: **lock** = encrypt and register the time on NEAR; **trusted people** = holders of one key piece each; **say yes** = release a key piece (only after the time); **public record** = the contract's log.
 
@@ -119,6 +127,26 @@ flowchart LR
 
 **Exam papers** (`lib/exam.js`, runs in the browser, no AI service): one version per centre with a different question order, option order and meaning-preserving wording, but identical questions, choices and answers. A fairness check confirms equivalence. A pasted leak (partial or retyped) is matched to its centre. Measured in the unit tests on leaked copies (30–90% of a paper, retyped): 100 of 100 traced correctly for 3, 8 and 20 centres. Photographed pages (OCR) are not supported.
 
+### Exam centres: how a real exam would use it
+
+1. The authority keeps the original paper (and can edit it until the exam).
+2. **Exam papers** makes one version per centre (same questions, different order and wording).
+3. Each centre's paper is locked with **Nobody, just the time** at 09:00 and its link sent to that centre. No merging is needed: it opens by itself at 09:00.
+4. Changed the paper? **Replace with a new version**: the old link is cancelled (key destroyed) and the centre gets the new link.
+5. Someone tries to open it early → refused on NEAR, recorded, and the owner is told which centre's file it was (time, device, rough location).
+6. A paper leaks after 09:00 (photo or retyped) → paste it into **Find which centre** → "Centre B, 86% confidence", with the report saved on NEAR.
+
+### Plans (Free and Premium)
+
+| | Free | Premium (1 testnet NEAR / month) |
+|---|---|---|
+| Locked files | 5 per day | Unlimited |
+| File size | 10 MB | 100 MB |
+| Trusted people | up to 3 | up to 20 |
+| Secret messages, alerts, exam papers, proof | ✓ | ✓ |
+
+Payment is `subscribe(months)` on [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet). It requires exactly price × months, and renewals stack. The app proves the buyer's account once with a NEP-413 signature, checks `get_plan` on NEAR, and gives the browser a signed 24-hour pass. Limits are enforced by the server (`server/plans.js`) and configurable with `FREE_DAILY_LOCKS`, `FREE_MAX_FILE_MB` and `FREE_MAX_PEOPLE`. Paying with any token through NEAR Intents is mainnet-only and not built.
+
 ## What is guaranteed, and the limits
 
 | Enforced | By |
@@ -137,17 +165,20 @@ flowchart LR
 | The owner | The person who locks the file already has the original. |
 | After opening | Nothing stops a photo of the file. |
 | App-created accounts | That trusted person's link holds their key; people using their own NEAR account sign in their wallet instead. |
-| Network | NEAR testnet only; no mainnet, no payments. |
+| Network | NEAR testnet only; payments are in testnet NEAR. |
+| Secret messages | One-way locked messages via a link, not live two-way chat. "In about 30 seconds" is the soonest, because NEAR needs a future time. |
+| Cancel | Destroys our copy of the key. Someone who already downloaded and opened the file before cancelling still has it. |
 
 ## Tests
 
 | Suite | Command | Result | Covers |
 |---|---|---|---|
-| Unit | `npm test` | **26 passed** | Encryption round-trips (PDF, image, video, text); Shamir 2-of-2 / 3-of-5 / 5-of-7; K−1 pieces fail; tamper, reorder and truncate detection; wrapped pieces; alerts and escalation; escrow; NEP-413 (forged key, function-call key, replay, expiry); shared rate limits across instances; exam tracing (at least 18 of 20) |
+| Unit | `npm test` | **30 passed** | Encryption round-trips (PDF, image, video, text); Shamir 2-of-2 / 3-of-5 / 5-of-7; K−1 pieces fail; tamper, reorder and truncate detection; wrapped pieces; alerts and escalation; escrow; NEP-413 (forged key, function-call key, replay, expiry); shared rate limits across instances; exam tracing (at least 18 of 20) |
 | Contract | `npm run contract:test` | **10 passed** | Early refusal, non-holder, commitments, K-of-N, time-only mode, operator rules, log cap |
+| Plans contract | `npm run plans:test` | **7 passed** | Exact payment extends Premium, renewals stack, expired restarts, wrong deposit refused, owner-only price and withdraw |
 | Browser (offline) | `npm run test:browser` | **3 passed** | Pages and security headers, safe refusals, exam papers |
 | Live chain | `npm run test:chain` | **passed** | On testnet: early yes refused, non-holder refused, early open refused, 2-of-3 unlocks |
-| Live access | `npm run test:access` | **14 / 14 passed** | Account lookup, own-account holder, allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts) |
+| Live access | `npm run test:access` | **22 / 22 passed** | Account lookup, own-account holder, allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts), cancel (wrong token refused, recorded on NEAR, opening refused), Premium (Free refuses 4 people, real `subscribe()` payment, Premium confirmed, 4 people allowed) |
 | Live end to end | `npm run test:e2e` | **passed (2.2 min)** | Real browser on testnet: lock a PDF 2-of-3 and a time-only text, early attempts refused with alerts, yes after the time, PDF identical to the original, time-only opens automatically, changed file → FILE TAMPERED, verify page |
 
 The live suites spend a little test NEAR from the service account.
@@ -155,7 +186,8 @@ The live suites spend a little test NEAR from the service account.
 ## Repository structure
 
 ```
-contract/src/lib.rs        NEAR smart contract (Rust, near-sdk 5.30) + 10 unit tests
+contract/src/lib.rs        Seal contract (Rust, near-sdk 5.30) + 10 unit tests
+contract-plans/src/lib.rs  Premium plans contract (subscribe, get_plan) + 7 unit tests
 lib/sealcrypto.js          Encryption, Shamir split and combine, wrapped key pieces (browser + Node)
 lib/exam.js                Exam papers: per-centre versions, fairness check, leak tracing
 server/index.js            Release service: routes, security headers, rate limits
@@ -164,10 +196,11 @@ server/sealStore.js        Storage: disk locally, Vercel Blob + Upstash Redis wh
 server/alerts.js           Alerts: record, fingerprint on-chain, email / WhatsApp
 server/nearAuth.js         NEP-413 proof that a viewer owns a NEAR account
 server/kv.js               Shared state for rate limits and one-time codes
+server/plans.js            Free / Premium limits, Premium pass, get_plan on NEAR
 client/                    Browser bundles: crypto + QR (sealed.js), Meteor Wallet (wallet.js)
-public/                    Pages: landing, app, open, trusted person, check, proof
+public/                    Pages: landing, app (lock, my files, exam papers, secret messages, plans), open, trusted person, check, proof
 api/index.js               Vercel entry (same handler as local)
-scripts/                   Contract build, deploy, upgrade; live testnet checks
+scripts/                   Contract deploy and upgrade, plans deploy, extra operator keys, live testnet checks
 tests/                     Unit tests and Playwright browser suites
 docs/SEALED-DEPLOYMENT.json  Deployment and upgrade transactions
 ```
@@ -188,9 +221,9 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 
 ## Status
 
-- Live: https://sealedfiles.vercel.app, with locking, sharing, early refusal, automatic opening and the Proof page verified on the hosted copy (transactions above).
-- Contract and all live testnet suites passing.
-- Not built: exam leak tracing from photos (OCR), AI features, mainnet, payments.
+- Live at https://sealedfiles.vercel.app. Locking, sharing, early refusal, automatic opening, cancel, secret messages, Premium and the Proof page all work on the hosted copy.
+- Both contracts deployed on NEAR testnet; all unit, contract, browser and live testnet suites pass.
+- Not built: live two-way chat, exam leak tracing from photos (OCR), AI features, mainnet, payment with other tokens.
 
 ## AI assistance and licence
 
