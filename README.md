@@ -1,146 +1,160 @@
-<img src="public/icon.svg" width="48" height="48" alt="Appeal mark">
+# Sealed Paper
 
-# Appeal
+**Files nobody can open before the second you choose.**
 
-**Your work, on record**
+Seal any file (exam paper, tender, results, will, video) until an exact date and time. Optionally split its key across 2 to 20 holders, of whom K must release their parts. A NEAR testnet contract refuses every early release or open, writes every attempt to a public log, and the owner gets an alert with the time, device and approximate location.
 
-Appeal keeps a private work journal on a worker's device. The worker approves NEAR commitments in their wallet, selects records to disclose, and shares an expiring evidence pack. A reviewer checks the original proofs and finalized NEAR receipts through public RPC.
+- Contract: [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) ([deploy tx](https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC), details in [docs/SEALED-DEPLOYMENT.json](docs/SEALED-DEPLOYMENT.json))
+- Release-service operator: [`sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealops.kanth_s.testnet)
+- Tracks: **Privacy & Private AI** (primary), Open Innovation
+- Product brief and the real leak events behind it: [PRD-Sealed-Paper-v2-TimeLock.md](PRD-Sealed-Paper-v2-TimeLock.md)
 
-The application has no simulated ledger or demo-success path. A missing deployment, rejected signature, unavailable RPC or failed AI verification is an error. The v2 contract is deployed on testnet at `kanth_s.testnet`, and `lakshmi_kanth.testnet` is registered. Deployment and registration were independently checked at finality FINAL; see [deployment evidence](docs/TESTNET-DEPLOYMENT.json). A successful worker evidence anchor, phone wallet round trip and funded private-AI run remain unobserved.
+## Why
 
-## Run
+Sensitive files keep leaking before their release time, because whoever holds the file can open it:
 
-Install Node **24.22.1 or newer**. From the repository root:
+| Event | What happened |
+|---|---|
+| NEET-UG 2026, India | Exam for about 22.79 lakh students cancelled after a leaked "guess paper" matched real questions ([source](https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/)) |
+| UGC-NET 2024, India | Exam cancelled after reports the paper was sold on Telegram; the CBI later filed a closure report finding no evidence of a leak ([source](https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116)) |
+| UK Budget report, Nov 2025 | Reachable about 40 minutes early by editing a URL; accessed 24,000+ times before the speech ([source](https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs)) |
+| US Supreme Court Dobbs draft, 2022 | Leaked; nearly 100 staff interviewed and the source never identified ([source](https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing)) |
+
+## Try it
+
+Requires Node 22 or newer.
 
 ```sh
 npm ci
-npm run build
-npm test
-npm start
+cp .env.example .env      # then fill SEAL_OPS_PRIVATE_KEY and SEAL_ESCROW_SECRET, or deploy your own (below)
+npm run dev:all           # builds the browser bundle and starts http://localhost:8787
 ```
 
-Open http://localhost:8787 for the landing page, which shows live testnet data (latest final block, registered workers, contract storage and balance, deployment transactions). **Launch workspace** opens the worker app at http://localhost:8787/app, which starts on the **Command center**: journal totals, an activity log, a daily earnings chart, record breakdown and a live NEAR feed. The reviewer is at http://localhost:8787/verify.
+| Do this | See this |
+|---|---|
+| Open `/app` → **Seal a file**, choose a PDF, preset **2 of 3**, click **+2 min**, **Seal and lock on NEAR** | Seal created on NEAR (tx link), share buttons, QR code, and 3 private holder links shown once |
+| Open a holder link and click **Release my part** before the time | "Refused: too early". The refusal is on NEAR and the owner gets an alert |
+| Open the share link `/s/<id>` and click **Open file** before the time | "Refused: still locked", logged on-chain, alert created |
+| After the countdown, release from 2 holder links, then **Open file** | The key is rebuilt in the browser; the file's hash is checked against NEAR, then it opens (PDF, image, video, audio or text preview) |
+| Seal a file in **Single lock** mode and leave its share page open | It opens automatically at its time, with no holders |
+| Change any byte of `data/seals/<id>.sealed`, then open | **FILE TAMPERED**, nothing decrypted, alert created |
+| **My seals** | Countdown, release progress, alert feed (with on-chain hash links) and the on-chain access log |
+| `/verify?id=<id>` | Seal record and full access log read directly from NEAR RPC in your browser |
+| **Visual shares** | An image split into N noise images that reveal it only when all are combined |
 
-Live chain data comes from `/api/chain`, a read-only server snapshot cached for 5 seconds so open tabs do not multiply RPC calls. If the configured RPC rate-limits (HTTP 429), it tries the FastNEAR public RPC (`NEAR_RPC_FALLBACK_URLS`, `none` to disable) and backs off; if every read fails, it shows the last good reading labelled **STALE** with its time, never invented values. The pre-signing contract readiness check uses the same fallback. Receipt verification after signing and the reviewer page use only `NEAR_RPC_URL` / the public NEAR RPC.
+Without a deployed contract and operator key, pages load but sealing is refused with a clear error.
 
-Without a deployed contract, the UI explicitly says **Contract deployment required**, and saving commitments is disabled. You can still connect an existing wallet and keep a private journal. It does not invent a worker identity. Existing journals from the prototype remain in their original browser database; the wallet-owned workspace uses a separate database and does not relabel old records as authenticated evidence.
+### Deploy your own contract (testnet)
 
-Copy `.env.example` to `.env` and configure your actual deployment as described in [live setup](docs/LIVE-SETUP.md). Keys and service access tokens stay in the environment, never Git. The browser wallet handles the worker's signing keys.
+```sh
+npm run contract:test     # 10 Rust unit tests
+npm run contract:build
+CONTRACT_OWNER=<your>.testnet npm run contract:deploy              # prints the plan
+CONTRACT_OWNER=<your>.testnet npm run contract:deploy -- --broadcast
+```
 
-## What to do and what to observe
+It creates `sealops.<you>` (operator, 3 NEAR) and `sealed.<you>` (contract, 4 NEAR), signing with near CLI's keychain. New keys are generated locally and appended to `.env`, never printed. It also prints explorer links.
 
-1. Open http://localhost:8787/app. Configure a deployed Appeal v2 testnet contract and have its owner register your actual worker account.
-2. Click **Connect NEAR wallet** and approve the connection in Meteor Wallet using an existing testnet account. The account ID becomes the journal's worker reference. Wallet recovery uses the wallet's recovery process.
-3. Record work events. Notes and original screenshot bytes remain in IndexedDB. Location is optional. Capture remains manual; automatic notification collection is not implemented.
-4. Open **Journal**, click **Save all days on NEAR**, inspect the transactions and approve them in the wallet. Wallet-funded gas is explicit; direct signing does not claim gas sponsorship.
-5. After the wallet returns, Appeal verifies finalized successful contract receipts against the persisted request. Only then does it mark records saved. Unknown outcomes remain pending. Transaction hashes can be supplied in any order for reconciliation without signing again; verified days are retained during partial failures.
-6. Open **Prepare case**, choose records and a link lifetime, enter the publishing access token, and review the exact disclosure. Confirm sharing before publication.
-7. Open the reviewer link. A successful verdict requires the configured trusted contract, the correct worker signature, successful finalized receipt, matching commitments, valid Merkle proofs, original screenshot fingerprints and a recomputed summary. Changing a disclosed record fails verification.
-8. **Manage shared links** deletes hosted packs using a separate deletion capability. Links expire after the selected duration (5 minutes to 7 days; UI offers 1 hour, 24 hours or 7 days). Deletion cannot recall downloaded copies or immutable public commitments.
-
-Public deployment evidence must be obtained through these steps. Unit-test fixtures are development inputs, never on-chain evidence or user adoption.
-
-## Check company records
-
-Open **Check company** and choose a CSV statement exported from the company app or website (try [docs/samples/company-statement.csv](docs/samples/company-statement.csv)). Appeal compares it with your journal on this device, for the days the statement covers, and lists:
-
-- **Wrong values:** amount or rating differs from what you recorded (`₹42 in your journal, ₹30 in company record`).
-- **Missing from company:** work you recorded that the company doesn't show.
-- **Not in your journal:** charges or records only the company has, such as an unexplained penalty.
-- **Daily net totals:** trips and payouts minus penalties, with the difference.
-
-Matching uses order IDs first (from an ID column, and `#4471` or `order 4472` in your notes), then day, type and value. Headers such as `Order ID`, `Trip Date`, `Earnings` and Indian `DD/MM/YYYY` dates are recognised.
-
-**Add this check to my journal** stores one record containing the statement's SHA-256 fingerprint, every mismatch and the net shortfall. After **Save all days on NEAR**, that record is committed on-chain with the day's other records and can be disclosed in a case. The statement itself never leaves the device. The check is only as reliable as the CSV: it proves what the statement said and when you checked it, not that either side is right. Direct API connectors, OCR of screenshots and scheduled monitoring are not implemented.
-
-## Pay check and demo simulator
-
-Statements that include `platform` and `gps_km`/`shown_km` columns are also checked against the platform's rate card: expected pay = base fare + GPS km × per-km rate + promised incentive − penalty with a stated reason. Trips short by more than ₹5 or 5% are flagged with a severity and an English and Tamil explanation. Distance gaps, missing incentives and penalties without a reason are flagged too. Explanations are rule-based templates, not AI. The demo rate cards in `public/ratecards.json` (DemoEats, DemoRide) are illustrative, not any real platform's rates.
-
-For a demo without real platform data, open **/simulator**. It generates a GPS-routed shift for a fictional delivery app and can underpay one trip. **Check in Appeal** loads it into the pay check.
-
-See [report.md](report.md) for spec coverage, test results and what is unfinished.
-
-## Private AI
-
-The ordinary evidence summary is a deterministic calculation, not an AI fallback. An additional private AI draft is generated only when the user explicitly opts in and supplies an AI service access token.
-
-[NEAR AI's inference SDK](https://docs.near.ai/cloud/inference-sdk/javascript) encrypts supported request fields to the attested model, verifies gateway/model evidence and verifies the response signature. Appeal requires `UpToDate` TCB evidence and operator-approved gateway/model deployment hashes. Gateway-only signatures, malformed drafts, missing citations and failed verification are rejected. There is no unverified replacement.
-
-Only disclosed IDs, dates, types, amounts, ratings and notes are sent. Images and location are excluded. The draft distinguishes reported observations, uncertainties and questions; its statements require human review. Arithmetic remains deterministic.
-
-The exported AI receipt records what the server verified. **The pack verifier does not independently reverify the AI attestation**, and never awards it an attested badge. Code/model provenance review and an actual funded inference run remain release gates.
-
-## Architecture
-
-<img src="docs/architecture.svg" alt="Appeal live-only evidence paths">
+## How it works
 
 ```mermaid
 flowchart LR
-  W[Worker wallet] -->|Approves direct transactions| N[NEAR v2 contract]
-  J[Private device journal] -->|Salted commitment| W
-  J -->|Selected records and consent| S[Publishing service]
-  S -->|Finalized receipt checks| N
-  S --> D[SQLite expiring shares]
-  S -->|Explicit AI consent and access token| A[NEAR AI verified inference]
-  R[Reviewer] --> D
-  R -->|Independent public RPC checks| N
+  O[Owner browser] -->|AES-256-GCM encrypt, Shamir split, wrap parts| O
+  O -->|ciphertext + hashes| S[Release service]
+  S -->|create_seal: file hash, holders, part commitments, unlock time| N[NEAR contract]
+  O -->|private link: wrapped part + signing key| H[Key holders]
+  H -->|release_part, signed by holder; refused before unlock| N
+  H -->|wrapped part| S
+  S -->|checks release on NEAR, then unwraps| S
+  V[Viewer browser] -->|open: request_open logged; refused before unlock| S
+  S -->|K parts or escrowed key, only after the contract says open| V
+  V -->|hash check vs NEAR, rebuild key, decrypt| V
+  S -->|alert hash| N
 ```
 
-The optional invited-worker NEP-366 relay remains available as a separately configured backend. The worker UI currently uses direct wallet transactions. It does not claim passkey onboarding, sponsored phone signing, automatic notification capture, or support payments.
+1. **Encrypt.** The browser encrypts the file with a random 256-bit key: AES-256-GCM in 1 MB chunks, each bound to its index and the chunk count, so altered, reordered or truncated files fail. The server only receives ciphertext and its SHA-256.
+2. **Split.** In split mode the key is split into N Shamir parts with threshold K (the audited `shamir-secret-sharing` library). Each part is then **wrapped**: encrypted with a per-seal wrap key held by the release service and bound to that holder's account. Holders therefore cannot pool their parts offline before the time.
+3. **Lock.** The contract stores the file hash, unlock time, mode, holder accounts, the SHA-256 of each wrapped part, and K. Holders get app-created testnet accounts (funded with 0.05 testnet NEAR) whose keys travel in their private link.
+4. **Release.** Each holder signs `release_part` with their own key. The contract refuses it if the caller is not a holder, the time has not come, the part was already released, or the commitment differs. Every call, accepted or refused, is logged on-chain. The holder then hands the wrapped part to the release service, which unwraps it **only after confirming that release on NEAR**.
+5. **Open.** A viewer's open request becomes an on-chain `request_open`, refused and logged before the time. After the time (and K releases), the service returns the parts or, in single mode, the escrowed key. The viewer's browser checks the downloaded file against the on-chain hash, rebuilds the key and decrypts.
 
-## Verification
+### Alerts
 
-See [observed build checks and outstanding live gates](docs/BUILD-STATUS.md).
+These events create an alert: an open attempt before the unlock time, an early release, a release by a non-holder, a wrong key (AES-GCM authentication failure), a file whose hash differs from NEAR, and 5 failures from one source within 2 minutes (escalation).
+
+Each alert records:
+- the event and the time in IST and UTC
+- the NEAR account, if any
+- device and browser
+- approximate location from the IP address (ipapi.co by default; configurable, with a mock for tests)
+
+Exact GPS is included only when the visitor ticks "Share my exact location". Every open page shows the notice: "attempts to open this file are logged, including approximate location".
+
+The full record stays off-chain. Its SHA-256 is written on-chain with `record_alert`.
+
+Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are configured. Otherwise they go to a console provider. Every alert also appears in the owner's in-app feed.
+
+## Trust model (what is enforced, what is trusted)
+
+| Claim | Enforced by |
+|---|---|
+| No holder release and no open request succeeds before the unlock time | NEAR contract (block time) |
+| Only listed holders can release, once each, with their committed part | NEAR contract |
+| Every attempt, including refusals, is public and permanent | NEAR contract log (up to 300 entries per seal; overflow is counted) |
+| A changed file is detected before decryption | SHA-256 on NEAR, checked in the viewer's browser; AES-GCM authentication |
+| Fewer than K parts reveal nothing about the key | Shamir secret sharing |
+| Holders cannot combine parts early on their own | Parts are wrapped with a key only the release service holds |
+
+**What you must trust:**
+- **Split mode:** the release service plus K holders, if they all collude, could open early. Neither side alone can. The service never sees a part before its holder releases it on-chain.
+- **Single mode:** the release service holds the file key (encrypted at rest) and is trusted to release it only after the contract says the seal is open. This is a server-held escrow, not a cryptographic time-lock. A trustless time-lock would need something like drand tlock, which is not used.
+- **The person who seals** already has the original file. The guarantee covers everyone who receives the sealed copy.
+- **After opening**, nothing stops someone photographing or copying the file.
+- **Holder accounts** are created by the app on testnet and their keys travel in the private holder link. Anyone with a holder's link can act as that holder. There is no passkey or FastAuth login.
+
+## Real vs simulated
+
+| Real | Simulated or not built |
+|---|---|
+| Contract on NEAR testnet; all seals, releases, refusals and alert hashes in this README are real testnet transactions | Email/WhatsApp/SMS send only when Resend/Twilio keys are configured; otherwise they print to the console |
+| Browser encryption, Shamir split, wrapped parts, hash checks | IP location uses ipapi.co by default; tests use a fixed mock (Chennai) |
+| Holder signing from the browser with app-created testnet accounts | **Exam mode** (Setter, Auditor and Investigator AI agents, leak tracing) is **not built** |
+| Share link, WhatsApp link, email (mailto) with .ics invite, Web Share, printable QR, downloadable `.sealed` file | Visual shares are an XOR-based demonstration of splitting an image, not the mechanism that protects the key |
+| | No mainnet, no payments, no hosted deployment yet |
+
+## Tests
 
 ```sh
-npm test
-npx playwright install chromium
-npm run test:browser:portable
-npm run contract:test
-npm run contract:build
-npm run test:live
+npm test               # 13 unit tests: crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
+                       # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow
+npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap
+npm run test:browser   # 3 offline browser tests (no keys, no chain writes)
+npm run test:chain     # live testnet: early refusal, non-holder refusal, 2-of-3 unlock
+npm run test:e2e       # live testnet browser E2E (~3 min): seal PDF 2-of-3 + single text, early release and open refused
+                       # with alerts, release after unlock, PDF matches original, single opens automatically,
+                       # tampered file → FILE TAMPERED, alerts with location and on-chain hashes, verify page
 ```
 
-`npm test` checks proof validation, adversarial RPC responses, real signature primitives, relay persistence/recovery, direct-wallet receipt validation and sharing lifecycle. Development fixtures never run in the application. Browser checks use a live-only unconfigured server and verify that missing deployment cannot become a successful anchor. They do not sign or spend.
+## Stack and libraries
 
-`test:live` is different: it contacts public NEAR RPC and requires actual `ANCHOR_CONTRACT`, `WORKER_ACCOUNT_ID` and `LIVE_TX_HASH`. It exits unsuccessfully until the real integration can be verified. It never generates substitute evidence.
+Plain browser ES modules and a Node `http` server, deliberately reusing the earlier project's tested UI and server shell instead of Next.js/Fastify/Prisma. Storage is the local filesystem (`data/`).
 
-Independently verify a downloaded wallet-owned pack:
+| Library | Use |
+|---|---|
+| [near-sdk](https://crates.io/crates/near-sdk) 5.30 (Rust) | Contract |
+| [near-api-js](https://www.npmjs.com/package/near-api-js) 7.2 | Operator and holder transactions, RPC failover |
+| [shamir-secret-sharing](https://www.npmjs.com/package/shamir-secret-sharing) 0.0.4 | Key splitting (audited by Cure53 and Zellic) |
+| [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) 1.4.4 | QR codes, generated locally |
+| buffer, process, util | Browser shims for near-api-js |
+| esbuild, Playwright | Build and browser tests (dev only) |
+| WebCrypto | AES-256-GCM, SHA-256 (built into browsers and Node) |
 
-```sh
-npm run verify -- --file /absolute/path/to/pack.json --network testnet --contract YOUR_ACTUAL_CONTRACT
-```
+External services: NEAR testnet RPC (FastNEAR, rpc.testnet.near.org), ipapi.co (optional), Resend and Twilio (optional).
 
-Replace the contract argument with the independently confirmed deployment account. Add `--relayer` only when checking sponsored relay transactions.
+## Hackathon history and AI assistance
 
-## Hosting and data handling
+This repository started as a different project, Appeal (worker evidence records), preserved at the tag [`appeal-final`](https://github.com/Lakshmikanth-3/Appeal/tree/appeal-final). Sealed Paper replaced it on 14 November 2026. Its contract, crypto, release service, alerts and pages were written that day. It reuses Appeal's visual theme and server patterns.
 
-Use [Dockerfile](Dockerfile) and [render.yaml](render.yaml) with an actual persistent disk. Set the exact HTTPS `PUBLIC_ORIGIN`, actual contract account and private publishing token. The server enforces JSON writes, same-origin requests, bounded bodies, rate/storage limits, security headers and share deletion capabilities. Keep `DATA_DIR` private and persistent.
+Most of the code was written with AI coding assistants (Claude Code; Codex on the earlier project) under the author's direction. The author chose the product and made the deployment and trust decisions.
 
-`/api/config` reports configured capabilities; `/api/health` performs read-only public-chain checks. An HTTP 200 from `/api/config` is liveness, not evidence of a deployed contract.
-
-SQLite WAL/full-sync storage persists hosted shares and management-token hashes. Expired shares are purged on startup, periodically, and during reads/writes. Backups may retain earlier disclosed data and must be protected separately. A private database snapshot can be created with `npm run shares:backup -- /absolute/private/path/shares-backup.sqlite`. Browser-held journals and exported journal backups are not encrypted by the server.
-
-## Scope and limitations
-
-A commitment proves integrity and authorization, not truth, employment, complete work history, device-clock accuracy, or legal entitlement. Public commitments expose account/day/count metadata. Shared notes and screenshots can contain personal information: review before sharing. AI drafts can be wrong even with a valid signature.
-
-Remaining external verification: a successful worker evidence anchor, funded verified AI execution, HTTPS host checks, physical Android testing, consented worker/reviewer observations, demo video and final submission approval. No adoption, partnership, payment or prize outcome is claimed.
-
-The dependency audit currently reports **16 low-severity findings** in upstream cryptography dependencies used by Wallet Selector and verified inference. An automatic forced downgrade was not applied. Review this dependency risk before public production operation.
-
-## For judges
-
-- Clone, `cp .env.example .env`, then `npm ci && npm test && npm start`. `.env.example` already points at the deployed testnet contract `kanth_s.testnet`.
-- Without a wallet you can check: the unit suite (proofs, adversarial RPC, signatures, reconciliation, sharing), the setup/readiness screen and the reviewer page at `/verify.html`, which rejects tampered packs.
-- Saving commitments on-chain requires a worker account registered by the contract owner (invite-only by design, to stop spam anchors). Ask the team to register your testnet account, or follow [live setup](docs/LIVE-SETUP.md) to deploy your own instance with `npm run contract:deploy` and `npm run contract:register`.
-- Deployment proof: [TESTNET-DEPLOYMENT.json](docs/TESTNET-DEPLOYMENT.json) (deploy tx `7QGcHbgghNQNVMeopydK43ukuFSjodXRZJnkhGAjKtMa`, registration tx `4o2VD2AsdHHFBJf13YjrDyYgkAo1Lhkan6itM13PjDMt`).
-
-## Hackathon history and license
-
-The `prototype-baseline` tag preserves the original prototype. See the [actual baseline-to-current diff](https://github.com/Lakshmikanth-3/Appeal/compare/prototype-baseline...master) for all work built after the baseline. Commit dates are not evidence of live execution.
-
-Submitted tracks: **Privacy & Private AI** (primary) and **Open Innovation**. No specific optional integration is required by the [event rules](https://nearhackathon.com/HACKATHON.md). Publication, social posts, signing/spending and final submission follow the owner's authorization gates.
-
-AI coding assistants contributed to the implementation: the original prototype credited Claude; subsequent development and verification used Codex and Claude Code. Runtime dependencies include NEAR API JS, NEAR Wallet Selector, NEAR AI's inference SDK and browser compatibility libraries. Esbuild and Playwright are development tools. The app is [MIT licensed](LICENSE); the self-hosted Bricolage Grotesque font retains its [OFL](public/fonts/OFL.txt).
+Licensed under [MIT](LICENSE). Evidence and exam-security support only; not legal advice.
