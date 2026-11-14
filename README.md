@@ -58,6 +58,8 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 
 **[▶ Watch the demo (MP4, about 8 minutes, narrated)](docs/demo/sealed-demo.mp4)**. Recorded on the live site with real NEAR testnet transactions; waiting time (block confirmations, unlock times) is cut out.
 
+Also on **[YouTube](https://youtu.be/VpjFS-zH_NA)** (full demo) and **[X](https://x.com/lakchu_3/status/2121735872269992198)** (the hackathon demo post).
+
 | Part | What it shows |
 |---|---|
 | The problem, in 3D | Contracts, government orders, company results, tender bids and wills leak; nobody can prove who opened them |
@@ -216,7 +218,7 @@ Method names are exactly those in [`contract/src/lib.rs`](contract/src/lib.rs). 
 
 | Method | Caller | Checks | Result |
 |---|---|---|---|
-| `create_seal` | Operator accounts only | Seal id format and uniqueness, SHA-256 hex hash, future unlock time, `single` (no holders, K = N = 0) or `split` (2 ≤ N ≤ 20, 1 ≤ K ≤ N, unique holders, one commitment each) | Seal stored, log `create` |
+| `create_seal` | Operator accounts only (by design: the operator pays storage and enforces plan limits; see the trust note above) | Seal id format and uniqueness, SHA-256 hex hash, future unlock time, `single` (no holders, K = N = 0) or `split` (2 ≤ N ≤ 20, 1 ≤ K ≤ N, unique holders, one commitment each) | Seal stored, log `create` |
 | `release_part` | Any account | Mode is split, caller is a holder, time reached, not already released, commitment matches | `released`, `single_mode`, `not_holder`, `early`, `already_released` or `bad_commitment`; always logged |
 | `request_open` | Any account (the service in practice) | Time reached; in split mode at least K releases | `early`, `awaiting_parts` or `open`; always logged |
 | `record_alert` | Operator accounts only | Seal exists, SHA-256 hex, short lowercase kind | Log entry `alert:<kind>` |
