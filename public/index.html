@@ -2,107 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0a0a0a"><meta name="description" content="Seal files that nobody can open before the time you choose.">
-  <title>Sealed Paper — Workspace</title>
+  <meta name="theme-color" content="#0a0a0a"><meta name="description" content="Lock a file so nobody can open it before the time you choose.">
+  <title>Sealed Paper — Lock a file</title>
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="worker-app">
-<a class="skip-link" href="#workspace">Skip to workspace</a>
+<a class="skip-link" href="#workspace">Skip to main content</a>
 <div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="/"><span><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">time-locked files · NEAR</span></span></a>
-    <nav class="workspace-nav" aria-label="Workspace">
-      <button data-view="overview" aria-current="page"><span class="nav-number">00</span> Command center</button>
-      <button data-view="seal"><span class="nav-number">01</span> Seal a file</button>
-      <button data-view="seals"><span class="nav-number">02</span> My seals</button>
-      <button data-view="exam"><span class="nav-number">03</span> Exam mode</button>
+    <a class="brand" href="/"><span><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">files that open on time</span></span></a>
+    <nav class="workspace-nav" aria-label="Main menu">
+      <button data-view="overview" aria-current="page"><span class="nav-number">⌂</span> Home</button>
+      <button data-view="seal"><span class="nav-number">1</span> Lock a file</button>
+      <button data-view="seals"><span class="nav-number">2</span> My locked files</button>
+      <button data-view="exam"><span class="nav-number">3</span> Exam papers</button>
     </nav>
-    <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHAIN: CHECKING</span></p><p>CONTRACT: <span id="sideContract">—</span></p><p>SEALS ON-CHAIN: <span id="sideSeals">—</span></p><p>OPERATOR: <span id="sideOps">—</span></p><a href="/verify">Verify a seal →</a></div>
+    <div class="sidebar-foot status-box"><p class="status-title"><span class="dot" id="chainDot"></span> <span id="chainState">CHECKING…</span></p><p>Files locked so far: <span id="sideSeals">—</span></p>
+      <details class="tech"><summary>Technical details</summary><p>Contract: <span id="sideContract">—</span></p><p>Service account: <span id="sideOps">—</span></p></details>
+      <a href="/verify">Check a locked file →</a></div>
   </aside>
   <main id="workspace" tabindex="-1">
-    <header class="workspace-header"><span class="crumb">SEALED PAPER / <b id="crumb">COMMAND CENTER</b></span><span class="header-right"><span class="last-sync">LAST SYNC: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
+    <header class="workspace-header"><span class="crumb">SEALED PAPER / <b id="crumb">HOME</b></span><span class="header-right"><span class="last-sync">Updated: <span id="lastSync">—</span></span><span id="net" class="badge" role="status">Connecting…</span></span></header>
 
     <section id="view-overview" class="workspace-view" aria-labelledby="overviewTitle">
-      <h1 id="overviewTitle" class="sr-only" tabindex="-1">Command center</h1>
+      <div class="page-title"><p class="eyebrow">Home</p><h1 id="overviewTitle" tabindex="-1">Lock a file. Nobody opens it early.</h1><p>Pick a file and a time. Before that time, every attempt to open it is blocked and recorded in public, and you get an alert.</p></div>
+      <div class="start-row"><a class="btn big-btn" href="#seal">＋ Lock a new file</a><a class="btn ghost big-btn" href="/verify">Check a locked file</a></div>
       <div class="dash-grid">
-        <section class="panel"><h2 class="panel-title">Seal allocation</h2>
-          <div class="stat-trio"><div><strong id="oTotal">0</strong><span>Seals</span></div><div><strong id="oLocked">0</strong><span>Locked</span></div><div><strong id="oOpen">0</strong><span>Unlocked</span></div></div>
-          <ul id="oList" class="day-list"><li class="muted">No seals on this device yet.</li></ul></section>
-        <section class="panel"><h2 class="panel-title">Alert log</h2><ol id="oAlerts" class="activity"><li class="muted">No alerts yet.</li></ol></section>
-        <section class="panel"><h2 class="panel-title">Next unlock</h2><div class="radar small" aria-hidden="true"><span class="sweep"></span></div><p class="countdown" id="oNext">—</p><p class="muted center" id="oNextLabel">Nothing scheduled</p></section>
-        <section class="panel span-2"><h2 class="panel-title">How a seal opens</h2>
-          <ol class="flow"><li><b>Encrypt</b><span>AES-256-GCM in your browser. The plain file never leaves this device.</span></li><li><b>Split</b><span>The key becomes N wrapped parts; K are needed. No holder can read a part.</span></li><li><b>Lock</b><span>NEAR stores the file hash, holders and unlock time. Early calls are refused and logged.</span></li><li><b>Release</b><span>At the unlock time, K holders release on-chain. The key is rebuilt in the viewer's browser.</span></li></ol></section>
-        <section class="panel"><h2 class="panel-title">Protection</h2><div class="info-list" id="oInfo"></div></section>
+        <section class="panel"><h2 class="panel-title">Your files</h2>
+          <div class="stat-trio"><div><strong id="oTotal">0</strong><span>Total</span></div><div><strong id="oLocked">0</strong><span>Still locked</span></div><div><strong id="oOpen">0</strong><span>Time reached</span></div></div>
+          <ul id="oList" class="day-list"><li class="muted">You have not locked any files yet.</li></ul></section>
+        <section class="panel"><h2 class="panel-title">Alerts</h2><ol id="oAlerts" class="activity"><li class="muted">No alerts yet.</li></ol></section>
+        <section class="panel"><h2 class="panel-title">Next file to open</h2><div class="radar small" aria-hidden="true"><span class="sweep"></span></div><p class="countdown" id="oNext">—</p><p class="muted center" id="oNextLabel">Nothing waiting</p></section>
+        <section class="panel span-2"><h2 class="panel-title">How it works</h2>
+          <ol class="flow"><li><b>1. Pick a file</b><span>It is scrambled on your own device. We never see the real file.</span></li><li><b>2. Pick a time</b><span>Nobody can open it before then. Not even you or the people you trust.</span></li><li><b>3. Share the link</b><span>Send it by WhatsApp, email or QR code. Early tries are blocked and recorded.</span></li><li><b>4. It opens on time</b><span>At the chosen time it opens for the people you shared it with.</span></li></ol></section>
+        <section class="panel"><h2 class="panel-title">Blocked so far</h2><div class="info-list" id="oInfo"></div></section>
       </div>
     </section>
 
     <section id="view-seal" class="workspace-view hidden" aria-labelledby="sealTitle">
-      <div class="page-title"><p class="eyebrow">Seal a file</p><h1 id="sealTitle" tabindex="-1">Lock it until the second you choose.</h1><p>PDF, image, video, audio or text, up to 100 MB. Encrypted here before upload.</p></div>
+      <div class="page-title"><p class="eyebrow">Lock a file</p><h1 id="sealTitle" tabindex="-1">3 steps. About one minute.</h1><p>Any file up to 100 MB: PDF, photo, video, audio or text.</p></div>
       <form id="sealForm" class="card" novalidate>
-        <h2>1 · File</h2>
-        <label for="file">File to seal</label><input id="file" type="file" required>
-        <p class="field-note" id="fileInfo">Nothing chosen.</p>
-        <label for="label">Name shown on the share page</label><input id="label" maxlength="120" placeholder="Name shown on the share page" autocomplete="off">
+        <h2><span class="step">1</span> Choose your file</h2>
+        <label for="file" class="drop"><span>Tap to choose a file</span><input id="file" type="file" required></label>
+        <p class="field-note" id="fileInfo">No file chosen yet.</p>
+        <label for="label">Name for this file (people will see it)</label><input id="label" maxlength="120" placeholder="For example: Maths exam, Class 10" autocomplete="off">
 
-        <h2>2 · Lock mode</h2>
-        <div class="mode-pick" role="radiogroup" aria-label="Lock mode">
-          <label class="mode"><input type="radio" name="mode" value="split" checked><span><b>Split lock</b><small>Key split into N parts; K holders must release at the unlock time.</small></span></label>
-          <label class="mode"><input type="radio" name="mode" value="single"><span><b>Single lock</b><small>No split. Opens by time alone; the release service holds the key until then.</small></span></label>
+        <h2><span class="step">2</span> When can it be opened?</h2>
+        <div class="preset-row big"><button type="button" class="secondary quick" data-min="2">In 2 minutes</button><button type="button" class="secondary quick" data-min="10">In 10 minutes</button><button type="button" class="secondary quick" data-min="60">In 1 hour</button><button type="button" class="secondary quick" data-min="1440">Tomorrow</button></div>
+        <div class="grid"><div><label for="unlockAt">Or pick an exact date and time</label><input id="unlockAt" type="datetime-local" step="1" required></div><div><label for="tz">Time zone</label><select id="tz"><option value="local">My time</option><option value="Asia/Kolkata">India time (IST)</option><option value="UTC">World time (UTC)</option></select></div></div>
+        <p class="when" id="unlockPreview"></p>
+
+        <h2><span class="step">3</span> Who must agree to open it?</h2>
+        <div class="mode-pick" role="radiogroup" aria-label="Who must agree">
+          <label class="mode"><input type="radio" name="mode" value="single" checked><span><b>Nobody. Just the time.</b><small>It opens by itself at the time you chose.</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="split"><span><b>Some trusted people</b><small>Each person gets one piece of the key. Enough of them must say yes, after the time.</small></span></label>
         </div>
-        <div id="splitBox">
-          <div class="preset-row" role="group" aria-label="Presets"><button type="button" class="secondary preset" data-k="2" data-n="2">2 of 2</button><button type="button" class="secondary preset" data-k="2" data-n="3">2 of 3</button><button type="button" class="secondary preset" data-k="3" data-n="5">3 of 5</button><button type="button" class="secondary preset" data-k="5" data-n="7">5 of 7</button></div>
-          <div class="grid"><div><label for="n">Parts (N)</label><input id="n" type="number" min="2" max="20" value="3"></div><div><label for="k">Needed to unlock (K)</label><input id="k" type="number" min="1" max="20" value="3"></div></div>
-          <p class="field-note" id="kHint"></p>
+        <div id="splitBox" class="hidden">
+          <p class="field-note">How many people, and how many must agree?</p>
+          <div class="preset-row" role="group" aria-label="Choices"><button type="button" class="secondary preset" data-k="2" data-n="2">Both of 2</button><button type="button" class="secondary preset" data-k="2" data-n="3">2 of 3 people</button><button type="button" class="secondary preset" data-k="3" data-n="5">3 of 5 people</button><button type="button" class="secondary preset" data-k="5" data-n="7">5 of 7 people</button></div>
+          <details class="more"><summary>Other number</summary><div class="grid"><div><label for="n">Number of people</label><input id="n" type="number" min="2" max="20" value="3"></div><div><label for="k">How many must agree</label><input id="k" type="number" min="1" max="20" value="2"></div></div></details>
+          <p class="when" id="kHint"></p>
           <div id="holders" class="holders"></div>
         </div>
 
-        <h2>3 · Who can open</h2>
-        <label for="viewers">NEAR accounts allowed to open (optional)</label>
-        <input id="viewers" placeholder="account.testnet, another.testnet" autocomplete="off" spellcheck="false">
-        <p class="field-note">Leave empty so anyone with the link can open after the unlock. If you list accounts, a viewer must prove their account with their NEAR wallet before the file is released; anyone else is refused and you get an alert.</p>
-        <div id="viewerCheck" class="resolve-list" aria-live="polite"></div>
-
-        <h2>4 · Unlock time</h2>
-        <div class="grid"><div><label for="unlockAt">Date and time</label><input id="unlockAt" type="datetime-local" step="1" required></div><div><label for="tz">Time zone</label><select id="tz"><option value="local">This device</option><option value="Asia/Kolkata">India (IST)</option><option value="UTC">UTC</option></select></div></div>
-        <div class="preset-row"><button type="button" class="secondary quick" data-min="2">+2 min</button><button type="button" class="secondary quick" data-min="10">+10 min</button><button type="button" class="secondary quick" data-min="60">+1 hour</button><button type="button" class="secondary quick" data-min="1440">+1 day</button></div>
-        <p class="field-note" id="unlockPreview"></p>
-
-        <h2>5 · Alerts</h2>
-        <div class="grid"><div><label for="ownerEmail">Your email (alerts)</label><input id="ownerEmail" type="email" autocomplete="email"></div><div><label for="ownerPhone">Your WhatsApp / phone</label><input id="ownerPhone" type="tel" placeholder="+91…" autocomplete="tel"></div></div>
-        <label for="createToken" id="createTokenLabel" class="hidden">Seal creation token</label><input id="createToken" type="password" class="hidden" autocomplete="off">
-        <div class="capture-footer"><button id="sealBtn" type="submit">Seal and lock on NEAR</button><span class="muted" id="sealStatus" role="status"></span></div>
+        <details class="more"><summary>More options (alerts, who can open)</summary>
+          <h3>Send me alerts</h3>
+          <div class="grid"><div><label for="ownerEmail">My email</label><input id="ownerEmail" type="email" autocomplete="email"></div><div><label for="ownerPhone">My WhatsApp number</label><input id="ownerPhone" type="tel" placeholder="+91…" autocomplete="tel"></div></div>
+          <h3>Only these people can open it</h3>
+          <label for="viewers">Their NEAR accounts, separated by commas (leave empty to let anyone with the link open it)</label>
+          <input id="viewers" placeholder="name.testnet, other.testnet" autocomplete="off" spellcheck="false">
+          <p class="field-note">They will confirm who they are with their NEAR wallet app before the file opens.</p>
+          <div id="viewerCheck" class="resolve-list" aria-live="polite"></div>
+          <label for="createToken" id="createTokenLabel" class="hidden">Access code (from the site owner)</label><input id="createToken" type="password" class="hidden" autocomplete="off">
+        </details>
+        <div class="capture-footer"><button id="sealBtn" type="submit" class="big-btn">Lock my file</button><span class="muted" id="sealStatus" role="status"></span></div>
       </form>
       <section id="sealed" class="card hidden" aria-live="polite">
-        <p class="eyebrow">Sealed</p><h2 id="sealedTitle"></h2>
+        <p class="eyebrow">Done: your file is locked</p><h2 id="sealedTitle"></h2>
         <p id="sealedSummary"></p>
+        <h3>Share it</h3>
         <div class="share-grid" id="shareBox"></div>
-        <div id="holderLinks" class="hidden"><h3>Send each holder their private link now</h3><p class="warn-note">These links carry each holder's wrapped key part and signing key. They are shown once and are not saved anywhere. Send each link only to its holder.</p><ol id="holderList" class="holder-links"></ol></div>
+        <div id="holderLinks" class="hidden"><h3>Now send each trusted person their own link</h3><p class="warn-note">Each link is a piece of the key. It is shown only once and is not saved. Send each link only to that person.</p><ol id="holderList" class="holder-links"></ol></div>
       </section>
     </section>
 
     <section id="view-seals" class="workspace-view hidden" aria-labelledby="sealsTitle">
-      <div class="page-title"><p class="eyebrow">My seals</p><h1 id="sealsTitle" tabindex="-1">Countdowns, sharing and alerts.</h1><p>Seals created on this device. Owner tokens stay in this browser.</p></div>
-      <div id="sealCards"><p class="muted">No seals yet. Seal a file first.</p></div>
+      <div class="page-title"><p class="eyebrow">My locked files</p><h1 id="sealsTitle" tabindex="-1">Your files and their countdowns.</h1><p>Files you locked on this device, with share buttons and alerts.</p></div>
+      <div id="sealCards"><p class="muted">You have not locked any files yet. <a href="#seal">Lock one now →</a></p></div>
     </section>
 
     <section id="view-exam" class="workspace-view hidden" aria-labelledby="examTitle">
-      <div class="page-title"><p class="eyebrow">Exam mode</p><h1 id="examTitle" tabindex="-1">One paper per centre. Trace any leak.</h1><p>Every centre gets the same questions, options and answers, in a different question order, option order and wording. A leaked copy, even retyped, carries that fingerprint. These three agents are rule-based and run in your browser; no AI service is used.</p></div>
-      <section class="card"><h2>1 · Setter</h2>
-        <label for="examText">Questions: "Q: …" then options "A) …", with * after the correct option; blank line between questions</label>
-        <textarea id="examText" rows="10" spellcheck="false"></textarea>
-        <div class="grid"><div><label for="examTitleIn">Exam name</label><input id="examTitleIn" maxlength="80" placeholder="Exam name"></div><div><label for="centres">Exam centres</label><input id="centres" type="number" min="2" max="50" value="3"></div></div>
-        <div class="row"><button id="genVersions">Generate versions</button></div>
+      <div class="page-title"><p class="eyebrow">Exam papers</p><h1 id="examTitle" tabindex="-1">A different paper for every centre. Find who leaked it.</h1><p>Every exam centre gets the same questions, but in a different order and wording. If a paper leaks, paste it here and we tell you which centre it came from. This works on your device; no AI service is used.</p></div>
+      <section class="card"><h2><span class="step">1</span> Make the papers</h2>
+        <label for="examText">Type or paste your questions. Start each with "Q:", put choices as "A)", "B)"… and add * after the right answer. Leave an empty line between questions.</label>
+        <textarea id="examText" rows="10" spellcheck="false" placeholder="Q: What is 2 + 2?&#10;A) 3&#10;B) 4 *&#10;C) 5"></textarea>
+        <div class="grid"><div><label for="examTitleIn">Exam name</label><input id="examTitleIn" maxlength="80" placeholder="For example: Maths, Class 10"></div><div><label for="centres">Number of exam centres</label><input id="centres" type="number" min="2" max="50" value="3"></div></div>
+        <div class="row"><button id="genVersions" class="big-btn">Make one paper per centre</button></div>
         <div id="versions" class="version-grid"></div></section>
-      <section class="card hidden" id="auditCard"><h2>2 · Auditor</h2><p id="auditVerdict"></p><ol id="auditRows" class="activity"></ol></section>
-      <section class="card hidden" id="investCard"><h2>3 · Investigator</h2>
-        <label for="leakText">Paste the leaked text (a retyped or partial copy works)</label><textarea id="leakText" rows="6"></textarea>
-        <div class="row"><button id="trace">Trace the leak</button></div>
+      <section class="card hidden" id="auditCard"><h2><span class="step">2</span> Check they are fair</h2><p id="auditVerdict"></p><ol id="auditRows" class="activity"></ol></section>
+      <section class="card hidden" id="investCard"><h2><span class="step">3</span> Find a leak</h2>
+        <label for="leakText">Paste the leaked text here (even part of it, or retyped)</label><textarea id="leakText" rows="6"></textarea>
+        <div class="row"><button id="trace">Find which centre</button></div>
         <div id="traceResult" class="result hidden" aria-live="polite"></div>
-        <div id="anchorBox" class="hidden"><label for="anchorSeal">Record this report's hash on NEAR against one of your seals</label><select id="anchorSeal"></select><button id="anchorReport" class="secondary">Record on NEAR</button><p id="anchorStatus" class="field-note"></p></div>
+        <div id="anchorBox" class="hidden"><label for="anchorSeal">Save a permanent public record of this report, under one of your locked files</label><select id="anchorSeal"></select><button id="anchorReport" class="secondary">Save record</button><p id="anchorStatus" class="field-note"></p></div>
       </section>
     </section>
 
-    <footer class="app-footer"><span>Sealed Paper</span><a href="/verify">Verify a seal</a><span>NEAR testnet · not legal or exam-board advice</span></footer>
+    <footer class="app-footer"><span>Sealed Paper</span><a href="/verify">Check a locked file</a><span>Test network · not legal advice</span></footer>
   </main>
 </div>
 <script type="module" src="/app.js"></script>
