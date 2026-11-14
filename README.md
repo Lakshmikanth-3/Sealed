@@ -101,14 +101,21 @@ SQLite WAL/full-sync storage persists hosted shares and management-token hashes.
 
 A commitment proves integrity and authorization, not truth, employment, complete work history, device-clock accuracy, or legal entitlement. Public commitments expose account/day/count metadata. Shared notes and screenshots can contain personal information: review before sharing. AI drafts can be wrong even with a valid signature.
 
-Remaining external verification: actual testnet deployment and worker approval, funded verified AI execution, HTTPS host checks, physical Android testing, consented worker/reviewer observations, demo video and final submission approval. No adoption, partnership, payment or prize outcome is claimed.
+Remaining external verification: a successful worker evidence anchor, funded verified AI execution, HTTPS host checks, physical Android testing, consented worker/reviewer observations, demo video and final submission approval. No adoption, partnership, payment or prize outcome is claimed.
 
 The dependency audit currently reports **16 low-severity findings** in upstream cryptography dependencies used by Wallet Selector and verified inference. An automatic forced downgrade was not applied. Review this dependency risk before public production operation.
 
+## For judges
+
+- Clone, `cp .env.example .env`, then `npm ci && npm test && npm start`. `.env.example` already points at the deployed testnet contract `kanth_s.testnet`.
+- Without a wallet you can check: the unit suite (proofs, adversarial RPC, signatures, reconciliation, sharing), the setup/readiness screen and the reviewer page at `/verify.html`, which rejects tampered packs.
+- Saving commitments on-chain requires a worker account registered by the contract owner (invite-only by design, to stop spam anchors). Ask the team to register your testnet account, or follow [live setup](docs/LIVE-SETUP.md) to deploy your own instance with `npm run contract:deploy` and `npm run contract:register`.
+- Deployment proof: [TESTNET-DEPLOYMENT.json](docs/TESTNET-DEPLOYMENT.json) (deploy tx `7QGcHbgghNQNVMeopydK43ukuFSjodXRZJnkhGAjKtMa`, registration tx `4o2VD2AsdHHFBJf13YjrDyYgkAo1Lhkan6itM13PjDMt`).
+
 ## Hackathon history and license
 
-The `prototype-baseline` tag preserves the original prototype. See the [actual baseline-to-current diff](https://github.com/Lakshmikanth-3/Appeal/compare/prototype-baseline...master) for published work; unpushed local changes are not in that diff. Commit dates are not evidence of live execution.
+The `prototype-baseline` tag preserves the original prototype. See the [actual baseline-to-current diff](https://github.com/Lakshmikanth-3/Appeal/compare/prototype-baseline...master) for all work built after the baseline. Commit dates are not evidence of live execution.
 
-Privacy and Open Innovation remain proposed tracks pending the owner's decision. No specific optional integration is required by the [event rules](https://nearhackathon.com/HACKATHON.md). Publication, social posts, signing/spending and final submission follow the owner's authorization gates.
+Submitted tracks: **Privacy & Private AI** (primary) and **Open Innovation**. No specific optional integration is required by the [event rules](https://nearhackathon.com/HACKATHON.md). Publication, social posts, signing/spending and final submission follow the owner's authorization gates.
 
-AI coding assistants contributed to the implementation: the original prototype credited Claude; subsequent development and verification used Codex. Runtime dependencies include NEAR API JS, NEAR Wallet Selector, NEAR AI's inference SDK and browser compatibility libraries. Esbuild and Playwright are development tools. The app is [MIT licensed](LICENSE); the self-hosted Bricolage Grotesque font retains its [OFL](public/fonts/OFL.txt).
+AI coding assistants contributed to the implementation: the original prototype credited Claude; subsequent development and verification used Codex and Claude Code. Runtime dependencies include NEAR API JS, NEAR Wallet Selector, NEAR AI's inference SDK and browser compatibility libraries. Esbuild and Playwright are development tools. The app is [MIT licensed](LICENSE); the self-hosted Bricolage Grotesque font retains its [OFL](public/fonts/OFL.txt).
