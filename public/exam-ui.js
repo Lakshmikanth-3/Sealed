@@ -41,9 +41,10 @@ $('trace').onclick = async () => {
     const r = investigate($('leakText').value, questions, versions);
     lastReport = { kind: 'leak_report', exam: $('examTitleIn').value, centres: versions.length, result: r, at: new Date().toISOString(), leakSha256: await sha256Hex(new TextEncoder().encode($('leakText').value)) };
     $('traceResult').className = 'result ' + (r.confidence >= 60 ? 'open' : 'waiting');
+    const enough = r.evidence >= 3;
     $('traceResult').replaceChildren(el('p', { class: 'eyebrow', text: 'Result' }), el('p', { class: 'trace-big', text: r.verdict }),
-      el('p', { class: 'muted', text: `Based on ${r.evidence} clues found in the leaked text.` }),
-      el('ol', { class: 'activity' }, ...r.ranking.map((x) => el('li', {}, el('p', {}, el('span', { class: 'accent', text: `Centre ${x.centre}` }), ` · ${x.score}% match`)))),
+      el('p', { class: 'muted', text: enough ? `Based on ${r.evidence} clue${r.evidence === 1 ? '' : 's'} found in the leaked text.` : `Only ${r.evidence} clue${r.evidence === 1 ? '' : 's'} found. At least 3 are needed for a reliable answer.` }),
+      ...(enough ? [el('ol', { class: 'activity' }, ...r.ranking.map((x) => el('li', {}, el('p', {}, el('span', { class: 'accent', text: `Centre ${x.centre}` }), ` · ${x.score}% match`))))] : []),
       el('div', { class: 'row' }, el('button', { type: 'button', class: 'secondary', onclick: () => download('leak-report.json', JSON.stringify(lastReport, null, 2), 'application/json') }, 'Download this result')));
     const mine = (() => { try { return JSON.parse(localStorage.getItem('sealed-paper:mine') || '[]'); } catch { return []; } })();
     $('anchorBox').classList.toggle('hidden', !mine.length);
