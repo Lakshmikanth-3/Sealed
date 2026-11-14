@@ -14,12 +14,16 @@ const current = await provider.callFunction({ contractId: contract, method: 'get
 console.log(JSON.stringify({ contract, owner, currentPriceYocto: current?.price_per_month_yocto ?? 'unknown', newPriceNear: near, newPriceYocto: yocto }, null, 2));
 
 if (!process.argv.includes('--broadcast')) { console.log('Plan only. Run with --broadcast to sign.'); process.exit(0); }
-if (!key) {
-  console.log(`\nCONTRACT_OWNER_PRIVATE_KEY is not in .env. Sign it yourself with NEAR CLI as ${owner}:\n`);
+// Sign as the owner if its key is in .env; otherwise as the contract account itself, which the
+// upgraded contract (npm run plans:upgrade) also accepts for set_price.
+const selfKey = process.env.SEAL_PLANS_PRIVATE_KEY;
+if (!key && !selfKey) {
+  console.log(`\nNo owner or contract key in .env. Sign it yourself with NEAR CLI as ${owner}:\n`);
   console.log(`near contract call-function as-transaction ${contract} set_price json-args '{"price_per_month":"${yocto}"}' prepaid-gas '30 Tgas' attached-deposit '0 NEAR' sign-as ${owner} network-config testnet sign-with-keychain send`);
   process.exit(1);
 }
-const acct = new Account(owner, provider, KeyPairSigner.fromSecretKey(key));
+const acct = key ? new Account(owner, provider, KeyPairSigner.fromSecretKey(key)) : new Account(contract, provider, KeyPairSigner.fromSecretKey(selfKey));
+console.log(`Signing as ${key ? owner : contract}`);
 const res = await acct.signAndSendTransaction({ receiverId: contract, waitUntil: 'FINAL', throwOnFailure: true,
   actions: [actions.functionCall('set_price', { price_per_month: yocto }, 30_000_000_000_000n, 0n)] });
 console.log(`Price set to ${near} NEAR / month: ${NEAR_EXPLORER_URL}/txns/${res.transaction.hash}`);
