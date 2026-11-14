@@ -54,7 +54,7 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   expect(await release(split.holders[0])).toMatch(/released/i);
   expect(await release(split.holders[2])).toMatch(/released/i);
   p = await open(split.sealId, true);
-  await expect(p.locator('#result.open')).toContainText(/Verified: matches the hash on NEAR/i);
+  await expect(p.locator('#result.open')).toContainText(/same file that was locked/i);
   const download = p.waitForEvent('download'); await p.click('#result a[download]');
   expect(fs.readFileSync(await (await download).path()).equals(pdf)).toBe(true);
   await p.close();

@@ -44,7 +44,7 @@ export const short = (s, n = 6) => !s ? '—' : s.length > n * 2 + 1 ? `${s.slic
 // ---------- sharing ----------
 export const shareUrl = (sealId) => `${location.origin}/s/${sealId}`;
 export function shareText(seal) {
-  return `"${seal.label}" is sealed until ${istText(seal.unlockAtMs)} (${utcText(seal.unlockAtMs)}). It cannot be opened before then. Open it here at that time: ${shareUrl(seal.sealId)}`;
+  return `"${seal.label}" is locked until ${istText(seal.unlockAtMs)}. Nobody can open it before then. Open it here at that time: ${shareUrl(seal.sealId)}`;
 }
 export const whatsappUrl = (text, phone) => `https://wa.me/${phone ? phone.replace(/[^0-9]/g, '') : ''}?text=${encodeURIComponent(text)}`;
 export const mailtoUrl = (to, subject, body) => `mailto:${encodeURIComponent(to || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -52,7 +52,7 @@ export function icsFile(seal) {
   const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const esc = (s) => String(s).replace(/[\\,;]/g, (c) => '\\' + c).replace(/\n/g, '\\n');
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sealed Paper//EN', 'BEGIN:VEVENT', `UID:${seal.sealId}@sealed-paper`, `DTSTAMP:${stamp(Date.now())}`,
-    `DTSTART:${stamp(seal.unlockAtMs)}`, `DTEND:${stamp(seal.unlockAtMs + 15 * 60000)}`, `SUMMARY:${esc('Unlocks: ' + seal.label)}`,
+    `DTSTART:${stamp(seal.unlockAtMs)}`, `DTEND:${stamp(seal.unlockAtMs + 15 * 60000)}`, `SUMMARY:${esc('Opens: ' + seal.label)}`,
     `DESCRIPTION:${esc(shareText(seal))}`, `URL:${shareUrl(seal.sealId)}`, 'BEGIN:VALARM', 'TRIGGER:-PT5M', 'ACTION:DISPLAY', 'DESCRIPTION:Sealed file unlocks in 5 minutes', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
 }
 export function download(name, data, type) {
@@ -74,14 +74,14 @@ export function shareButtons(seal, { qr } = {}) {
   const wrap = el('div', { class: 'share-row' },
     el('button', { type: 'button', class: 'secondary', onclick: () => copy(url) }, 'Copy link'),
     el('a', { class: 'btn ghost', href: whatsappUrl(text), target: '_blank', rel: 'noopener' }, 'WhatsApp'),
-    el('a', { class: 'btn ghost', href: mailtoUrl('', `Sealed until ${istText(seal.unlockAtMs)}: ${seal.label}`, text + '\n\nA calendar invite (.ics) is attached separately.') }, 'Email'),
-    el('button', { type: 'button', class: 'secondary', onclick: () => download(`${seal.sealId}.ics`, icsFile(seal), 'text/calendar') }, 'Calendar .ics'),
-    navigator.share ? el('button', { type: 'button', class: 'secondary', onclick: () => navigator.share({ title: seal.label, text, url }).catch(() => {}) }, 'Share…') : null,
-    el('button', { type: 'button', class: 'secondary', onclick: async () => download(`${seal.sealId}.sealed`, await sealedDocument(seal), 'application/json') }, '.sealed file'),
+    el('a', { class: 'btn ghost', href: mailtoUrl('', `Locked until ${istText(seal.unlockAtMs)}: ${seal.label}`, text) }, 'Email'),
+    el('button', { type: 'button', class: 'secondary', onclick: () => download(`${seal.sealId}.ics`, icsFile(seal), 'text/calendar') }, 'Add to calendar'),
+    navigator.share ? el('button', { type: 'button', class: 'secondary', onclick: () => navigator.share({ title: seal.label, text, url }).catch(() => {}) }, 'More ways to share') : null,
+    el('button', { type: 'button', class: 'secondary', onclick: async () => download(`${seal.sealId}.sealed`, await sealedDocument(seal), 'application/json') }, 'Download locked copy'),
   );
   if (qr) {
     const box = el('div', { class: 'qr-box' }); box.innerHTML = qr(url, 4);
-    const qrWrap = el('div', { class: 'qr-wrap' }, box, el('button', { type: 'button', class: 'secondary', onclick: () => printQr(seal, qr(url, 8)) }, 'Print QR'));
+    const qrWrap = el('div', { class: 'qr-wrap' }, box, el('button', { type: 'button', class: 'secondary', onclick: () => printQr(seal, qr(url, 8)) }, 'Print QR code'));
     return el('div', { class: 'share-block' }, wrap, qrWrap);
   }
   return wrap;
@@ -89,6 +89,6 @@ export function shareButtons(seal, { qr } = {}) {
 function printQr(seal, svg) {
   const w = window.open('', '_blank', 'width=480,height=640');
   if (!w) return toast('Allow pop-ups to print the QR code');
-  w.document.write(`<!doctype html><title>${seal.label.replace(/</g, '&lt;')}</title><body style="font-family:sans-serif;text-align:center;padding:24px"><h2>${seal.label.replace(/</g, '&lt;')}</h2><p>Sealed until ${istText(seal.unlockAtMs)}</p><div style="width:320px;margin:auto">${svg}</div><p>${shareUrl(seal.sealId)}</p></body>`);
+  w.document.write(`<!doctype html><title>${seal.label.replace(/</g, '&lt;')}</title><body style="font-family:sans-serif;text-align:center;padding:24px"><h2>${seal.label.replace(/</g, '&lt;')}</h2><p>Locked until ${istText(seal.unlockAtMs)}. Scan to open it then.</p><div style="width:320px;margin:auto">${svg}</div><p>${shareUrl(seal.sealId)}</p></body>`);
   w.document.close(); w.print();
 }
