@@ -1,0 +1,15 @@
+{
+  "network": "testnet",
+  "contract": "sealed.kanth_s.testnet",
+  "owner": "kanth_s.testnet",
+  "operator": "sealops.kanth_s.testnet",
+  "wasmSha256": "e1ba9f92cf96a275ccc0de2f0a69559fbee7c14314c6bba661a6a54fb209fcb6",
+  "createOperatorTx": "97mXHchdZtw23rZmvKNb9qwwsUh8Va8ZsDdTdfdXFJuA",
+  "createContractTx": "D6pP7FXyuQUDngu5di4x6JMfDamCJ2LwhCvEDmYJeZWx",
+  "deployTx": "Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC",
+  "deployedAt": "2026-11-14T05:17:34.086Z",
+  "explorer": {
+    "contract": "https://testnet.nearblocks.io/address/sealed.kanth_s.testnet",
+    "deployTx": "https://testnet.nearblocks.io/txns/Dhev12vVQfyvRNyovugpNHJ3YwLQGPFPAPedrV3AMNmC"
+  }
+}
