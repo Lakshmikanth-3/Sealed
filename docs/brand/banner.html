@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sealed banner</title>
+<!-- Source for docs/brand/banner.png (1280 × 640). Rendered with scripts/render-brand.js. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1280px; height: 640px; overflow: hidden; background: #f6f5f3; color: #111;
+    font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif; position: relative; }
+  .grid { position: absolute; inset: 0; background-image: linear-gradient(#e3e1dd 1px, transparent 1px), linear-gradient(90deg, #e3e1dd 1px, transparent 1px);
+    background-size: 80px 80px; mask-image: radial-gradient(ellipse 70% 80% at 72% 50%, #000 30%, transparent 75%); }
+  .wrap { position: relative; display: grid; grid-template-columns: 1fr 420px; align-items: center; height: 100%; padding: 0 80px; gap: 40px; }
+  .eyebrow { font: 500 18px ui-monospace, Consolas, monospace; color: #6f6d69; display: flex; align-items: center; gap: 14px; }
+  .eyebrow::before { content: ""; width: 44px; height: 1px; background: #6f6d69; }
+  h1 { font-size: 132px; font-weight: 400; letter-spacing: -6px; line-height: 1; margin: 18px 0 10px; }
+  .tag { font-size: 40px; letter-spacing: -1px; color: #111; }
+  .tag span { color: #8a8782; }
+  .uses { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 10px; max-width: 700px; }
+  .uses b { font: 500 17px ui-monospace, Consolas, monospace; border: 1px solid #d9d6d1; background: #fff; padding: 8px 14px; }
+  .uses b.hot { border-color: #ff6b1a; color: #c4500f; }
+  .foot { position: absolute; left: 80px; bottom: 44px; display: flex; gap: 28px; font: 500 17px ui-monospace, Consolas, monospace; color: #4a4845; }
+  .foot i { font-style: normal; color: #ff6b1a; }
+  .logo { width: 420px; height: 420px; filter: drop-shadow(0 30px 40px rgba(0,0,0,.18)); transform: rotate(-4deg); }
+  .near { position: absolute; right: 64px; bottom: 40px; font: 700 15px ui-monospace, Consolas, monospace; background: #111; color: #fff; padding: 8px 14px; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Files that open on time</p>
+      <h1>Sealed</h1>
+      <p class="tag">Nobody opens it early. <span>Not even you.</span></p>
+      <div class="uses">
+        <b class="hot">Contracts</b><b class="hot">Government orders</b><b class="hot">Company results</b><b>Tender bids</b><b>Merger plans</b><b>Court rulings</b><b>Wills</b><b>Exam papers</b>
+      </div>
+    </div>
+    <img class="logo" src="../../public/logo.svg" alt="">
+  </div>
+  <div class="foot"><span><i>●</i> Encrypted on your device</span><span><i>●</i> Unlock by time or by merging parts</span><span><i>●</i> Every attempt on the public record</span></div>
+  <div class="near">NEAR</div>
+</body>
+</html>
