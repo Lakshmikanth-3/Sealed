@@ -2,7 +2,7 @@
 
 **Lock a file so nobody can open it before the time you choose. Not even you.**
 
-Exam papers, results, tenders, wills, embargoed reports: pick a file and the exact second it may open. Before that time, a NEAR smart contract **blocks every attempt, records it in public, and the owner gets an alert**. Optionally, K of N trusted people must also say yes. A leaked exam paper can be traced back to its exam centre.
+Contracts, government orders, company results, tender bids, merger plans, court rulings, wills, exam papers: pick any document and the exact second it may open, or require that enough people merge their key parts. Before that, a NEAR smart contract **blocks every attempt, records it in public, and the owner gets an alert**. Two people can also chat privately, end-to-end encrypted, with messages sealed until a time or seen only once.
 
 | | |
 |---|---|
@@ -10,7 +10,8 @@ Exam papers, results, tenders, wills, embargoed reports: pick a file and the exa
 | **Proof page** (every real transaction, clickable) | https://sealedfiles.vercel.app/proof |
 | **Smart contracts** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) (locks, attempts, alerts) · [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet) (Premium payments) |
 | **Tracks** | Privacy & Private AI (main) · Real-World Money · Open Innovation |
-| **Tests** | 30 unit · 17 contract (10 + 7) · 3 offline browser · 3 live testnet suites (22 live checks): all passing |
+| **Who it is for** | Companies (results, merger plans, board papers), governments (orders, budgets, tenders), legal teams (contracts, rulings), families (wills), schools (exam papers) |
+| **Tests** | 36 unit · 18 contract (10 + 8) · 3 offline browser · live testnet suites (22 access checks, end to end, 17 chat checks): all passing |
 
 **What you can do:** lock any photo, video, audio or document · send it to **one person** or **split it between N people** · unlock it **on a date and time** or **only when the parts are merged** · cancel or replace a locked file · **live private chat** between two people, like WhatsApp (end-to-end encrypted; ticks, typing and online status; photos, documents, audio, video and voice notes; messages sealed until a time; view once) · send one-time **secret links** (open at a time; only one NEAR account) · make one exam paper per centre and trace a leak · pay for **Premium with NEAR** · check any file and see every transaction on the **Proof** page.
 
