@@ -1,4 +1,4 @@
-import { $, api, config, el, toast, utcText, istText, localText, countdown, bytesText, short, shareButtons, whatsappUrl, mailtoUrl, copy } from '/common.js';
+import { $, api, config, el, toast, utcText, istText, localText, countdown, bytesText, short, shareButtons, whatsappUrl, mailtoUrl, copy, plainLog, plainAlert } from '/common.js';
 import { encryptFile, splitKey, wrapPart, randomBytes, toB64url, newHolderKey, qrSvg, MAX_FILE_BYTES } from '/assets/sealed.js';
 
 // ---------- navigation ----------
@@ -231,14 +231,14 @@ async function fillSeal(card, seal) {
   const [s, a, l] = await Promise.all([api(`/api/seals/${seal.sealId}`), api(`/api/seals/${seal.sealId}/alerts?token=${encodeURIComponent(seal.ownerToken)}`), api(`/api/seals/${seal.sealId}/log`)]);
   if (s.ok && seal.mode === 'split') card.querySelector('[data-progress]').replaceChildren(...Array.from({ length: seal.n }, (_, i) => el('span', { class: 'pip' + (i < (s.body.chain?.released || 0) ? ' on' : ''), title: `part ${i + 1}` })), el('small', { text: ` ${s.body.chain?.released || 0} of ${seal.k} people have said yes` }));
   card.querySelector('[data-alerts]').replaceChildren(...(a.ok && a.body.alerts.length ? a.body.alerts.map(alertItem) : [el('li', { class: 'muted', text: 'No alerts. Nobody has tried to open it early.' })]));
-  card.querySelector('[data-log]').replaceChildren(...(l.ok && l.body.log.length ? l.body.log.slice().reverse().map((e) => el('li', {}, el('time', { text: utcText(Number(e.at_ms)) }), el('p', {}, el('span', { class: 'accent', text: e.kind.toUpperCase() }), ` · ${short(e.account, 8)}`))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
+  card.querySelector('[data-log]').replaceChildren(...(l.ok && l.body.log.length ? l.body.log.slice().reverse().map((e) => el('li', {}, el('time', { text: utcText(Number(e.at_ms)) }), el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
 }
 function alertItem(a) {
   const loc = a.location?.city ? `${a.location.city}, ${a.location.region || ''} ${a.location.country || ''}` : a.location?.source === 'gps-consented' ? `GPS ${a.location.lat}, ${a.location.lon} (shared by visitor)` : a.location?.note || a.location?.source || 'unknown';
   return el('li', { class: 'alert-item' }, el('time', { text: `${a.atIst} · ${utcText(Date.parse(a.at))}` }),
-    el('p', {}, el('span', { class: 'accent', text: a.kind.replace(/_/g, ' ').toUpperCase() }), ' ', a.summary),
-    el('p', { class: 'muted', text: `${a.device.browser} on ${a.device.os} · approx. location: ${loc}${a.account ? ' · account ' + short(a.account, 6) : ''}` }),
-    el('p', { class: 'muted' }, a.chain?.status === 'recorded' ? el('a', { href: `${EXPLORER}/txns/${a.chain.tx}`, target: '_blank', rel: 'noopener' }, 'Alert hash on NEAR →') : `On-chain: ${a.chain?.status || 'pending'}`));
+    el('p', {}, el('span', { class: 'accent', text: plainAlert(a.kind) })),
+    el('p', { class: 'muted', text: `${a.device.browser} on ${a.device.os} · approx. location: ${loc}` }),
+    el('p', { class: 'muted' }, a.chain?.status === 'recorded' ? el('a', { href: `${EXPLORER}/txns/${a.chain.tx}`, target: '_blank', rel: 'noopener' }, 'Saved in the public record →') : 'Saving to the public record…'));
 }
 setInterval(() => {
   for (const card of document.querySelectorAll('.seal-card')) {
@@ -258,7 +258,7 @@ async function renderOverview() {
     el('span', {}, el('b', { text: s.label }), el('small', { text: `${s.unlockAtMs > now ? 'Locked' : 'Time reached'} · opens ${localText(s.unlockAtMs)}` })))) : [el('li', { class: 'muted', text: 'You have not locked any files yet.' })]));
   const alerts = (await Promise.all(list.slice(0, 10).map((s) => api(`/api/seals/${s.sealId}/alerts?token=${encodeURIComponent(s.ownerToken)}`).then((r) => r.ok ? r.body.alerts.map((a) => ({ ...a, label: s.label })) : [])))).flat()
     .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
-  $('oAlerts').replaceChildren(...(alerts.length ? alerts.map((a) => el('li', {}, el('time', { text: a.atIst }), el('p', {}, el('span', { class: 'accent', text: a.kind.replace(/_/g, ' ').toUpperCase() }), ` · ${a.label}`))) : [el('li', { class: 'muted', text: 'No alerts yet.' })]));
+  $('oAlerts').replaceChildren(...(alerts.length ? alerts.map((a) => el('li', {}, el('time', { text: a.atIst }), el('p', {}, el('span', { class: 'accent', text: plainAlert(a.kind) }), ` · ${a.label}`))) : [el('li', { class: 'muted', text: 'No alerts yet.' })]));
   const kinds = (k) => alerts.filter((a) => a.kind === k).length;
   $('oInfo').replaceChildren(...[['Blocked tries', 'head'], ['Tried to open too early', kinds('early_open')], ['Trusted person tried too early', kinds('early_release')], ['Stranger tried to unlock', kinds('not_holder') + kinds('not_allowed')],
     ['Warnings', 'bad'], ['Wrong key used', kinds('wrong_key')], ['File was changed', kinds('file_tampered')], ['Many tries in a row', kinds('repeated_failures')]].map(([k, v]) => {

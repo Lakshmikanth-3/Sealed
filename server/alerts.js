@@ -3,13 +3,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 export const ALERT_KINDS = {
-  early_open: 'Someone tried to open the file before the unlock time',
-  early_release: 'A key holder tried to release their part before the unlock time',
-  not_holder: 'An account that is not a key holder tried to release a part',
-  wrong_key: 'A wrong key or key part was used (decryption authentication failed)',
-  file_tampered: 'The stored encrypted file does not match the hash on NEAR',
-  repeated_failures: 'Repeated failed attempts from the same source',
-  not_allowed: 'A NEAR account that is not on the allow-list tried to open the file',
+  early_open: 'Someone tried to open the file too early',
+  early_release: 'A trusted person tried to say yes too early',
+  not_holder: 'Someone who is not a trusted person tried to unlock it',
+  wrong_key: 'A wrong key was used, so nothing was opened',
+  file_tampered: 'The file was changed after it was locked',
+  repeated_failures: 'Many failed tries in a row from the same place',
+  not_allowed: 'Someone who is not allowed tried to open the file',
 };
 
 // ---------- approximate location from IP ----------
@@ -113,7 +113,7 @@ export function createAlerts({ store, chain, geo, notify, kv = null, now = () =>
       const where = location.city ? `${location.city}, ${location.region || ''} ${location.country || ''}`.trim() : location.source === 'gps-consented' ? `GPS ${location.lat}, ${location.lon}` : 'unknown';
       const text = [`${record.summary}.`, `Seal: ${meta.label} (${sealId})`, `Time: ${record.atIst} / ${record.at} UTC`,
         `Account: ${account || 'none'}`, `Device: ${record.device.browser} on ${record.device.os}`, `Approximate location: ${where}`].join('\n');
-      const notified = await notify(meta.alertContacts || [], `Sealed Paper alert: ${kind.replace('_', ' ')}`, text).catch(() => []);
+      const notified = await notify(meta.alertContacts || [], `Sealed Paper alert: ${ALERT_KINDS[kind]}`, text).catch(() => []);
       await store.updateAlert(sealId, record.id, { chain: chainState, notified });
     })();
     if (awaitBackground) await background;

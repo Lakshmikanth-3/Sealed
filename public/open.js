@@ -1,4 +1,4 @@
-import { $, api, el, toast, utcText, istText, countdown, bytesText, short, explorer } from '/common.js';
+import { $, api, el, toast, utcText, istText, countdown, bytesText, short, explorer, plainLog } from '/common.js';
 import { decryptFile, combineKey, fromB64url, sha256Hex, AuthFailure } from '/assets/sealed.js';
 
 const sealId = location.pathname.split('/').pop();
@@ -46,7 +46,7 @@ function renderProgress() {
 async function renderLog() {
   const r = await api(`/api/seals/${sealId}/log`);
   $('log').replaceChildren(...(r.ok && r.body.log.length ? r.body.log.slice().reverse().map((e) => el('li', {}, el('time', { text: `${istText(Number(e.at_ms))}` }),
-    el('p', {}, el('span', { class: 'accent', text: e.kind.replace(':', ' · ').toUpperCase() }), ` · ${short(e.account, 8)}`))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
+    el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))) : [el('li', { class: 'muted', text: 'Nothing recorded yet.' })]));
 }
 function tick() {
   if (!seal) return;

@@ -71,9 +71,9 @@ test('seal, refuse early, release K of N, open, auto-open single, detect tamperi
   const card = page.locator(`.seal-card[data-id="${split.sealId}"]`);
   await card.locator('details').first().click();
   const alerts = card.locator('[data-alerts]');
-  await expect(alerts).toContainText(/EARLY RELEASE/i); await expect(alerts).toContainText(/EARLY OPEN/i);
-  await expect(alerts).toContainText(/FILE TAMPERED/i); await expect(alerts).toContainText(/approx\. location/i);
-  expect(await alerts.locator('a[href*="nearblocks"]').count()).toBeGreaterThanOrEqual(2);
+  await expect(alerts).toContainText(/Trusted person tried too early/i); await expect(alerts).toContainText(/Tried to open too early/i);
+  await expect(alerts).toContainText(/File was changed/i); await expect(alerts).toContainText(/approx\. location/i);
+  expect(await alerts.locator('a', { hasText: 'Saved in the public record' }).count()).toBeGreaterThanOrEqual(2);
 
   await page.goto(`/verify?id=${split.sealId}`);
   await expect(page.locator('#verdict')).toHaveText(/Real locked file · open now/i, { timeout: 30_000 });

@@ -1,4 +1,4 @@
-import { $, config, el, toast, utcText, istText, short } from '/common.js';
+import { $, config, el, toast, utcText, istText, short, plainLog } from '/common.js';
 import { sha256Hex } from '/assets/sealed.js';
 
 // Reads go straight from this browser to the NEAR RPC endpoints the deployment publishes.
@@ -45,7 +45,7 @@ async function check() {
       row('Downloaded copy unchanged?', fileLine), row('Tries recorded', String(seal.log_count)));
     $('fields').append(el('details', { class: 'tech' }, el('summary', { text: 'Technical details' }), row('Contract', contract), row('File ID', id), row('File fingerprint (SHA-256)', short(seal.file_hash, 12))));
     $('log').replaceChildren(...log.slice().reverse().map((e) => el('li', {}, el('time', { text: `${istText(Number(e.at_ms))} · ${utcText(Number(e.at_ms))}` }),
-      el('p', {}, el('span', { class: 'accent', text: e.kind.replace(':', ' · ').toUpperCase() }), ` · ${short(e.account, 8)}${e.detail ? ' · ' + short(e.detail, 6) : ''}`))));
+      el('p', {}, el('span', { class: 'accent', text: plainLog(e.kind) })))));
     $('record').classList.remove('hidden'); $('logBox').classList.remove('hidden');
     $('fields').append(el('p', {}, el('a', { href: `${EXPLORER}/address/${contract}`, target: '_blank', rel: 'noopener' }, 'See it on the public explorer →')));
   } catch (e) { toast('Could not check: ' + e.message, 6000); }

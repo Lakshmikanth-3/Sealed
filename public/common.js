@@ -92,3 +92,18 @@ function printQr(seal, svg) {
   w.document.write(`<!doctype html><title>${seal.label.replace(/</g, '&lt;')}</title><body style="font-family:sans-serif;text-align:center;padding:24px"><h2>${seal.label.replace(/</g, '&lt;')}</h2><p>Locked until ${istText(seal.unlockAtMs)}. Scan to open it then.</p><div style="width:320px;margin:auto">${svg}</div><p>${shareUrl(seal.sealId)}</p></body>`);
   w.document.close(); w.print();
 }
+
+// ---------- plain-language names for the public record ----------
+const LOG_WORDS = {
+  create: 'File locked', 'release:released': 'A trusted person said yes', 'release:early': 'A trusted person tried too early (blocked)',
+  'release:not_holder': 'Someone not on the list tried (blocked)', 'release:already_released': 'The same person said yes again',
+  'release:bad_commitment': 'A wrong key piece was used (blocked)', 'release:single_mode': 'Not needed for this file',
+  'open:early': 'Someone tried to open it too early (blocked)', 'open:awaiting_parts': 'Someone tried to open it (waiting for people)', 'open:open': 'The file was opened',
+  'alert:early_open': 'Owner told: early opening try', 'alert:early_release': 'Owner told: early yes', 'alert:not_holder': 'Owner told: stranger tried',
+  'alert:not_allowed': 'Owner told: someone not allowed tried', 'alert:wrong_key': 'Owner told: wrong key', 'alert:file_tampered': 'Owner told: file was changed',
+  'alert:repeated_failures': 'Owner told: many tries in a row', 'alert:leak_report': 'Leak report saved', 'alert:exam_audit': 'Exam check saved',
+};
+export const plainLog = (kind) => LOG_WORDS[kind] || kind;
+const ALERT_WORDS = { early_open: 'Tried to open too early', early_release: 'Trusted person tried too early', not_holder: 'Stranger tried to unlock',
+  not_allowed: 'Someone not allowed tried', wrong_key: 'Wrong key used', file_tampered: 'File was changed', repeated_failures: 'Many tries in a row' };
+export const plainAlert = (kind) => ALERT_WORDS[kind] || kind;
