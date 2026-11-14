@@ -11,7 +11,7 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 | **Live app** | **https://sealedfiles.vercel.app** |
 | **Proof page** (every real transaction, clickable) | https://sealedfiles.vercel.app/proof |
 | **Smart contracts** (NEAR testnet) | [`sealed.kanth_s.testnet`](https://testnet.nearblocks.io/address/sealed.kanth_s.testnet) (locks, attempts, alerts) · [`plans.sealops.kanth_s.testnet`](https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet) (Premium payments) |
-| **Tracks** | Privacy (main) · Open Innovation · Real-World Money (payments in testnet NEAR). There is no AI component. |
+| **Tracks** | Privacy & Private AI (privacy side: browser encryption, threshold keys, encrypted chat; there is no AI component) · Open Innovation |
 | **Who it is for** | Companies (results, merger plans, board papers), governments (orders, budgets, tenders), legal teams (contracts, rulings), families (wills), schools (exam papers) |
 | **Tests** | 36 unit · 18 contract (10 + 8) · 3 offline browser · live testnet suites (22 access checks, end to end, 17 chat checks): all passing |
 
@@ -35,9 +35,9 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 1. `npm install && npm test` → 36 tests pass (`npm run contract:test` → 10, `npm run plans:test` → 8).
 2. https://sealedfiles.vercel.app/api/chain → live `seal_count` from the contract.
 3. Lock a small file on https://sealedfiles.vercel.app, open its link early → **Still locked**, with the `request_open` transaction (`"early"`) linked.
-4. [`docs/demo/sealed-demo.mp4`](docs/demo/sealed-demo.mp4): 8-minute narrated demo on real testnet transactions.
+4. [`docs/demo/sealed-demo.mp4`](docs/demo/sealed-demo.mp4): 8½-minute narrated demo on real testnet transactions.
 
-**Roadmap to remove the operator trust:** holders combine parts in their own browsers (the server never sees parts), time-only keys encrypted to a future drand round (tlock), and a threshold or multi-operator release. Details: [`docs/AI-SCREENING.md`](docs/AI-SCREENING.md).
+**Roadmap to remove the operator trust:** holders combine parts in their own browsers (the server never sees parts), time-only keys encrypted to a future drand round (tlock), and a threshold or multi-operator release. Details: [`docs/reviews/AI-SCREENING.md`](docs/reviews/AI-SCREENING.md).
 
 **History.** The repository started on 12 Nov 2026 as an earlier idea ("Appeal") and was pivoted to Sealed; all Sealed commits are 12 to 14 Nov 2026 (UTC).
 
@@ -429,7 +429,7 @@ No performance or competitor comparisons are claimed here.
 | Live end to end | `npm run test:e2e` | **passed (2.2 min)** | Real browser on testnet: lock a PDF 2-of-3 and a time-only text, early attempts refused with alerts, yes after the time, PDF identical to the original, time-only opens automatically, changed file → FILE TAMPERED, verify page |
 
 | Live chat | `npm run test:chat [url]` | **17 / 17 passed** on the hosted site | Two real browsers: invite, join, a third person refused, typing and read ticks, a document decrypted byte-for-byte, a video player, view once, a message sealed until a time |
-| Live demo + UI test | `npm run demo:video` | **21 / 21 passed**, 5:21 video | One recorded run on the hosted site: landing story, a time lock refused early then opened on time, a 2-of-3 merge-only lock merged and opened, the proof page, exam tracing (Centre 2, 86%), two-person chat with files, Premium active. Writes `demo/sealed-live-demo.webm` |
+| Live demo + UI test | `npm run demo:video` | **23 / 23 passed**, 8½-minute video (14 Nov 2026) | One recorded run on the hosted site: landing story, a time lock refused early then opened on time, a 2-of-3 merge-only lock merged and opened, the proof page, exam tracing (Centre 2, 86%), two-person chat with files, Premium active. Writes `demo/sealed-live-demo.webm` |
 
 The live suites spend a little test NEAR from the service account.
 
@@ -483,7 +483,7 @@ CONTRACT_OWNER=<you>.testnet npm run contract:deploy -- --broadcast  # creates s
 
 ```
 contract/src/lib.rs        Seal contract (Rust, near-sdk 5.30) + 10 unit tests
-contract-plans/src/lib.rs  Premium plans contract (subscribe, get_plan) + 7 unit tests
+contract-plans/src/lib.rs  Premium plans contract (subscribe, get_plan, set_price) + 8 unit tests
 lib/sealcrypto.js          Encryption, Shamir split and combine, wrapped key pieces (browser + Node)
 lib/exam.js                Exam papers: per-centre versions, fairness check, leak tracing
 server/index.js            Release service: routes, security headers, rate limits
@@ -497,8 +497,10 @@ server/chat.js             Two-person encrypted chat: members, messages, sealed-
 client/                    Browser bundles: crypto + QR (sealed.js), Meteor Wallet (wallet.js)
 public/                    Pages: landing, app (lock, my files, exam papers, live chat, plans), chat, open, trusted person, check, proof
 api/index.js               Vercel entry (same handler as local)
-scripts/                   Contract deploy and upgrade, plans deploy, extra operator keys, live testnet checks
+scripts/                   Deploy and upgrade both contracts, set the Premium price, live testnet checks, demo video and README image recorders
 tests/                     Unit tests and Playwright browser suites
+docs/                      Project report, PRD, deployment record, diagrams, brand images, demo video
+docs/reviews/              README audit, enhancement report, advocate / critic / judge review
 docs/SEALED-DEPLOYMENT.json  Deployment and upgrade transactions
 ```
 
@@ -517,11 +519,11 @@ near-sdk 5.30 (Rust) · near-api-js 7.2 · shamir-secret-sharing 0.0.4 (audited 
 | Document | Contents |
 |---|---|
 | [`docs/PROJECT-REPORT.md`](docs/PROJECT-REPORT.md) | Full project report |
-| [`docs/README-AUDIT.md`](docs/README-AUDIT.md) | Audit of the original README claims, including inconsistencies |
-| [`docs/README-ENHANCEMENT-REPORT.md`](docs/README-ENHANCEMENT-REPORT.md) | What this appendix added and how it was checked |
+| [`docs/reviews/README-AUDIT.md`](docs/reviews/README-AUDIT.md) | Audit of the original README claims, including inconsistencies |
+| [`docs/reviews/README-ENHANCEMENT-REPORT.md`](docs/reviews/README-ENHANCEMENT-REPORT.md) | What this appendix added and how it was checked |
 | [`docs/SEALED-DEPLOYMENT.json`](docs/SEALED-DEPLOYMENT.json) | Deployment and upgrade transactions |
 | [`docs/diagrams/`](docs/diagrams/) | Mermaid sources: architecture, encryption lifecycle, contract flow, threat model, exam workflow, data flow |
-| [`PRD-Sealed-Paper-v2-TimeLock.md`](PRD-Sealed-Paper-v2-TimeLock.md) | Product requirements |
+| [`docs/PRD.md`](docs/PRD.md) | Product requirements |
 
 ## AI assistance and licence
 
