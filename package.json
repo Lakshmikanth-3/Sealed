@@ -17,12 +17,15 @@
     "contract:test": "node scripts/contract.js test",
     "contract:build": "node scripts/contract.js build",
     "contract:deploy": "node --env-file-if-exists=.env scripts/deploy-sealed.js",
-    "contract:upgrade": "node --env-file-if-exists=.env scripts/upgrade-sealed.js"
+    "contract:upgrade": "node --env-file-if-exists=.env scripts/upgrade-sealed.js",
+    "test:access": "node --env-file-if-exists=.env scripts/access-smoke.js"
   },
   "engines": {
     "node": ">=24.22.1"
   },
   "dependencies": {
+    "@near-wallet-selector/core": "10.1.4",
+    "@near-wallet-selector/meteor-wallet": "10.1.4",
     "buffer": "6.0.3",
     "near-api-js": "7.2.0",
     "process": "0.11.10",
@@ -33,5 +36,9 @@
   "devDependencies": {
     "@playwright/test": "1.65.0",
     "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "nanoid": "5.1.16",
+    "decode-uri-component": "0.5.1"
   }
 }

@@ -41,6 +41,8 @@ npm run dev:all           # builds the browser bundle and starts http://localhos
 | **My seals** | Countdown, release progress, alert feed (with on-chain hash links) and the on-chain access log |
 | `/verify?id=<id>` | Seal record and full access log read directly from NEAR RPC in your browser |
 | **Visual shares** | An image split into N noise images that reveal it only when all are combined |
+| Type `kanth.testnet` in a holder's **Own NEAR account** field | The account is looked up on NEAR (✓ balance, full-access keys; ✕ if it does not exist). That holder signs the release with their own Meteor Wallet instead of an app-created account |
+| List accounts in **Who can open**, e.g. `kanth.testnet, principal.testnet` | Only those accounts can open. On the open page the viewer connects Meteor Wallet and signs a one-time message (NEP-413, no transaction, no gas); anyone else gets "Not allowed" and the owner an alert |
 
 Without a deployed contract and operator key, pages load but sealing is refused with a clear error.
 
@@ -78,9 +80,15 @@ flowchart LR
 4. **Release.** Each holder signs `release_part` with their own key. The contract refuses it if the caller is not a holder, the time has not come, the part was already released, or the commitment differs. Every call, accepted or refused, is logged on-chain. The holder then hands the wrapped part to the release service, which unwraps it **only after confirming that release on NEAR**.
 5. **Open.** A viewer's open request becomes an on-chain `request_open`, refused and logged before the time. After the time (and K releases), the service returns the parts or, in single mode, the escrowed key. The viewer's browser checks the downloaded file against the on-chain hash, rebuilds the key and decrypts.
 
+### NEAR account access
+
+- **Account lookup.** Typing a NEAR account (for example `kanth.testnet`) calls `/api/accounts/<id>`, which reads the account and its access keys from NEAR RPC. Sealing refuses accounts that do not exist.
+- **Own-account holders.** A holder can be any existing NEAR account. Their part is wrapped to that account, the contract lists that account as a holder, and only that account can call `release_part` for it, signed in Meteor Wallet. Holders without an account get an app-created testnet account instead.
+- **Who can open.** An optional allow-list of up to 50 accounts. Before releasing a key or parts, the server issues a one-time challenge (5 minutes, single use, bound to the seal). The viewer signs it in their wallet (NEP-413). The server checks the signature, and that the signing key is a full-access key of that account on-chain right now. Unlisted accounts are refused with a `not_allowed` alert whose hash is written on-chain. The allow-list is enforced by the release service, not the contract.
+
 ### Alerts
 
-These events create an alert: an open attempt before the unlock time, an early release, a release by a non-holder, a wrong key (AES-GCM authentication failure), a file whose hash differs from NEAR, and 5 failures from one source within 2 minutes (escalation).
+These events create an alert: an open attempt before the unlock time, an early release, a release by a non-holder, an open attempt by an account not on the allow-list, a wrong key (AES-GCM authentication failure), a file whose hash differs from NEAR, and 5 failures from one source within 2 minutes (escalation).
 
 Each alert records:
 - the event and the time in IST and UTC
@@ -104,13 +112,14 @@ Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are conf
 | A changed file is detected before decryption | SHA-256 on NEAR, checked in the viewer's browser; AES-GCM authentication |
 | Fewer than K parts reveal nothing about the key | Shamir secret sharing |
 | Holders cannot combine parts early on their own | Parts are wrapped with a key only the release service holds |
+| Only allow-listed accounts can open | Release service: NEP-413 signature plus an on-chain full-access-key check (not the contract) |
 
 **What you must trust:**
 - **Split mode:** the release service plus K holders, if they all collude, could open early. Neither side alone can. The service never sees a part before its holder releases it on-chain.
 - **Single mode:** the release service holds the file key (encrypted at rest) and is trusted to release it only after the contract says the seal is open. This is a server-held escrow, not a cryptographic time-lock. A trustless time-lock would need something like drand tlock, which is not used.
 - **The person who seals** already has the original file. The guarantee covers everyone who receives the sealed copy.
 - **After opening**, nothing stops someone photographing or copying the file.
-- **Holder accounts** are created by the app on testnet and their keys travel in the private holder link. Anyone with a holder's link can act as that holder. There is no passkey or FastAuth login.
+- **App-created holder accounts** carry their key inside the private holder link, so anyone with that link can act as that holder. Holders who enter their own NEAR account sign with their wallet, and their link alone cannot release anything. There is no passkey or FastAuth login.
 
 ## Real vs simulated
 
@@ -125,11 +134,14 @@ Notifications go by email (Resend) and WhatsApp/SMS (Twilio) when those are conf
 ## Tests
 
 ```sh
-npm test               # 13 unit tests: crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
-                       # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow
+npm test               # 17 unit tests: crypto round-trips (PDF, image, video, text), Shamir 2-of-2 / 3-of-5 / 5-of-7,
+                       # K-1 parts fail, wrong part, tamper/reorder/truncate, wrapped parts, alerts, escrow,
+                       # NEP-413 proofs (forged key, function-call key, replay, expiry)
 npm run contract:test  # 10 contract tests: early refusal, non-holder, commitments, K-of-N, single mode, operators, log cap
 npm run test:browser   # 3 offline browser tests (no keys, no chain writes)
 npm run test:chain     # live testnet: early refusal, non-holder refusal, 2-of-3 unlock
+npm run test:access    # live testnet, against a running server: account lookup, own-account holder,
+                       # allow-list (no proof, forged key, unlisted account, early, allowed opens and decrypts)
 npm run test:e2e       # live testnet browser E2E (~3 min): seal PDF 2-of-3 + single text, early release and open refused
                        # with alerts, release after unlock, PDF matches original, single opens automatically,
                        # tampered file → FILE TAMPERED, alerts with location and on-chain hashes, verify page
@@ -145,6 +157,7 @@ Plain browser ES modules and a Node `http` server, deliberately reusing the earl
 | [near-api-js](https://www.npmjs.com/package/near-api-js) 7.2 | Operator and holder transactions, RPC failover |
 | [shamir-secret-sharing](https://www.npmjs.com/package/shamir-secret-sharing) 0.0.4 | Key splitting (audited by Cure53 and Zellic) |
 | [qrcode-generator](https://www.npmjs.com/package/qrcode-generator) 1.4.4 | QR codes, generated locally |
+| [@near-wallet-selector/core and meteor-wallet](https://github.com/near/wallet-selector) 10.1.4 | Own-account holders sign releases; viewers sign NEP-413 proofs |
 | buffer, process, util | Browser shims for near-api-js |
 | esbuild, Playwright | Build and browser tests (dev only) |
 | WebCrypto | AES-256-GCM, SHA-256 (built into browsers and Node) |
@@ -153,7 +166,7 @@ External services: NEAR testnet RPC (FastNEAR, rpc.testnet.near.org), ipapi.co (
 
 ## Hackathon history and AI assistance
 
-This repository started as a different project, Appeal (worker evidence records), preserved at the tag [`appeal-final`](https://github.com/Lakshmikanth-3/Appeal/tree/appeal-final). Sealed Paper replaced it on 14 November 2026. Its contract, crypto, release service, alerts and pages were written that day. It reuses Appeal's visual theme and server patterns.
+Sealed Paper was written during the hackathon window, on 14 November 2026. Earlier commits in this repository belong to a different, abandoned idea and are not part of this submission.
 
 Most of the code was written with AI coding assistants (Claude Code; Codex on the earlier project) under the author's direction. The author chose the product and made the deployment and trust decisions.
 
