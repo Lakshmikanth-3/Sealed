@@ -1,32 +1,30 @@
 services:
   - type: web
-    name: appeal
+    name: sealed-paper
     runtime: docker
     healthCheckPath: /api/config
     disk:
-      name: appeal-data
-      mountPath: /var/lib/appeal
+      name: sealed-paper-data
+      mountPath: /var/lib/sealed-paper
       sizeGB: 1
     envVars:
       - key: NEAR_NETWORK
         value: testnet
       - key: DATA_DIR
-        value: /var/lib/appeal
-      - key: RELAY_ENABLED
-        value: "false"
-      - key: ANCHOR_CONTRACT
+        value: /var/lib/sealed-paper
+      - key: SEAL_CONTRACT
+        value: sealed.kanth_s.testnet
+      - key: SEAL_OPS_ACCOUNT
+        value: sealops.kanth_s.testnet
+      - key: SEAL_OPS_PRIVATE_KEY
+        sync: false
+      - key: SEAL_ESCROW_SECRET
+        sync: false
+      - key: SEAL_CREATE_TOKEN
         sync: false
       - key: PUBLIC_ORIGIN
         sync: false
-      - key: NEARAI_API_KEY
+      - key: RESEND_API_KEY
         sync: false
-      - key: NEARAI_MODEL
-        sync: false
-      - key: AI_ACCESS_TOKEN
-        sync: false
-      - key: PUBLISH_ACCESS_TOKEN
-        sync: false
-      - key: NEARAI_GATEWAY_COMPOSE_SHA256
-        sync: false
-      - key: NEARAI_MODEL_COMPOSE_SHA256
+      - key: ALERT_EMAIL_FROM
         sync: false
