@@ -881,3 +881,8 @@ h1, .lp-h2, .lp-display-2 { text-wrap: balance; }
   .workspace-nav button { font-size: .62rem; line-height: 1.15; padding: 4px 2px; text-align: center; }
   .start-row .btn { flex: 1 1 100%; }
 }
+
+/* brand logo */
+.brand { align-items: center; }
+.brand-logo { width: 34px; height: 34px; flex-shrink: 0; margin-right: -2px; }
+.sidebar .brand-logo { width: 38px; height: 38px; }

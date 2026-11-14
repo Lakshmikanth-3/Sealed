@@ -1,6 +1,6 @@
 // Network-first service worker: the app shell works offline; seal data and API calls never come from cache.
-const C = 'sp-v15';
-const SHELL = ['/', '/app', '/verify', '/landing.js', '/hero-anim.js', '/story.js', '/chat-anim.js', '/chat-ui.js', '/chat-store.js', '/app.js', '/open.js', '/holder.js', '/verify.js', '/common.js', '/proof.js', '/exam-ui.js', '/message-ui.js', '/plans-ui.js', '/lib/exam.js', '/assets/sealed.js', '/style.css',
+const C = 'sp-v16';
+const SHELL = ['/', '/app', '/verify', '/landing.js', '/hero-anim.js', '/story.js', '/chat-anim.js', '/chat-ui.js', '/chat-store.js', '/app.js', '/open.js', '/holder.js', '/verify.js', '/common.js', '/proof.js', '/exam-ui.js', '/message-ui.js', '/plans-ui.js', '/lib/exam.js', '/assets/sealed.js', '/style.css', '/logo.svg',
   '/manifest.webmanifest', '/icon.svg'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(C).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 // Remove every older cache, including caches left by the previous app on this origin.
