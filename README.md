@@ -2,7 +2,7 @@
 
 # <img src="public/logo.svg" alt="" width="40" align="top"> Sealed
 
-**Lock a file so nobody can open it before the time you choose. Not even you.**
+**Lock a file so it cannot be opened before the time you choose, and every early attempt is recorded on NEAR.** NEAR enforces the time; the release service hands out the key only after the contract answers `open` (it is trusted, see [the limits](#what-is-guaranteed-and-the-limits)).
 
 Contracts, government orders, company results, tender bids, merger plans, court rulings, wills, exam papers: pick any document and the exact second it may open, or require that enough people merge their key parts. Before that, a NEAR smart contract **blocks every attempt, records it in public, and the owner gets an alert**. Two people can also chat privately, end-to-end encrypted, with messages sealed until a time or seen only once.
 
@@ -32,7 +32,7 @@ Contracts, government orders, company results, tender bids, merger plans, court 
 **Track fit:** Privacy (browser AES-256-GCM, Shamir K-of-N, encrypted two-person chat) and Open Innovation (refused attempts become public evidence). Payments are real NEAR transactions on testnet. No AI.
 
 **Verify in 5 minutes:**
-1. `npm install && npm test` → 36 tests pass (`npm run contract:test` → 10, `npm run plans:test` → 8).
+1. `npm install && npm test` (no secrets or accounts needed) → 36 tests pass (`npm run contract:test` → 10, `npm run plans:test` → 8).
 2. https://sealedfiles.vercel.app/api/chain → live `seal_count` from the contract.
 3. Lock a small file on https://sealedfiles.vercel.app, open its link early → **Still locked**, with the `request_open` transaction (`"early"`) linked.
 4. [`docs/demo/sealed-demo.mp4`](docs/demo/sealed-demo.mp4): 8½-minute narrated demo on real testnet transactions.
@@ -307,7 +307,7 @@ Everything runs on **NEAR testnet**; no mainnet funds are involved.
 3. **Proof page:** https://sealedfiles.vercel.app/proof
 4. **Lock contract:** https://testnet.nearblocks.io/address/sealed.kanth_s.testnet
 5. **Plans contract:** https://testnet.nearblocks.io/address/plans.sealops.kanth_s.testnet
-6. **Demo video:** not published at a public URL yet. It can be regenerated with `npm run demo:video` (needs Windows and ffmpeg).
+6. **Demo video:** [`docs/demo/sealed-demo.mp4`](docs/demo/sealed-demo.mp4) (narrated, about 8½ minutes). It can be regenerated with `npm run demo:video` (needs Windows and ffmpeg).
 7. **Create a test lock:** open the app → **Lock a file** → choose any small file → **One person** → **On a date and time** → pick a time 2–3 minutes ahead → **Lock my file**. The summary links to the `create_seal` transaction.
 8. **Reproduce an early refusal:** open the share link before the time and press **Open file**. The page shows **Still locked** with a link to the `request_open` transaction whose result is `"early"`.
 9. **Inspect the transaction:** on the explorer, open the transaction and check the method (`create_seal` / `request_open`) and the returned value. The contract log is readable with `get_log` (view call).
@@ -459,7 +459,7 @@ Re-run for this documentation update on 15 November 2026: `npm test` (**36 passe
 
 ## Run locally
 
-Requires Node 22+.
+Requires Node 22+. A full local run needs your own NEAR operator key and escrow secret; without them, use the live site.
 
 ```sh
 npm ci
