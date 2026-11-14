@@ -6,6 +6,7 @@ import { lookupNearTx } from '/lib/nearRpc.js';
 import { reconcilePending } from '/lib/reconcile.js';
 import { serverConfig, chainSnapshot, utc, short } from '/live.js';
 import { statementFromCsv, compareRecords, mismatchSummary, MAX_STATEMENT_BYTES } from '/lib/compare.js';
+import { tripsFromCsv, checkTrips, validateRateCards } from '/lib/payrules.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPES = ['trip', 'pay', 'rating', 'penalty', 'notification', 'deactivation'];
@@ -284,28 +285,79 @@ setTimeout(liveTick, 800); setInterval(liveTick, 8000);
 let lastCheck;
 function el(tag, text, attrs = {}) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; }
 const rupees = (n) => (n < 0 ? '−' : '') + '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-$('statementFile').onchange = async () => {
-  const f = $('statementFile').files[0]; lastCheck = undefined; $('checkResult').classList.add('hidden');
-  if (!f) return;
+let rateCards;
+async function loadRateCards() {
+  if (rateCards) return rateCards;
+  const r = await fetch('/ratecards.json', { cache: 'no-store' });
+  if (!r.ok) throw new Error('Rate cards unavailable');
+  return (rateCards = validateRateCards(await r.json()));
+}
+function payItem(r) {
+  const item = el('li', undefined, { 'data-kind': 'pay' });
+  const head = el('p', undefined, { class: 'pay-head' });
+  head.append(el('span', `${r.severity.toUpperCase()} · ${r.severityTa}`, { class: 'badge sev-' + r.severity }), ' ',
+    el('b', `${r.trip.tripId ? 'Trip ' + r.trip.tripId : 'Line ' + r.trip.line} · ${r.trip.platform}${r.shortfall ? ` · ${rupees(r.shortfall)} short` : ''}`));
+  item.append(head, el('p', r.en, { class: 'pay-en' }), el('p', r.ta, { class: 'pay-ta', lang: 'ta' }));
+  return item;
+}
+async function analyzeStatement(bytes, name) {
+  lastCheck = undefined; $('checkResult').classList.add('hidden');
   try {
-    if (f.size > MAX_STATEMENT_BYTES) throw new Error('Statement is larger than 2 MB');
-    const bytes = new Uint8Array(await f.arrayBuffer());
-    const statement = statementFromCsv(new TextDecoder().decode(bytes));
+    if (bytes.length > MAX_STATEMENT_BYTES) throw new Error('Statement is larger than 2 MB');
+    const text = new TextDecoder().decode(bytes);
+    const statement = statementFromCsv(text);
     const journal = (await all('entries')).map((r) => r.entry);
     const report = compareRecords(journal, statement);
-    lastCheck = { report, fileHash: await sha256Hex(bytes), fileName: f.name };
-    $('checkStatus').textContent = `Read ${statement.length} company record${statement.length === 1 ? '' : 's'} from ${f.name}.`;
-    $('checkHeadline').textContent = report.ok ? `All ${report.matched.length} records match.` : `${report.issues.length} mismatch${report.issues.length === 1 ? '' : 'es'} found · ${report.matched.length} matched`;
-    const table = el('table', undefined, { class: 'check-totals' }), head = table.insertRow();
-    for (const h of ['Day', 'Your journal', 'Company', 'Difference']) head.appendChild(el('th', h));
-    for (const t of report.totals) { const r = table.insertRow(); for (const v of [t.day, rupees(t.journal), rupees(t.company), (t.difference > 0 ? '+' : '') + rupees(t.difference)]) r.insertCell().textContent = v; }
-    $('checkTotals').replaceChildren(table);
-    $('checkIssues').replaceChildren(...(report.ok ? [el('li', 'No differences for the days in this statement.', { class: 'ok' })]
-      : report.issues.map((i) => el('li', i.message, { 'data-kind': i.kind }))));
+    const trips = tripsFromCsv(text);
+    const pay = trips.length ? checkTrips(trips, await loadRateCards()) : null;
+    // Journal comparison only makes sense when the worker logged those days.
+    const journalDays = new Set(journal.map((e) => e.day));
+    const compared = statement.some((s) => journalDays.has(s.day));
+    if (pay) for (const r of pay.flagged) report.issues.push({ kind: 'pay', day: r.trip.date || '', delta: -r.shortfall, message: `${r.trip.tripId || 'line ' + r.trip.line}: ${r.en}` });
+    lastCheck = { report, pay, compared, fileHash: await sha256Hex(bytes), fileName: name };
+
+    $('checkStatus').textContent = `Read ${statement.length} company record${statement.length === 1 ? '' : 's'} from ${name}.`;
+    const parts = [];
+    if (pay) parts.push(pay.flagged.length ? `${pay.flagged.length} pay mismatch${pay.flagged.length === 1 ? '' : 'es'} · ${rupees(pay.totalShortfall)} short` : `Pay matches the rate card for all ${trips.length} trips`);
+    if (compared) { const j = report.issues.filter((i) => i.kind !== 'pay').length; parts.push(j ? `${j} journal difference${j === 1 ? '' : 's'}` : 'journal matches'); }
+    $('checkHeadline').textContent = parts.join(' · ') || (compared ? 'All records match.' : 'No journal records for these days.');
+
+    $('payResult').classList.toggle('hidden', !pay);
+    if (pay) {
+      $('payIssues').replaceChildren(...(pay.flagged.length ? pay.flagged.map(payItem) : [el('li', 'Every trip was paid at least the rate-card amount.', { class: 'ok' })]));
+      $('payNote').textContent = pay.unknown.length ? `No rate card for: ${pay.unknown.join(', ')}. Those trips were not checked.` : '';
+    }
+    $('journalCompare').classList.toggle('hidden', !compared);
+    if (compared) {
+      const table = el('table', undefined, { class: 'check-totals' }), head = table.insertRow();
+      for (const h of ['Day', 'Your journal', 'Company', 'Difference']) head.appendChild(el('th', h));
+      for (const t of report.totals) { const r = table.insertRow(); for (const v of [t.day, rupees(t.journal), rupees(t.company), (t.difference > 0 ? '+' : '') + rupees(t.difference)]) r.insertCell().textContent = v; }
+      $('checkTotals').replaceChildren(table);
+      const journalIssues = report.issues.filter((i) => i.kind !== 'pay');
+      $('checkIssues').replaceChildren(...(journalIssues.length ? journalIssues.map((i) => el('li', i.message, { 'data-kind': i.kind }))
+        : [el('li', 'No differences for the days in this statement.', { class: 'ok' })]));
+    }
     $('recordCheck').disabled = !worker;
     $('checkResult').classList.remove('hidden');
   } catch (e) { $('checkStatus').textContent = 'Statement refused: ' + e.message; }
+}
+$('statementFile').onchange = async () => {
+  const f = $('statementFile').files[0];
+  if (f) await analyzeStatement(new Uint8Array(await f.arrayBuffer()), f.name);
 };
+const SIM_KEY = 'appeal:simulator-statement';
+function simulatorStatement() { try { return JSON.parse(localStorage.getItem(SIM_KEY) || 'null'); } catch { return null; } }
+$('loadSimulator').classList.toggle('hidden', !simulatorStatement());
+$('loadSimulator').onclick = async () => {
+  const s = simulatorStatement();
+  if (!s?.csv) return toast('Open the demo rider app and generate a shift first');
+  await analyzeStatement(new TextEncoder().encode(s.csv), s.name || 'simulator-statement.csv');
+};
+window.addEventListener('hashchange', () => {
+  $('loadSimulator').classList.toggle('hidden', !simulatorStatement());
+  if (location.hash === '#check' && new URLSearchParams(location.search).has('fromSimulator')) $('loadSimulator').click();
+});
+if (location.hash === '#check' && new URLSearchParams(location.search).has('fromSimulator')) setTimeout(() => $('loadSimulator').click(), 300);
 $('recordCheck').onclick = async () => {
   const btn = $('recordCheck'); btn.disabled = true;
   try {
@@ -315,7 +367,8 @@ $('recordCheck').onclick = async () => {
     const entry = { id: 'e' + Date.now().toString(36) + randomSalt().slice(0, 4), worker, day: today(), ts, type: 'notification',
       capture: 'company-check', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, salt: randomSalt(),
       text: mismatchSummary(lastCheck.report, lastCheck.fileHash, lastCheck.fileName) };
-    const shortfall = -lastCheck.report.totals.reduce((a, t) => a + Math.min(t.difference, 0), 0);
+    const journalShortfall = lastCheck.compared ? -lastCheck.report.totals.reduce((a, t) => a + Math.min(t.difference, 0), 0) : 0;
+    const shortfall = Math.max(journalShortfall, lastCheck.pay?.totalShortfall ?? 0);
     if (shortfall > 0) entry.amount = Math.round(shortfall * 100) / 100;
     validateEntry(entry, worker, entry.day);
     await put('entries', { id: entry.id, entry });

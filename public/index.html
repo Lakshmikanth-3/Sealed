@@ -61,8 +61,11 @@
       <section class="card"><h2>Company statement</h2><p>A CSV export of trips, payouts or ratings from the company app or website. Needs a date column and an amount or rating column; order ID and type columns improve matching.</p>
         <label for="statementFile">Choose a CSV statement</label><input id="statementFile" type="file" accept=".csv,text/csv,text/plain">
         <p id="checkStatus" class="muted" role="status"></p>
-        <p class="field-note">Example header: <code>date,type,amount,rating,order_id</code>. Dates as 2026-11-10 or 10/11/2026.</p></section>
-      <section class="card hidden" id="checkResult"><h2 id="checkHeadline"></h2><div id="checkTotals"></div><ul id="checkIssues" class="check-issues"></ul>
+        <p class="field-note">Example header: <code>date,type,amount,rating,order_id</code>. Dates as 2026-11-10 or 10/11/2026. Add <code>platform,gps_km,shown_km,incentive_promised,incentive_paid,penalty,penalty_reason</code> to check pay against the rate card.</p>
+        <div class="row"><button class="secondary hidden" id="loadSimulator">Load latest demo shift</button><a class="text-link" href="/simulator" target="_blank" rel="noopener">Open demo rider app →</a></div></section>
+      <section class="card hidden" id="checkResult"><h2 id="checkHeadline"></h2>
+        <div id="payResult" class="hidden"><p class="eyebrow">Pay check · expected vs shown</p><ul id="payIssues" class="check-issues"></ul><p id="payNote" class="field-note"></p><p class="field-note">Expected pay = base fare + GPS km × per-km rate + promised incentive − penalty with a stated reason, from the platform's rate card. Flagged above ₹5 or 5%. Explanations are rule-based, not AI. Demo rate cards are illustrative.</p></div>
+        <div id="journalCompare" class="hidden"><p class="eyebrow">Your journal vs company record</p><div id="checkTotals"></div><ul id="checkIssues" class="check-issues"></ul></div>
         <button id="recordCheck">Add this check to my journal</button>
         <p class="field-note">Adds one record with the statement's fingerprint and every mismatch. Save the day on NEAR to make it tamper-evident, then share it in a case.</p></section>
     </section>
