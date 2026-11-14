@@ -3,70 +3,70 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0a0a">
-  <meta name="description" content="Sealed Paper: files nobody can open before the chosen second. K-of-N key holders, contract-enforced unlock time and a public access log on NEAR.">
-  <title>Sealed Paper — Sealed until the second</title>
+  <meta name="description" content="Sealed Paper: lock a file so nobody can open it before the time you choose. Every early try is blocked and recorded in public.">
+  <title>Sealed Paper — Files that open on time</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
 </head>
 <body class="landing">
 <header class="land-top">
-  <a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">time-locked files on NEAR</span></a>
-  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#why">Why</a><a href="#live">Live network</a><a href="/verify">Verify</a><a class="btn" href="/app">Seal a file</a></nav>
+  <a class="brand" href="/"><span class="brand-mark">SEALED PAPER</span><span class="brand-sub">files that open on time</span></a>
+  <nav class="land-nav" aria-label="Site"><a href="#how">How it works</a><a href="#why">Why</a><a href="/verify">Check a file</a><a class="btn" href="/app#seal">Lock a file</a></nav>
 </header>
 <main>
   <section class="hero">
     <div class="hero-copy">
-      <p class="eyebrow"><span class="dot live"></span> Live on NEAR testnet</p>
-      <h1>Nobody opens it early.<br><span class="accent">Not even the key holders.</span></h1>
-      <p class="lede">Seal any file (exam paper, tender, results, will or video) until the exact second you choose. Split the key across 2 to 20 holders. The NEAR contract refuses every early attempt, logs it publicly, and the owner gets an alert with time, device and approximate location.</p>
-      <div class="hero-cta"><a class="btn" href="/app#seal">Seal a file →</a><a class="btn ghost" href="/verify">Verify a seal</a></div>
+      <p class="eyebrow"><span class="dot live"></span> Working now on the NEAR test network</p>
+      <h1>Lock a file.<br><span class="accent">Nobody opens it early.</span><br>Not even you.</h1>
+      <p class="lede">Exam papers, results, tenders, wills or a surprise video: pick a file and the exact time it may open. Before that time, every try is blocked, recorded in public, and you get an alert. For extra safety, choose a few trusted people who must all agree.</p>
+      <div class="hero-cta"><a class="btn big-btn" href="/app#seal">Lock a file now →</a><a class="btn ghost big-btn" href="/verify">Check a file I received</a></div>
     </div>
-    <div class="panel terminal" aria-label="Live contract feed">
-      <div class="panel-head"><span>CONTRACT FEED</span><span id="feedState" class="badge">connecting</span></div>
+    <div class="panel terminal" aria-label="Live status">
+      <div class="panel-head"><span>LIVE STATUS</span><span id="feedState" class="badge">connecting</span></div>
       <div class="radar" aria-hidden="true"><span class="sweep"></span></div>
-      <pre id="feed" class="feed" role="log">&gt; reading the contract…</pre>
+      <pre id="feed" class="feed" role="log">&gt; checking the public record…</pre>
     </div>
   </section>
 
-  <section id="live" class="stat-row" aria-label="Live contract statistics">
-    <div class="panel stat"><span class="stat-label">Seals on-chain</span><strong id="sSeals">—</strong><small>created on the contract</small></div>
-    <div class="panel stat"><span class="stat-label">Key parts</span><strong>2 – 20</strong><small>any K of N to unlock</small></div>
-    <div class="panel stat"><span class="stat-label">Contract</span><strong id="sContract" class="mono-sm">—</strong><small id="sOwner">owner</small></div>
-    <div class="panel stat"><span class="stat-label">Encryption</span><strong>AES-256</strong><small>GCM, in your browser</small></div>
+  <section class="stat-row" aria-label="Live numbers">
+    <div class="panel stat"><span class="stat-label">Files locked so far</span><strong id="sSeals">—</strong><small>read live from the public record</small></div>
+    <div class="panel stat"><span class="stat-label">Who can open early</span><strong>Nobody</strong><small>not the owner, not us</small></div>
+    <div class="panel stat"><span class="stat-label">Trusted people</span><strong>2 to 20</strong><small>you choose how many must agree</small></div>
+    <div class="panel stat"><span class="stat-label">Your file</span><strong>Private</strong><small>scrambled on your device first</small></div>
   </section>
 
   <section id="how" class="steps">
     <h2 class="section-title">// How it works</h2>
     <ol class="step-grid">
-      <li class="panel"><span class="step-n">01</span><h3>Encrypt</h3><p>The file is encrypted in your browser with a random key. The server only ever stores ciphertext.</p></li>
-      <li class="panel"><span class="step-n">02</span><h3>Split</h3><p>The key is split into N Shamir parts, K needed. Each holder's part is also wrapped, so holders cannot pool parts early.</p></li>
-      <li class="panel"><span class="step-n">03</span><h3>Lock on NEAR</h3><p>The contract stores the file hash, holders and unlock time. Every early release or open is refused and written to a public log.</p></li>
-      <li class="panel"><span class="step-n">04</span><h3>Release</h3><p>At the second, K holders release on-chain. Viewers' browsers rebuild the key, check the hash and open the file.</p></li>
+      <li class="panel"><span class="step-n">1</span><h3>Pick a file</h3><p>It is scrambled on your own phone or computer. We never see the real file.</p></li>
+      <li class="panel"><span class="step-n">2</span><h3>Pick a time</h3><p>Choose the exact date and time it may open. Add trusted people if you want them to agree too.</p></li>
+      <li class="panel"><span class="step-n">3</span><h3>Share the link</h3><p>Send it by WhatsApp, email or a printed QR code. Opening it early is blocked and you are told.</p></li>
+      <li class="panel"><span class="step-n">4</span><h3>It opens on time</h3><p>At the chosen time it opens, and anyone can check it is the same file that was locked.</p></li>
     </ol>
   </section>
 
   <section id="why" class="panel deploy">
-    <h2 class="section-title">// Leaks that really happened</h2>
+    <h2 class="section-title">// Why this matters: real leaks</h2>
     <div class="leak-table" role="table" aria-label="Real leak events">
-      <div role="row" class="leak-row"><b role="cell">NEET-UG 2026, India</b><span role="cell">Exam for about 22.79 lakh students cancelled after a paper leak shared on WhatsApp and Telegram.</span><a role="cell" href="https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/" target="_blank" rel="noopener">Source</a></div>
-      <div role="row" class="leak-row"><b role="cell">UGC-NET 2024, India</b><span role="cell">Exam cancelled a day later after reports the paper was sold on Telegram. A CBI closure report later found no evidence of a leak.</span><a role="cell" href="https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116" target="_blank" rel="noopener">Source</a></div>
-      <div role="row" class="leak-row"><b role="cell">UK Budget report, 2025</b><span role="cell">The OBR analysis was reachable about 40 minutes early by editing a URL; accessed 24,000+ times before the speech.</span><a role="cell" href="https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs" target="_blank" rel="noopener">Source</a></div>
-      <div role="row" class="leak-row"><b role="cell">US Supreme Court draft, 2022</b><span role="cell">Draft opinion leaked; nearly 100 staff interviewed and the source was never identified.</span><a role="cell" href="https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">NEET-UG 2026, India</b><span role="cell">The exam for about 22.79 lakh students was cancelled after the paper leaked on WhatsApp and Telegram.</span><a role="cell" href="https://thesouthfirst.com/health/neet-ug-2026-cancelled-after-paper-leak-row-cbi-probe-ordered-re-test-date-awaited/" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">UGC-NET 2024, India</b><span role="cell">The exam was cancelled a day later after reports the paper was sold online. Investigators later said they found no proof of a leak.</span><a role="cell" href="https://www.deccanherald.com/amp/story/india%2Fcbi-files-closure-report-in-ugc-net-paper-leak-case-3380116" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">UK Budget report, 2025</b><span role="cell">The report could be opened about 40 minutes early just by changing a web address. It was opened over 24,000 times.</span><a role="cell" href="https://rossmartin.co.uk/sme-tax-news/8818-budget-leak-bigger-than-thought-says-nscs" target="_blank" rel="noopener">Source</a></div>
+      <div role="row" class="leak-row"><b role="cell">US Supreme Court, 2022</b><span role="cell">A draft ruling leaked. Nearly 100 staff were questioned and the leaker was never found.</span><a role="cell" href="https://abajournal.com/web/article/who-leaked-dobbs-scotus-investigators-dont-know-despite-97-employee-interviews-and-forensic-sleuthing" target="_blank" rel="noopener">Source</a></div>
     </div>
-    <p class="muted">The pattern: whoever holds the file can open it early, and afterwards nobody can prove who accessed what, and when.</p>
+    <p class="muted">The same problem every time: whoever holds the file can open it early, and afterwards nobody can prove who did what, or when.</p>
   </section>
 
   <section class="split">
-    <div class="panel"><h2 class="section-title">// What NEAR enforces</h2>
-      <ul class="tick"><li>No release or open before the unlock time</li><li>Only listed holders can release, each once, with the committed part</li><li>K parts required in split mode</li><li>Every attempt, accepted or refused, in a public log</li><li>Alert hashes anchored; locations stay off-chain</li></ul></div>
+    <div class="panel"><h2 class="section-title">// What is guaranteed</h2>
+      <ul class="tick"><li>Nobody can open it before the chosen time</li><li>Only the trusted people you chose can help open it, once each</li><li>Every try, even blocked ones, is recorded in public and cannot be deleted</li><li>If the file is changed, it will not open and you are told</li><li>Your exact location is never taken without your OK</li></ul></div>
     <div class="panel"><h2 class="section-title">// Honest limits</h2>
-      <ul class="cross"><li>The release service plus K holders together could open early; neither alone can</li><li>Single mode trusts the release service with the key until the time</li><li>The person who seals already has the original file</li><li>Nothing stops a photo after the file opens</li><li>IP location is approximate; GPS only with consent</li></ul></div>
+      <ul class="cross"><li>If our service and enough of your trusted people all work together, they could open it early</li><li>For "just the time" files, our service keeps the key until then</li><li>The person who locks the file already has the original</li><li>Once it opens, someone can still take a photo of it</li><li>Rough location from the internet connection can be wrong</li></ul></div>
   </section>
 
-  <section class="panel deploy"><h2 class="section-title">// Deployment evidence</h2>
-    <p>Contract and release-service operator deployed on NEAR testnet.</p>
+  <section class="panel deploy"><h2 class="section-title">// Proof it is live</h2>
+    <p>The program that enforces the time runs on the NEAR test network. Anyone can look it up: <span id="sContract" class="mono">—</span> <span id="sOwner" class="muted"></span></p>
     <div class="deploy-links" id="deployLinks"></div></section>
 </main>
-<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source on GitHub</a><span>Sealed until the second. Logged forever.</span></footer>
+<footer class="app-footer land-foot"><span>SEALED PAPER</span><a href="https://github.com/Lakshmikanth-3/Appeal" rel="noopener">Source code</a><span>Locked until the second. Recorded forever.</span></footer>
 <script type="module" src="/landing.js"></script>
 </body>
 </html>
