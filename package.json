@@ -34,6 +34,7 @@
     "buffer": "6.0.3",
     "near-api-js": "7.2.0",
     "process": "0.11.10",
+    "shamir-secret-sharing": "0.0.4",
     "util": "0.12.5"
   },
   "devDependencies": {
