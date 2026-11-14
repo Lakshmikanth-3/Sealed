@@ -8,11 +8,11 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const RPC = { testnet: 'https://rpc.testnet.near.org', mainnet: 'https://rpc.mainnet.near.org' };
 
 // NEAR anchors are read straight from a public RPC node (not via our server).
-// Mock anchors can only be read from the demo server's local ledger.
+// Non-NEAR evidence is rejected.
 let currentPack;
 let verificationJob = 0;
 let deploymentEdited = false;
-const cards = ['checksCard', 'sumCard', 'daysCard', 'dlCard', 'briefCard'];
+const cards = ['checksCard', 'sumCard', 'daysCard', 'dlCard', 'briefCard', 'aiDraftCard'];
 function beginChecking() {
   $('verdict').className = 'verdict'; $('verdict').textContent = 'Checking…';
   for (const id of cards) $(id).classList.add('hidden');
@@ -51,10 +51,7 @@ const configP = fetch('/api/config').then((r) => r.json()).then((config) => {
 
 async function fetchAnchor(ref, deployments, protocol) {
   if (RPC[ref.network]) return lookupNearTx(RPC[ref.network], ref.txHash, ref.sender, { network: ref.network, ...deployments[ref.network], protocol, receiptId: ref.receiptId });
-  const r = await fetch(`/api/anchor?tx=${encodeURIComponent(ref.txHash)}`);
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error);
-  return j;
+  throw new Error('Only public NEAR transaction evidence is accepted');
 }
 
 async function run(pack, job = ++verificationJob) {
@@ -68,14 +65,17 @@ async function run(pack, job = ++verificationJob) {
   const rep = await verifyPack(pack, (ref, context) => fetchAnchor(ref, deployments, context.protocol), { deployments });
   if (job !== verificationJob) return;
   $('recheck').disabled = false;
-  const mock = Array.isArray(pack?.days) && pack.days.some((d) => d?.anchor?.network === 'mock');
+
   $('verdict').className = 'verdict ' + (rep.ok ? 'ok' : 'bad');
-  $('verdict').textContent = rep.ok ? (mock ? `Demo verified: ${pack.days.length} day(s) match the local ledger`
-    : rep.workerAuthorizationVerified ? `Worker-authorized content verified: ${pack.days.length} day(s)`
+  $('verdict').textContent = rep.ok ? (rep.workerAuthorizationVerified ? `Worker-authorized content verified: ${pack.days.length} day(s)`
       : `Content verified: ${pack.days.length} day(s) match NEAR commitments`) : 'Not verified: this pack was changed or does not match its anchors';
-  $('checks').innerHTML = rep.checks.map((c) => `<li>${c.ok ? '✅' : '❌'} ${esc(c.msg)}</li>`).join('') +
-    (mock ? '<li>⚠️ Anchored on the local demo ledger, not on NEAR.</li>' : '');
+  $('checks').innerHTML = rep.checks.map((c) => `<li>${c.ok ? '?' : '?'} ${esc(c.msg)}</li>`).join('');
   $('att').textContent = rep.attestation;
+  $('aiDraftCard').classList.add('hidden');
+  if (rep.ok && pack.aiBrief?.output && typeof pack.aiBrief.output === 'object') {
+    $('aiDraft').textContent = JSON.stringify(pack.aiBrief.output, null, 2);
+    $('aiDraftCard').classList.remove('hidden');
+  }
   $('identity').textContent = rep.identity;
   $('narr').textContent = rep.recomputedSummary?.narrative || '';
   if (!rep.recomputedSummary) {

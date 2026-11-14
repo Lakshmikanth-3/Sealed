@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: appeal
+    runtime: docker
+    healthCheckPath: /api/config
+    disk:
+      name: appeal-data
+      mountPath: /var/lib/appeal
+      sizeGB: 1
+    envVars:
+      - key: NEAR_NETWORK
+        value: testnet
+      - key: DATA_DIR
+        value: /var/lib/appeal
+      - key: RELAY_ENABLED
+        value: "false"
+      - key: ANCHOR_CONTRACT
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: NEARAI_API_KEY
+        sync: false
+      - key: NEARAI_MODEL
+        sync: false
+      - key: AI_ACCESS_TOKEN
+        sync: false
+      - key: PUBLISH_ACCESS_TOKEN
+        sync: false
+      - key: NEARAI_GATEWAY_COMPOSE_SHA256
+        sync: false
+      - key: NEARAI_MODEL_COMPOSE_SHA256
+        sync: false

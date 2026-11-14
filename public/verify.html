@@ -19,7 +19,7 @@
       <p class="muted">Confirm these accounts through a source you trust. They are never taken from an uploaded pack.</p>
       <label for="verifyNetwork">Network</label><select id="verifyNetwork"><option value="testnet">Testnet</option><option value="mainnet">Mainnet</option></select>
       <label for="verifyContract">Anchor contract</label><input id="verifyContract" autocomplete="off">
-      <label for="verifyRelayer">Anchor relayer</label><input id="verifyRelayer" autocomplete="off">
+      <label for="verifyRelayer">Sponsored relayer (optional for wallet transactions)</label><input id="verifyRelayer" autocomplete="off">
       <button id="recheck" type="button" class="secondary">Check again</button>
     </details>
   </section>
@@ -28,7 +28,7 @@
   <section class="card hidden" id="checksCard"><h2>Checks</h2><ul class="checks" id="checks"></ul><p class="muted" id="identity"></p><p class="muted" id="att"></p></section>
   <section class="card hidden" id="sumCard"><h2>Case summary</h2><p id="narr"></p><p class="muted">Trip and payment amounts may overlap. Recorded totals are not a finding of money owed; review the cited entries.</p><p class="muted" id="who"></p></section>
   <section class="card hidden" id="briefCard"><div class="day-head"><h2>Evidence review brief</h2><span class="badge">Cited · deterministic · unattested</span></div><p class="muted no-print">Prepared from disclosed records only. Every event has an entry reference. A reviewer must assess relevance and accuracy.</p><p class="mono" id="packDigest"></p><pre class="review-brief" id="reviewBrief"></pre><div class="row no-print"><button id="downloadBrief">Download brief</button><button id="printBrief" class="secondary">Print review</button></div></section>
-  <section class="card hidden" id="daysCard"><h2>Days and records</h2><div id="daysOut"></div></section>
+  <section class="card hidden" id="aiDraftCard"><h2>AI review draft</h2><p>The server reports verifying a NEAR AI provider TEE signature. This reviewer has not independently verified the AI attestation or draft. Read the cited original entries; AI statements may be wrong.</p><pre id="aiDraft" class="review-brief"></pre></section><section class="card hidden" id="daysCard"><h2>Days and records</h2><div id="daysOut"></div></section>
   <section class="card hidden" id="dlCard"><button class="secondary" id="dl">Download this pack (JSON)</button>
     <p class="muted">Tamper test: download, change any amount, then load the file above. It will fail.</p></section>
   <footer class="app-footer"><span>Appeal</span><a href="/">Worker workspace</a><span>Evidence support, not legal advice.</span></footer>

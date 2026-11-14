@@ -1,6 +1,7 @@
 # Worker ownership protocol — v2 implementation in progress
 
-The current phone capture UI still creates v1 records. The shared verifier, standalone CLI and reviewer page now accept both v1 and worker-authorized v2 packs. The v2 contract, authorization and verification components are not a completed passkey product or live deployment. The unauthenticated v1 HTTP anchoring route is disabled on live networks during this transition; mock capture remains usable.
+The current phone workspace uses account-bound v2 records, direct wallet approvals, persisted redirect reconciliation and finalized receipt verification. The independent verifier accepts direct worker signatures and the separately configured NEP-366 relay. Local-ledger evidence is rejected. Passkey onboarding and actual deployment are not claimed. See LIVE-SETUP.md for live activation.
+
 
 ## What must be authorized
 

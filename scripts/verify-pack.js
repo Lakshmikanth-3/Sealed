@@ -9,11 +9,11 @@ try {
   const { values } = parseArgs({ options: { file: { type: 'string' }, network: { type: 'string' },
     contract: { type: 'string' }, relayer: { type: 'string' }, help: { type: 'boolean' } }, allowPositionals: false });
   if (values.help) {
-    console.log('node scripts/verify-pack.js --file PATH --network testnet|mainnet --contract ACCOUNT --relayer ACCOUNT');
+    console.log('node scripts/verify-pack.js --file PATH --network testnet|mainnet --contract ACCOUNT [--relayer ACCOUNT]');
     console.log('Use independently confirmed deployment accounts. Mock-ledger packs are not NEAR evidence.');
   } else {
-    if (!values.file || !['testnet', 'mainnet'].includes(values.network) || !validNearAccount(values.contract) || !validNearAccount(values.relayer)) {
-      throw new Error('Supply --file, --network, --contract and --relayer. Use --help for syntax.');
+    if (!values.file || !['testnet', 'mainnet'].includes(values.network) || !validNearAccount(values.contract) || (values.relayer && !validNearAccount(values.relayer))) {
+      throw new Error('Supply --file, --network and --contract; add --relayer for sponsored evidence. Use --help for syntax.');
     }
     const pack = JSON.parse(await fs.readFile(values.file, 'utf8'));
     if (!Array.isArray(pack?.days) || !pack.days.length || pack.days.some((d) => d?.anchor?.network !== values.network)) {

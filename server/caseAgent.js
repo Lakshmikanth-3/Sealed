@@ -1,7 +1,5 @@
-// Case-builder agent. Today: deterministic local summary, honestly labelled "unattested-local".
-// The verifier recomputes it from the disclosed entries, so it cannot be silently edited.
-// TODO(NEAR AI Cloud): when NEARAI_API_KEY is available, run the same generator inside a
-// NEAR AI Cloud TEE and attach its attestation report as { kind: 'near-ai-cloud-tee', report }.
+// Deterministic case builder. Verified private AI generation is an explicit,
+// separately consented operation in privateBrief.js, never a local substitute.
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -33,7 +31,7 @@ export async function buildCase(draft) {
       kind: 'unattested-local',
       generator: summary.generator,
       generatorSha256: await sha256Hex(fs.readFileSync(generatorPath)),
-      note: 'Not yet run in a NEAR AI Cloud TEE. Verifier recomputes the summary instead.',
+      note: 'Deterministic summary, independently recomputed from disclosed entries. No TEE attestation applies to this calculation.',
     },
     disclaimer: 'Evidence support only, not legal advice. Checks content committed by the anchor time. Account authorization must be verified against NEAR; personal names and capture timestamps are self-reported. This does not establish truth or completeness.',
   };

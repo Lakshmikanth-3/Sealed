@@ -1,6 +1,9 @@
 import { validateEntry, imageBytes } from '/lib/schema.js';
 import { merkleRoot, merkleProof, randomSalt, sha256Hex } from '/lib/merkle.js';
 import { validateBackup, MAX_BACKUP_BYTES } from '/lib/backup.js';
+import { connectedAccount, connectWallet, signAnchors } from '/assets/wallet.js';
+import { lookupNearTx } from '/lib/nearRpc.js';
+import { reconcilePending } from '/lib/reconcile.js';
 
 const $ = (id) => document.getElementById(id);
 const TYPES = ['trip', 'pay', 'rating', 'penalty', 'notification', 'deactivation'];
@@ -9,6 +12,8 @@ let anchoringAvailable = false;
 let pendingDisclosure;
 let pendingRestore;
 let restoreJob = 0;
+let liveConfig;
+const PUBLIC_RPC = { testnet: 'https://rpc.testnet.near.org', mainnet: 'https://rpc.mainnet.near.org' };
 
 const VIEWS = ['capture', 'journal', 'case', 'backup'];
 function showView(view, focus = false) {
@@ -30,7 +35,7 @@ window.addEventListener('offline', () => { anchoringAvailable = false; $('anchor
 
 // ---------- storage (IndexedDB: entries, anchors) ----------
 const dbP = new Promise((resolve, reject) => {
-  const r = indexedDB.open('appeal-record', 1);
+  const r = indexedDB.open('appeal-live-v2', 1);
   r.onupgradeneeded = () => {
     r.result.createObjectStore('entries', { keyPath: 'id' });
     r.result.createObjectStore('anchors', { keyPath: 'key' });
@@ -68,27 +73,49 @@ async function refreshConfig() {
     const response = await fetch('/api/config', { signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error('Configuration unavailable');
     const cfg = await response.json();
-    anchoringAvailable = cfg.network === 'mock' && cfg.anchoringAvailable !== false;
-    $('net').textContent = cfg.network === 'mock' ? 'Mock chain (demo)' : `NEAR ${cfg.network}: account setup pending`;
+    liveConfig = cfg;
+    $('aiStatus').textContent = cfg.ai?.ready ? 'Verified private AI is configured.' : (cfg.ai?.reason || 'AI is not configured');
+    $('usePrivateAI').disabled = !cfg.ai?.ready;
+    if (!PUBLIC_RPC[cfg.network]) throw new Error('Unsupported network');
+    const account = await connectedAccount(cfg.network);
+    if (account && (!worker || worker === account)) { worker = account; await put('meta', worker, 'worker'); }
+    anchoringAvailable = !!(cfg.contract && account && worker === account);
+    $('connectWallet').disabled = false;
+    $('connectWallet').textContent = account || 'Connect Meteor Wallet';
+    $('setupStatus').textContent = cfg.contract ? `Contract: ${cfg.contract}. Your wallet approves each save and pays network fees.` : 'Contract deployment required for NEAR commitments. You can connect your wallet and keep a private journal now.';
+    $('net').textContent = `NEAR ${cfg.network}${anchoringAvailable ? ' · wallet connected' : ' · setup required'}`;
+    $('wid').textContent = worker || 'No wallet connected';
     $('net').className = 'badge warn';
-    $('anchorAll').textContent = cfg.network === 'mock' ? 'Save all days to demo ledger' : 'Save all days on NEAR';
+    $('anchorAll').textContent = 'Save all days on NEAR';
   } catch { anchoringAvailable = false; $('net').textContent = 'Offline · local capture'; }
   $('anchorAll').disabled = $('build').disabled = !anchoringAvailable;
 }
 async function init() {
   worker = await getMeta('worker');
-  if (!worker) { worker = 'w-' + randomSalt().slice(0, 16); await put('meta', worker, 'worker'); }
-  $('wid').textContent = worker;
+  $('wid').textContent = worker || 'Connect your NEAR wallet before recording';
   $('timezone').textContent = `Work days follow this device’s timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}.`;
   $('anchorAll').disabled = $('build').disabled = true;
-  void refreshConfig();
+  await refreshConfig();
+  try { await recoverAnchors(); } catch (error) { toast(error.message); }
   const hints = ['A completed journey', 'A payment received', 'A score changed', 'A deduction or charge', 'A message from the app', 'Access to work stopped'];
   $('types').innerHTML = TYPES.map((t, i) => `<button data-t="${t}" aria-pressed="${t === type}">${t}<small>${hints[i]}</small></button>`).join('');
   $('types').onclick = (e) => { const t = e.target.closest('button')?.dataset.t; if (t) { type = t; syncType(); } };
   syncType();
   await render();
+  await renderShares();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+$('connectWallet').onclick = async () => {
+  try {
+    if (!liveConfig?.network) throw new Error('Network configuration is unavailable');
+    await connectWallet(liveConfig.network, liveConfig.contract);
+    await refreshConfig();
+  } catch (error) { toast('Wallet connection failed: ' + error.message); }
+};
+$('recoverAnchors').onclick = async () => {
+  try { await recoverAnchors($('transactionHashes').value.trim()); await render(); }
+  catch (error) { toast('Verification failed: ' + error.message); }
+};
 function syncType() {
   for (const b of $('types').children) b.setAttribute('aria-pressed', b.dataset.t === type);
   $('f-amount').classList.toggle('hidden', !['trip', 'pay', 'penalty'].includes(type));
@@ -122,7 +149,7 @@ const dataUrlBytes = (d) => Uint8Array.from(atob(d.split(',')[1]), (c) => c.char
 $('capture').onclick = async () => {
   const btn = $('capture'); btn.disabled = true;
   try {
-    if (!worker) throw new Error('Storage is still loading; try again');
+    if (!worker) throw new Error('Connect your NEAR wallet before recording');
     const ts = new Date().toISOString(); // device-reported moment of the tap
     const entry = { id: 'e' + Date.now().toString(36) + randomSalt().slice(0, 4), worker, day: today(), ts, type,
       capture: 'live-manual', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, salt: randomSalt() };
@@ -154,27 +181,59 @@ async function state() {
   for (const d of Object.values(days)) d.anchors.sort((a, b) => a.timestamp - b.timestamp);
   return days;
 }
-async function anchorDay(day, rows) {
-  const entries = rows.map((r) => r.entry);
-  const root = await merkleRoot(entries);
-  const res = await fetch('/api/anchor', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ worker, day, root, count: entries.length }) });
-  const a = await res.json();
-  if (!res.ok) throw new Error(a.error);
-  await put('anchors', { key: `${day}:${a.txHash}`, day, root, count: entries.length, entryIds: entries.map((e) => e.id), ...a });
+async function recoverAnchors(explicitHashes) {
+  const pending = await getMeta('pendingAnchors');
+  if (!pending) return;
+  $('pendingTransaction').classList.remove('hidden');
+  const params = new URLSearchParams(location.search);
+  if (params.has('errorCode') && !explicitHashes && !pending.hashes?.length) throw new Error('Wallet did not complete signing. Pending details are retained for transaction reconciliation.');
+  const hashes = (explicitHashes || params.get('transactionHashes') || pending.hashes?.join(',') || '').split(',').map((hash) => hash.trim()).filter(Boolean);
+  if (!hashes.length) return;
+  pending.hashes = hashes;
+  await put('meta', pending, 'pendingAnchors');
+  const result = await reconcilePending(pending, hashes, (hash) => lookupNearTx(PUBLIC_RPC[pending.network], hash, pending.worker,
+    { network: pending.network, contract: pending.contract, protocol: 2 }));
+  const db = await dbP;
+  await new Promise((resolve, reject) => {
+    const t = db.transaction(['anchors', 'meta'], 'readwrite');
+    for (const record of result.confirmed) t.objectStore('anchors').put(record);
+    if (result.pending) t.objectStore('meta').put(result.pending, 'pendingAnchors');
+    else t.objectStore('meta').delete('pendingAnchors');
+    t.oncomplete = resolve; t.onerror = () => reject(t.error); t.onabort = () => reject(t.error);
+  });
+  $('pendingTransaction').classList.toggle('hidden', !result.pending);
+  history.replaceState(null, '', location.pathname + location.hash);
+  $('pendingStatus').textContent = result.pending
+    ? `${result.confirmed.length} day(s) verified; ${result.pending.items.length} still unresolved. ${result.problems.map((problem) => problem.message).join('; ')}`
+    : 'All submitted commitments verified.';
+  toast(`${result.confirmed.length} day(s) verified on NEAR${result.pending ? '; unresolved transactions retained' : ''}`);
 }
 async function anchorPending() {
+  if (await getMeta('pendingAnchors')) throw new Error('Reconcile the pending wallet transactions before signing again');
   const days = await state();
-  let n = 0;
+  const items = [];
   for (const [day, d] of Object.entries(days)) {
     const last = d.anchors.at(-1);
-    if (d.rows.length && (!last || last.count !== d.rows.length)) { await anchorDay(day, d.rows); n++; }
+    if (d.rows.length && (!last || last.count !== d.rows.length)) {
+      const entries = d.rows.map((row) => row.entry);
+      if (entries.some((entry) => entry.worker !== worker)) throw new Error('Journal belongs to a different wallet');
+      items.push({ args: { v: 2, network: liveConfig.network, worker, day, root: await merkleRoot(entries), count: entries.length }, entryIds: entries.map((entry) => entry.id) });
+    }
   }
-  return n;
+  if (!items.length) return 0;
+  if (items.length > 20) throw new Error('At most 20 days can be signed in one batch');
+  const health = await fetch('/api/health?worker=' + encodeURIComponent(worker));
+  if (!health.ok) throw new Error('The configured NEAR contract is not ready');
+  const pending = { network: liveConfig.network, contract: liveConfig.contract, worker, items };
+  await put('meta', pending, 'pendingAnchors');
+  $('pendingTransaction').classList.remove('hidden');
+  const outcomes = await signAnchors(pending.network, pending.contract, worker, items.map((item) => item.args));
+  if (outcomes?.length) await recoverAnchors(outcomes.map((outcome) => outcome.transaction.hash).join(','));
+  return items.length;
 }
 $('anchorAll').onclick = async () => {
   $('anchorAll').disabled = true;
-  try { if (!anchoringAvailable) throw new Error('Account setup is pending'); const n = await anchorPending(); toast(n ? `Saved ${n} day(s) on the mock ledger` : 'Everything is already saved'); await render(); }
+  try { if (!anchoringAvailable) throw new Error('Connect your journal wallet first'); const n = await anchorPending(); toast(n ? 'Check the transaction verification status' : 'Everything is already saved'); await render(); }
   catch (e) { toast('Could not save: ' + e.message); } finally { $('anchorAll').disabled = !anchoringAvailable; }
 };
 
@@ -187,7 +246,7 @@ async function render() {
   const keys = Object.keys(days).sort().reverse();
   const recordCount = Object.values(days).reduce((n, day) => n + day.rows.length, 0);
   $('journalCount').textContent = `${recordCount} local record${recordCount === 1 ? '' : 's'} · ${keys.length} day${keys.length === 1 ? '' : 's'}`;
-  if (anchoringAvailable) $('anchorAll').textContent = 'Save all days to demo ledger';
+  $('anchorAll').textContent = 'Save all days on NEAR';
   $('days').innerHTML = keys.length ? keys.map((day) => {
     const d = days[day], last = d.anchors.at(-1);
     const status = !last ? '<span class="badge warn">not saved</span>'
@@ -239,12 +298,15 @@ $('build').onclick = async () => {
         if ($('incImg').checked && img) attachments[entries[i].imageHash] = img;
       }
       if (disclosed.length) outDays.push({ day, root: a.root, count: a.count,
-        anchor: { network: a.network, txHash: a.txHash, sender: a.sender, ...(a.contract ? { contract: a.contract } : {}) }, entries: disclosed });
+        anchor: { network: a.network, txHash: a.txHash, sender: a.sender, contract: a.contract, receiptId: a.receiptId }, entries: disclosed });
     }
     if (!outDays.length) throw new Error('pick at least one entry');
-    pendingDisclosure = { worker: { id: worker, label: $('label').value.trim() }, days: outDays, attachments };
+    pendingDisclosure = { version: 2, worker: { id: worker, label: $('label').value.trim() }, days: outDays, attachments,
+      ttlSeconds: Number($('shareLifetime').value), aiConsent: $('usePrivateAI').checked };
     const records = outDays.flatMap((day) => day.entries.map((item) => item.entry));
     $('disclosureSummary').textContent = `${outDays.length} day(s), ${records.length} record(s), ${Object.keys(attachments).length} screenshot(s), ${records.filter((entry) => entry.geo).length} location(s). Display name: ${pendingDisclosure.worker.label || 'not supplied'}.`;
+    $('disclosureSummary').textContent += ` Link expires after ${pendingDisclosure.ttlSeconds / 3600} hour(s). `
+      + (pendingDisclosure.aiConsent ? 'Selected text, dates, amounts and ratings will also be sent to NEAR AI for a draft. Images and location are excluded from the AI request.' : 'No AI inference requested.');
     $('disclosureRecords').innerHTML = records.map((entry) => `<article><strong>${esc(entry.type)} · ${esc(entry.day)}</strong><p>${esc(entry.text || 'No note')}</p><p>${entry.amount != null ? `₹${esc(entry.amount)} · ` : ''}${entry.rating != null ? `Rating ${esc(entry.rating)} · ` : ''}${esc(entry.ts)}</p>${entry.geo ? `<p>Location: ${esc(entry.geo.lat)}, ${esc(entry.geo.lon)}</p>` : ''}<code>${esc(entry.id)}</code></article>`).join('');
     $('disclosureConsent').checked = false; $('disclosureError').textContent = '';
     $('disclosureDialog').showModal();
@@ -256,9 +318,13 @@ $('publish').onclick = async () => {
   if (!pendingDisclosure || !$('disclosureConsent').checked) { $('disclosureError').textContent = 'Review the records and confirm sharing before continuing.'; return; }
   $('publish').disabled = true;
   try {
-    const res = await fetch('/api/case', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(pendingDisclosure) });
+    const res = await fetch('/api/case', { method: 'POST', headers: { 'content-type': 'application/json', 'x-publish-token': $('publishAccessToken').value, ...(pendingDisclosure.aiConsent ? { authorization: 'Bearer ' + $('aiAccessToken').value } : {}) }, body: JSON.stringify(pendingDisclosure) });
     const out = await res.json();
     if (!res.ok) throw new Error(out.error);
+    const links = await getMeta('sharedLinks') || [];
+    links.push({ id: out.id, token: out.managementToken, expiresAt: out.expiresAt, url: out.url });
+    await put('meta', links, 'sharedLinks');
+    await renderShares();
     const link = location.origin + out.url;
     $('caseLink').textContent = link; $('open').href = link;
     $('caseOut').classList.remove('hidden');
@@ -329,3 +395,24 @@ $('restore').onclick = async () => {
 };
 
 init().catch((e) => toast('Could not open local storage: ' + e.message));
+
+async function renderShares() {
+  const links = await getMeta('sharedLinks') || [];
+  $('sharedLinks').replaceChildren();
+  if (!links.length) { $('sharedLinks').textContent = 'No links created on this device.'; return; }
+  for (const link of links) {
+    const row = document.createElement('div'); row.className = 'row';
+    const anchor = document.createElement('a'); anchor.href = link.url; anchor.textContent = 'Open reviewer link';
+    const status = document.createElement('span'); status.textContent = new Date(link.expiresAt).toLocaleString();
+    const remove = document.createElement('button'); remove.className = 'secondary'; remove.textContent = 'Delete hosted share';
+    remove.onclick = async () => {
+      if (!confirm('Delete this hosted share? Downloaded copies and chain commitments remain.')) return;
+      try {
+        const response = await fetch('/api/pack/' + link.id, { method: 'DELETE', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + link.token } });
+        if (!response.ok && response.status !== 404) throw new Error('Share deletion failed');
+        await put('meta', links.filter((item) => item.id !== link.id), 'sharedLinks'); await renderShares();
+      } catch (error) { toast(error.message); }
+    };
+    row.append(anchor, status, remove); $('sharedLinks').append(row);
+  }
+}

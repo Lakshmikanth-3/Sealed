@@ -75,13 +75,13 @@ test('RPC HTTP and JSON-RPC failures cannot become anchor results', async () => 
 
 test('live configuration refuses unknown networks and implicit contract fallback', () => {
   assert.throws(() => createChain({ NEAR_NETWORK: 'fake' }), /Unsupported/);
-  assert.throws(() => createChain({ NEAR_NETWORK: 'testnet', NEAR_ACCOUNT_ID: 'relay.testnet' }), /ANCHOR_CONTRACT/);
+  assert.equal(createChain({ NEAR_NETWORK: 'testnet', NEAR_ACCOUNT_ID: 'relay.testnet' }).contract, null);
 });
 
 test('read-only NEAR chain can be configured without a private signing key', async () => {
   const chain = createChain({ NEAR_NETWORK: 'testnet', ANCHOR_CONTRACT: 'anchors.testnet', NEAR_ACCOUNT_ID: 'relay.testnet' });
   assert.equal(chain.contract, 'anchors.testnet');
-  await assert.rejects(chain.anchor(args), /NEAR_PRIVATE_KEY is required for transaction submission/);
+  assert.equal(chain.anchor, undefined, 'The read-only chain must never sign transactions');
 });
 
 test('pack cannot select its own trusted deployment or claim failed execution', async () => {

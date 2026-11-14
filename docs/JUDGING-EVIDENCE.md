@@ -16,7 +16,7 @@ Prioritize a worker-controlled record and a reviewer who can inspect it without 
 
 Use the first platform/city where the builder can obtain consented worker and reviewer access. Until that is known, platform is an optional worker-supplied field, no platform integration is claimed, and no city or worker population is invented. Existing captured records are never relabelled to create a history under the new brand or an authenticated account.
 
-The demo should show a clearly labelled synthetic record if real-data permission is unavailable. Show the exact disclosed notes, screenshot inclusion and location count before publication; unchecked records stay local. Download the pack, verify with the standalone CLI and change a disclosed amount to demonstrate rejection. The new cited review brief is deterministic and **unattested**, not a substitute for NEAR AI Cloud execution. Distinguish a local mock demonstration from an actual transaction on every screen and in narration.
+The demo should show a clearly labelled synthetic record if real-data permission is unavailable. Show the exact disclosed notes, screenshot inclusion and location count before publication; unchecked records stay local. Download the pack, verify with the standalone CLI and change a disclosed amount to demonstrate rejection. The new cited review brief is deterministic and **unattested**, not a substitute for NEAR AI Cloud execution. Distinguish a development test from an actual transaction on every screen and in narration.
 
 ## Originality: compare behavior, not slogans
 
@@ -26,7 +26,7 @@ The [New Jersey Future of Work Accelerator profile of Driver’s Seat](https://a
 
 | Reviewer question | Ordinary local screenshot folder | Appeal component demonstrated locally |
 |---|---|---|
-| Can I detect later edits against a prior external commitment? | A folder alone provides no external commitment | NEAR verifier checks actual finalized receipts when a real deployment is supplied; current local demo uses a labelled mock ledger |
+| Can I detect later edits against a prior external commitment? | A folder alone provides no external commitment | NEAR verifier checks actual finalized receipts when a real deployment is supplied; live-only runtime requires actual finalized NEAR execution |
 | Can I disclose selected structured records while proving membership in a larger commitment? | Folder organization alone supplies no membership proof | Salted Merkle proofs for selected records; hidden record contents stay unavailable |
 | Can I verify without trusting the case server's summary? | Manual review is possible, but no shared deterministic computation is inherent | Shared summary recomputation and independent CLI; cited deterministic review brief |
 | Does it prove truth, employment, automatic capture, completeness or a correct device clock? | No | No. Account authorization and commitment timestamps are narrower claims |
@@ -37,7 +37,7 @@ No claim of novelty follows merely from using a blockchain. Test whether the rev
 
 Recruit only actual people the builder can reach. Do not contact organizations or send private records without explicit instructions. Begin with synthetic tasks; use real records only after explaining data handling and receiving consent. Store completed notes and quotes outside Git, for example under ignored `pilot-data/` with restricted local access.
 
-Record the session date, anonymous participant reference, role, selected platform/city, device/browser, observed task and observer. Keep contact details and permission records separately. Consent choices must separately cover participation, any real evidence processing, feedback notes, public quotations and public screenshots/video. Participation does not imply permission to publish a quote or a record. Explain that hosted reviewer links currently have no expiry or revocation; keep real identifying data out of public demonstrations.
+Record the session date, anonymous participant reference, role, selected platform/city, device/browser, observed task and observer. Keep contact details and permission records separately. Consent choices must separately cover participation, any real evidence processing, feedback notes, public quotations and public screenshots/video. Participation does not imply permission to publish a quote or a record. Explain that hosted reviewer links expire and have deletion capabilities; keep real identifying data out of public demonstrations.
 
 Worker tasks:
 

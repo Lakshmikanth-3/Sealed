@@ -1,6 +1,6 @@
 # Account-bound anchor contract
 
-This is the Rust v2 contract under development. `anchor.js` is the original v1 prototype and is not the v2 deployment target. The existing v1 phone client cannot yet send calls to this v2 contract.
+This is the account-bound Rust v2 deployment target. Workers can approve direct wallet calls; an invited NEP-366 relay is separately supported.
 
 1. Install Rust using [rustup](https://rustup.rs/). The repository pins Rust 1.95.0 and the WASM target in `rust-toolchain.toml`.
 2. Install the native `cargo-near` 0.23.0 tool from its [official release](https://github.com/near/cargo-near/releases/tag/cargo-near-v0.23.0). The Node wrapper locates it on PATH or in the normal per-user `.cargo/bin` directory; an explicit `CARGO_NEAR` path can also be supplied. The application does not depend on the npm installer wrapper.
@@ -11,3 +11,5 @@ This is the Rust v2 contract under development. `anchor.js` is the original v1 p
 Do not deploy to an existing v1 contract account expecting state compatibility. Mainnet deployment and funding need explicit owner authorization. Build artifacts and compiler output are ignored by Git; source and `Cargo.lock` are retained.
 
 See [the ownership protocol](../docs/OWNERSHIP-PROTOCOL.md) for what the contract proves, authorization boundaries and remaining integration work.
+
+Use `npm run contract:deploy` to print a deployment plan. Broadcasting requires the separate explicit `--broadcast` operation; see [live setup](../docs/LIVE-SETUP.md).

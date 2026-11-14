@@ -11,7 +11,7 @@ async function backup() {
   const entry = { id: 'synthetic-entry', worker: 'w-synthetic', day: '2026-11-12', ts: '2026-11-12T00:00:00Z', type: 'trip', amount: 10, salt: 'a'.repeat(32) };
   const root = await merkleRoot([entry]);
   return { format: 'appeal-backup', version: 1, worker: entry.worker, entries: [{ id: entry.id, entry }],
-    anchors: [{ day: entry.day, key: entry.day + ':1234', root, count: 1, entryIds: [entry.id], txHash: '1234', network: 'mock', sender: 'mock-relayer', timestamp: Date.parse('2026-11-12T00:01:00Z') }] };
+    anchors: [{ day: entry.day, key: entry.day + ':' + '2'.repeat(44), root, count: 1, entryIds: [entry.id], txHash: '2'.repeat(44), network: 'testnet', sender: 'relay.testnet', contract: 'anchors.testnet', timestamp: Date.parse('2026-11-12T00:01:00Z') }] };
 }
 test('backup restores consistent legacy and versioned journals without claiming chain execution', async () => {
   const source = await backup(); const result = await validateBackup(source);

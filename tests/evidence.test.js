@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { buildCase } from '../server/caseAgent.js';
 import { buildSummary } from '../lib/summary.js';
 import { merkleRoot, merkleProof, randomSalt, sha256Hex, canonical, verifyProof } from '../lib/merkle.js';
-import { verifyPack } from '../lib/verify.js';
+import { verifyPack as verifyPackWithPolicy } from '../lib/verify.js';
+const verifyPack = (pack, lookup) => verifyPackWithPolicy(pack, lookup, { deployments: { testnet: { contract: 'anchors.testnet', relayer: 'relay.testnet' } } });
 import { imageBytes } from '../lib/schema.js';
 
 async function fixture() {
@@ -15,9 +16,9 @@ async function fixture() {
     { id: 'synthetic-b', worker, day, ts, type: 'penalty', amount: 10, salt: randomSalt() },
   ];
   const root = await merkleRoot(entries);
-  const anchor = { args: { v: 1, worker, day, root, count: entries.length }, timestamp: Date.now(), signer: 'mock-relayer' };
+  const anchor = { args: { v: 1, worker, day, root, count: entries.length }, timestamp: Date.now(), signer: 'relay.testnet', receiver: 'anchors.testnet', method: 'anchor', network: 'testnet', execution: 'success', finality: 'FINAL', txHash: '2'.repeat(44) };
   const draft = { worker: { id: worker, label: 'Synthetic fixture' }, days: [{ day, root, count: entries.length,
-    anchor: { network: 'mock', sender: 'mock-relayer', txHash: 'abcdef123456' },
+    anchor: { network: 'testnet', sender: 'relay.testnet', contract: 'anchors.testnet', txHash: '2'.repeat(44) },
     entries: await Promise.all(entries.map(async (entry, i) => ({ entry, proof: await merkleProof(entries, i) }))) }] };
   const pack = await buildCase(draft);
   return { pack, anchor, draft };

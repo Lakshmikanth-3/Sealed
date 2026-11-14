@@ -7,9 +7,7 @@
   "description": "Worker-owned, tamper-evident work record with NEAR anchors and a one-click verifier.",
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
-    "start:demo": "node scripts/start-demo.js",
-    "demo": "node --env-file-if-exists=.env scripts/demo.js",
-    "test": "node --test tests/*.test.js && node scripts/demo.js --mock",
+    "test": "node --test tests/*.test.js",
     "test:browser": "playwright test",
     "test:browser:portable": "node scripts/browser-tests.js",
     "verify": "node scripts/verify-pack.js",
@@ -17,15 +15,33 @@
     "economics": "node scripts/economics.js",
     "contract:lock": "node scripts/contract.js lock",
     "contract:build": "node scripts/contract.js build",
-    "contract:test": "node scripts/contract.js test"
+    "contract:test": "node scripts/contract.js test",
+    "build": "node scripts/build-client.js",
+    "prestart": "npm run build",
+    "test:live": "node --env-file-if-exists=.env scripts/check-live.js",
+    "contract:deploy": "node --env-file-if-exists=.env scripts/deploy-contract.js",
+    "shares:backup": "node --env-file-if-exists=.env scripts/backup-shares.js",
+    "contract:register": "node --env-file-if-exists=.env scripts/register-worker.js",
+    "ai:inspect": "node --env-file-if-exists=.env scripts/inspect-ai.js"
   },
   "engines": {
-    "node": ">=22.21.0"
+    "node": ">=24.22.1"
   },
   "dependencies": {
-    "near-api-js": "7.2.0"
+    "@near-wallet-selector/core": "10.1.4",
+    "@near-wallet-selector/meteor-wallet": "10.1.4",
+    "@nearai/inference-sdk": "0.3.0",
+    "buffer": "6.0.3",
+    "near-api-js": "7.2.0",
+    "process": "0.11.10",
+    "util": "0.12.5"
   },
   "devDependencies": {
-    "@playwright/test": "1.65.0"
+    "@playwright/test": "1.65.0",
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "nanoid": "5.1.16",
+    "decode-uri-component": "0.5.1"
   }
 }

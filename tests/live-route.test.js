@@ -30,4 +30,14 @@ test('read-only live setup needs no signing key, keeps RPC credentials private a
     body: JSON.stringify({ worker: 'w-synthetic', day: '2026-11-12', root: 'a'.repeat(64), count: 1 }) });
   assert.equal(response.status, 403);
   assert.match((await response.json()).error, /Worker-signed v2/);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  const crossSite = await fetch(base + '/api/case', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://untrusted.invalid' }, body: '{}' });
+  assert.equal(crossSite.status, 403);
+  const wrongType = await fetch(base + '/api/case', { method: 'POST', body: '{}' });
+  assert.equal(wrongType.status, 415);
+  const withoutAccess = await fetch(base + '/api/case', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  assert.equal(withoutAccess.status, 503);
+  assert.match((await withoutAccess.json()).error, /PUBLISH_ACCESS_TOKEN/);
+  const unknownShare = await fetch(base + '/api/pack/' + 'x'.repeat(32));
+  assert.equal(unknownShare.status, 404);
 });
